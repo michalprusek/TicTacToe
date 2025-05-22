@@ -19,10 +19,10 @@ Aplikace pro hraní piškvorek s robotickým ramenem uArm Swift Pro. Systém pou
 
 ## Instalace
 
-1. Klonujte repozitář:
+1. Klonujte repozitář:https://github.com/michalprusek/TicTacToe.git
    ```
-   git clone https://github.com/username/robot-tictactoe.git
-   cd robot-tictactoe
+   git clone https://github.com/michalprusek/TicTacToe.git
+   cd TicTacToe
    ```
 
 2. Nainstalujte závislosti:
