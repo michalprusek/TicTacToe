@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+env = [
+  "D:QT_QPA_PLATFORM=offscreen",
+]
+qt_api = "pyqt5"
