@@ -801,15 +801,50 @@ class TicTacToeApp(QMainWindow):
         return self._unified_arm_command('park', x=PARK_X, y=PARK_Y, wait=True)
 
     def handle_difficulty_changed(self, value):
-        """Handle difficulty slider value change"""
+        """Handle difficulty slider value change with immediate synchronization"""
+        # Update GUI label immediately
         if hasattr(self, 'difficulty_value_label') and self.difficulty_value_label:
             self.difficulty_value_label.setText(f"{value}")
 
-        # Aktualizace obtížnosti AI
+        # ✅ IMMEDIATE SYNCHRONIZATION: Update strategy selector difficulty in real-time
         if hasattr(self, 'strategy_selector') and self.strategy_selector:
+            # Store old value for comparison
+            old_p = getattr(self.strategy_selector, 'p', None)
+
             # BernoulliStrategySelector has a difficulty property that accepts 0-10
             self.strategy_selector.difficulty = value
-            self.logger.info(f"Difficulty set to {value} (p={self.strategy_selector.p:.2f})")
+
+            # Get new probability value
+            new_p = self.strategy_selector.p
+
+            # Enhanced logging with real-time feedback
+            self.logger.info(f"🎯 DIFFICULTY SYNC: {value}/10 → p={new_p:.2f} "
+                           f"({'RANDOM' if new_p == 0.0 else 'MIXED' if 0.0 < new_p < 1.0 else 'INTELLIGENT'} play)")
+
+            # Log change if there was a previous value
+            if old_p is not None and old_p != new_p:
+                self.logger.info(f"🔄 Strategy probability changed: {old_p:.2f} → {new_p:.2f}")
+
+            # Provide immediate user feedback about strategy behavior
+            if hasattr(self, 'status_label') and self.status_label and not self.game_over:
+                strategy_description = self._get_strategy_description(new_p)
+                # Only update status if we're not in the middle of a game action
+                if not getattr(self, 'waiting_for_detection', False) and not getattr(self, 'arm_move_in_progress', False):
+                    current_text = self.status_label.text()
+                    if not any(keyword in current_text.lower() for keyword in ['čekám', 'kreslím', 'detekce', 'tah']):
+                        self.status_label.setText(f"Obtížnost: {strategy_description}")
+        else:
+            self.logger.warning("⚠️ Strategy selector not available for difficulty update")
+
+    def _get_strategy_description(self, p_value):
+        """Get user-friendly description of strategy behavior based on probability"""
+        if p_value == 0.0:
+            return "Náhodné tahy (0% inteligence)"
+        elif p_value == 1.0:
+            return "Inteligentní tahy (100% inteligence)"
+        else:
+            intelligence_percent = int(p_value * 100)
+            return f"Smíšené tahy ({intelligence_percent}% inteligence)"
 
     def handle_track_checkbox_changed(self, state):
         """Handle track checkbox state change"""
