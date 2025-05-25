@@ -6,6 +6,7 @@ Refactored from pyqt_gui.py to consolidate arm control logic.
 
 import logging
 import numpy as np
+import json
 from PyQt5.QtCore import QObject, pyqtSignal
 
 # Import required modules
@@ -19,8 +20,6 @@ from app.main.constants import (
     DEFAULT_SAFE_Z, DEFAULT_DRAW_Z, DRAWING_SPEED, MAX_SPEED
 )
 from app.main.game_utils import setup_logger
-PARK_X = 150
-PARK_Y = 0
 DEFAULT_SYMBOL_SIZE = 15.0
 
 
@@ -47,9 +46,29 @@ class ArmMovementController(QObject):
         self.safe_z = DEFAULT_SAFE_Z
         self.draw_z = DEFAULT_DRAW_Z
         self.symbol_size = DEFAULT_SYMBOL_SIZE
+        
+        # Load neutral position from calibration
+        self.neutral_position = self._load_neutral_position()
 
         # Initialize arm
         self._init_arm_components()
+
+    def _load_neutral_position(self):
+        """Load neutral position from calibration file."""
+        try:
+            calibration_path = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
+            with open(calibration_path, 'r') as f:
+                calibration_data = json.load(f)
+            
+            neutral_pos = calibration_data.get("neutral_position", {})
+            return {
+                'x': neutral_pos.get('x', 150),  # fallback to old hardcoded values
+                'y': neutral_pos.get('y', 0),
+                'z': neutral_pos.get('z', DEFAULT_SAFE_Z)
+            }
+        except Exception as e:
+            self.logger.warning(f"Could not load neutral position from calibration: {e}. Using defaults.")
+            return {'x': 150, 'y': 0, 'z': DEFAULT_SAFE_Z}
 
     def _init_arm_components(self):
         """Initialize arm thread and controller."""
@@ -124,9 +143,9 @@ class ArmMovementController(QObject):
         try:
             success = self._unified_arm_command(
                 'park',
-                x=PARK_X,
-                y=PARK_Y,
-                z=self.safe_z,
+                x=self.neutral_position['x'],
+                y=self.neutral_position['y'],
+                z=self.neutral_position['z'],
                 wait=True
             )
 
@@ -285,9 +304,9 @@ class ArmMovementController(QObject):
                 )
             elif command == 'park':
                 success = self.arm_thread.go_to_position(
-                    x=kwargs.get('x', PARK_X),
-                    y=kwargs.get('y', PARK_Y),
-                    z=kwargs.get('z', self.safe_z),
+                    x=kwargs.get('x', self.neutral_position['x']),
+                    y=kwargs.get('y', self.neutral_position['y']),
+                    z=kwargs.get('z', self.neutral_position['z']),
                     speed=MAX_SPEED // 2,
                     wait=kwargs.get('wait', True)
                 )
@@ -323,6 +342,37 @@ class ArmMovementController(QObject):
 
             self.logger.info(f"  📍 Step 1 - Grid position: ({row},{col})")
             self.logger.info(f"  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+            
+            # ENHANCED DEBUG: Show grid points used for this cell
+            self.logger.info(f"  🔧 GRID DEBUG - Cell ({row},{col}) calculation:")
+            if hasattr(game_state_obj, '_grid_points') and game_state_obj._grid_points is not None:
+                # Show which grid points were used for this cell
+                p_tl_idx = row * 4 + col          # top-left
+                p_tr_idx = row * 4 + (col + 1)    # top-right
+                p_bl_idx = (row + 1) * 4 + col    # bottom-left
+                p_br_idx = (row + 1) * 4 + (col + 1)  # bottom-right
+                
+                grid_points = game_state_obj._grid_points
+                if len(grid_points) > max(p_tl_idx, p_tr_idx, p_bl_idx, p_br_idx):
+                    self.logger.info(f"    Grid points used: TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}")
+                    self.logger.info(f"    TL=({grid_points[p_tl_idx][0]:.0f},{grid_points[p_tl_idx][1]:.0f})")
+                    self.logger.info(f"    TR=({grid_points[p_tr_idx][0]:.0f},{grid_points[p_tr_idx][1]:.0f})")
+                    self.logger.info(f"    BL=({grid_points[p_bl_idx][0]:.0f},{grid_points[p_bl_idx][1]:.0f})")
+                    self.logger.info(f"    BR=({grid_points[p_br_idx][0]:.0f},{grid_points[p_br_idx][1]:.0f})")
+                    
+                    # Calculate expected center for verification
+                    expected_center_u = (grid_points[p_tl_idx][0] + grid_points[p_tr_idx][0] + 
+                                       grid_points[p_bl_idx][0] + grid_points[p_br_idx][0]) / 4
+                    expected_center_v = (grid_points[p_tl_idx][1] + grid_points[p_tr_idx][1] + 
+                                       grid_points[p_bl_idx][1] + grid_points[p_br_idx][1]) / 4
+                    self.logger.info(f"    Expected center: ({expected_center_u:.1f},{expected_center_v:.1f})")
+                    self.logger.info(f"    Actual center:   ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+                    
+                    # Verify calculation
+                    diff_u = abs(expected_center_u - uv_center[0])
+                    diff_v = abs(expected_center_v - uv_center[1])
+                    if diff_u > 5 or diff_v > 5:
+                        self.logger.warning(f"    ⚠️ CENTER MISMATCH: diff=({diff_u:.1f},{diff_v:.1f})")
 
             # DEBUG: Log all cell centers for comparison
             self.logger.info(f"  🗺️ ALL CELL CENTERS for reference:")

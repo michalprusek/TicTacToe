@@ -116,16 +116,43 @@ class GridDetector:
             self.logger.debug("Not enough valid points to sort grid: %s", len(valid_points))
             return keypoints
             
-        # Find the centroid of all valid points
-        centroid = np.mean(valid_points, axis=0)
+        # Sort points for 4x4 grid layout (row by row, left to right)
+        # This is CRITICAL for correct cell center calculation!
         
-        # Calculate angles from centroid to each point
-        angles = np.arctan2(valid_points[:, 1] - centroid[1], 
-                           valid_points[:, 0] - centroid[0])
+        self.logger.debug(f"🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
         
-        # Sort points by angle
-        sorted_indices = np.argsort(angles)
-        sorted_valid_points = valid_points[sorted_indices]
+        # Sort by Y coordinate first (top to bottom)
+        y_sorted_indices = np.argsort(valid_points[:, 1])
+        y_sorted_points = valid_points[y_sorted_indices]
+        
+        # Adaptive row grouping - handle partial grids gracefully
+        if len(valid_points) >= 12:  # At least 3 rows
+            # Try to group into 4 rows
+            points_per_row = len(valid_points) // 4
+            remainder = len(valid_points) % 4
+            sorted_valid_points = []
+            
+            current_idx = 0
+            for row in range(4):
+                # Calculate points in this row (distribute remainder)
+                row_size = points_per_row + (1 if row < remainder else 0)
+                if current_idx + row_size <= len(y_sorted_points):
+                    row_points = y_sorted_points[current_idx:current_idx + row_size]
+                    # Sort this row by X coordinate (left to right)
+                    x_sorted_indices = np.argsort(row_points[:, 0])
+                    row_sorted = row_points[x_sorted_indices]
+                    sorted_valid_points.extend(row_sorted)
+                    current_idx += row_size
+                    
+                    self.logger.debug(f"  Row {row}: {row_size} points sorted by X")
+            
+            sorted_valid_points = np.array(sorted_valid_points)
+        else:
+            # Fallback for very incomplete grids - just sort by Y then X
+            # Secondary sort by X coordinate
+            combined_sort = np.lexsort((valid_points[:, 0], valid_points[:, 1]))
+            sorted_valid_points = valid_points[combined_sort]
+            self.logger.debug(f"  Fallback: lexicographic sort (Y,X)")
         
         # Create a new array for the sorted points
         sorted_keypoints = np.zeros_like(keypoints)

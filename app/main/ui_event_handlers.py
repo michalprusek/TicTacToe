@@ -273,6 +273,18 @@ class UIEventHandlers(QObject):
             [flat_board[i*3 + j] for j in range(3)]
             for i in range(3)
         ]
+        
+        # DEBUG: Log what YOLO actually detected
+        non_empty_symbols = []
+        for r in range(3):
+            for c in range(3):
+                if detected_board[r][c] != ' ':
+                    non_empty_symbols.append(f"({r},{c})={detected_board[r][c]}")
+        
+        if non_empty_symbols:
+            self.logger.info(f"🔍 YOLO DETECTION: {', '.join(non_empty_symbols)}")
+        else:
+            self.logger.debug("🔍 YOLO DETECTION: Empty board")
 
         # If game is over, ignore detection
         if hasattr(self.main_window, 'game_controller') and self.main_window.game_controller.game_over:
@@ -291,12 +303,15 @@ class UIEventHandlers(QObject):
                 expected_symbol = gc.expected_symbol
 
                 if detected_board[expected_row][expected_col] == expected_symbol:
-                    self.logger.info(f"Symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
-
-                    # Update board
+                    self.logger.info(f"✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
+                    
+                    # Update board with detected state
                     if hasattr(self.main_window, 'board_widget'):
                         self.main_window.board_widget.board = [row[:] for row in detected_board]
                         self.main_window.board_widget.update()
+                        self.logger.info(f"GUI updated with detected board state")
+                else:
+                    self.logger.warning(f"❌ Expected {expected_symbol} at ({expected_row}, {expected_col}) but detected: {detected_board[expected_row][expected_col]}")
 
                     # Reset detection flags
                     gc.waiting_for_detection = False

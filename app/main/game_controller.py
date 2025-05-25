@@ -452,12 +452,8 @@ class GameController(QObject):
         self.ai_move_retry_count += 1
 
         if self.ai_move_retry_count >= self.max_retry_count:
-            self.logger.warning(f"Detection timeout for move at ({row}, {col})")
-
-            # Manually update board
-            if hasattr(self.main_window, 'board_widget') and self.main_window.board_widget:
-                self.main_window.board_widget.board[row][col] = symbol
-                self.main_window.board_widget.update()
+            self.logger.warning(f"Detection timeout for move at ({row}, {col}) - symbol NOT added to GUI")
+            self.logger.info("GUI will only show what YOLO actually detects")
 
             # Reset flags
             self.waiting_for_detection = False
