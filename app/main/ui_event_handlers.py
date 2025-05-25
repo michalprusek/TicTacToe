@@ -35,9 +35,7 @@ class UIEventHandlers(QObject):
         # Debug window reference
         self.debug_window = None
 
-        # Tracking state
-        self.tracking_enabled = False
-        self.game_paused = False
+
 
     def handle_cell_clicked(self, row, col):
         """Handle cell click from board widget."""
@@ -133,21 +131,7 @@ class UIEventHandlers(QObject):
 
         self.logger.info("Debug window shown")
 
-    def _start_tracking(self):
-        """Start grid center tracking."""
-        if hasattr(self.main_window, 'arm_controller'):
-            # Start tracking timer
-            if hasattr(self.main_window, 'tracking_timer'):
-                self.main_window.tracking_timer.start(200)  # Track every 200ms
 
-            self.logger.info("Grid tracking started")
-
-    def _stop_tracking(self):
-        """Stop grid center tracking."""
-        if hasattr(self.main_window, 'tracking_timer'):
-            self.main_window.tracking_timer.stop()
-
-        self.logger.info("Grid tracking stopped")
 
     def _update_ui_texts(self):
         """Update UI texts after language change."""
@@ -163,10 +147,7 @@ class UIEventHandlers(QObject):
                     self.main_window.status_manager.tr("debug")
                 )
 
-            if hasattr(self.main_window, 'track_checkbox'):
-                self.main_window.track_checkbox.setText(
-                    self.main_window.status_manager.tr("tracking")
-                )
+
 
             if hasattr(self.main_window, 'difficulty_label'):
                 self.main_window.difficulty_label.setText(
@@ -225,21 +206,7 @@ class UIEventHandlers(QObject):
         if self.debug_window:
             self.debug_window.close()
 
-        # Stop tracking
-        self._stop_tracking()
 
-    def get_tracking_status(self):
-        """Get current tracking status."""
-        return {
-            'tracking_enabled': self.tracking_enabled,
-            'game_paused': self.game_paused
-        }
-
-    def set_tracking_enabled(self, enabled):
-        """Set tracking enabled state."""
-        if hasattr(self.main_window, 'track_checkbox'):
-            self.main_window.track_checkbox.setChecked(enabled)
-        # The checkbox change will trigger handle_track_checkbox_changed
 
     def set_difficulty(self, difficulty):
         """Set difficulty value."""

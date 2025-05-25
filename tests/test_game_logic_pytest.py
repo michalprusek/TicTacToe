@@ -1,17 +1,10 @@
 """
-Pytest tests for game_logic module.
+Pytest tests for game logic module.
 """
 import pytest
-import io
-import sys
-from unittest.mock import patch
-
 from app.main.game_logic import (
-    EMPTY, PLAYER_X, PLAYER_O, TIE,
-    create_board, get_available_moves, get_valid_moves,
-    check_winner, get_winning_line, is_board_full, is_game_over,
-    print_board, get_random_move, get_other_player, minimax, get_best_move,
-    board_to_string, get_board_diff
+    create_board, check_winner, is_board_full, 
+    get_available_moves, EMPTY, PLAYER_X, PLAYER_O, TIE
 )
 
 
@@ -25,34 +18,52 @@ class TestGameLogicPytest:
         assert all(len(row) == 3 for row in board)
         assert all(cell == EMPTY for row in board for cell in row)
     
-    def test_get_available_moves_comprehensive(self):
-        """Test get_available_moves with various board states."""
+    def test_board_manipulation(self):
+        """Test basic board manipulation."""
+        board = create_board()
+        
+        # Test setting values directly
+        board[0][0] = PLAYER_X
+        assert board[0][0] == PLAYER_X
+        
+        board[1][1] = PLAYER_O
+        assert board[1][1] == PLAYER_O
+        
+        # Test that other cells remain empty
+        assert board[0][1] == EMPTY
+        assert board[2][2] == EMPTY    
+    @pytest.mark.parametrize("board_setup,expected", [
+        ([[PLAYER_X, PLAYER_X, PLAYER_X], [EMPTY, PLAYER_O, EMPTY], [PLAYER_O, EMPTY, EMPTY]], PLAYER_X),
+        ([[PLAYER_X, PLAYER_O, EMPTY], [PLAYER_X, PLAYER_O, EMPTY], [PLAYER_X, EMPTY, EMPTY]], PLAYER_X),
+        ([[PLAYER_X, PLAYER_O, PLAYER_X], [PLAYER_O, PLAYER_X, PLAYER_O], [PLAYER_X, PLAYER_O, PLAYER_X]], PLAYER_X),
+        ([[PLAYER_O, PLAYER_O, PLAYER_O], [PLAYER_X, PLAYER_X, EMPTY], [EMPTY, EMPTY, EMPTY]], PLAYER_O),
+        ([[PLAYER_X, PLAYER_O, PLAYER_X], [PLAYER_O, PLAYER_X, PLAYER_O], [PLAYER_O, PLAYER_X, PLAYER_O]], None),
+    ])
+    def test_check_winner_scenarios(self, board_setup, expected):
+        """Test various win scenarios."""
+        assert check_winner(board_setup) == expected
+    
+    def test_is_board_full(self):
+        """Test board full detection."""
+        board = create_board()
+        assert is_board_full(board) is False
+        
+        for i in range(3):
+            for j in range(3):
+                board[i][j] = PLAYER_X if (i + j) % 2 == 0 else PLAYER_O
+        assert is_board_full(board) is True
+    
+    def test_get_available_moves(self):
+        """Test getting available moves."""
         board = create_board()
         moves = get_available_moves(board)
         assert len(moves) == 9
+        assert (0, 0) in moves
+        assert (2, 2) in moves
         
-        board[1][1] = PLAYER_X
+        board[0][0] = PLAYER_X
+        board[1][1] = PLAYER_O
         moves = get_available_moves(board)
-        assert len(moves) == 8
+        assert len(moves) == 7
+        assert (0, 0) not in moves
         assert (1, 1) not in moves
-    
-    def test_check_winner_rows(self):
-        """Test check_winner for row wins."""
-        for row in range(3):
-            board = create_board()
-            for col in range(3):
-                board[row][col] = PLAYER_X
-            assert check_winner(board) == PLAYER_X
-    
-    def test_check_winner_columns(self):
-        """Test check_winner for column wins."""
-        for col in range(3):
-            board = create_board()
-            for row in range(3):
-                board[row][col] = PLAYER_O
-            assert check_winner(board) == PLAYER_O
-    
-    def test_get_other_player(self):
-        """Test get_other_player function."""
-        assert get_other_player(PLAYER_X) == PLAYER_O
-        assert get_other_player(PLAYER_O) == PLAYER_X

@@ -24,7 +24,7 @@ LANG_CS = {
     "move_success": "Ruka v neutrální pozici", "move_failed": "Nepodařilo se přesunout ruku",
     "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...", "detection_failed": "Detekce tahu selhala.",
     "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})", "language": "Jazyk",
-    "tracking": "SLEDOVÁNÍ HRACÍ PLOCHY", "debug_tooltip": "Otevřít ladící okno",
+    "debug_tooltip": "Otevřít ladící okno", "win": "VÝHRA", "loss": "PROHRA",
     "game_instructions": "Klikněte na políčko pro umístění vašeho symbolu nebo použijte fyzickou herní desku",
     "grid_incomplete_notification": "Umístěte celou hrací plochu do záběru kamery tak, aby byly viditelné všechny průsečíky mřížky.",
     "grid_incomplete_title": "⚠️ NEÚPLNÁ DETEKCE HRACÍ PLOCHY",
@@ -43,7 +43,7 @@ LANG_EN = {
     "move_success": "Arm in neutral position", "move_failed": "Failed to move arm",
     "waiting_for_symbol": "⏳ Waiting for symbol {} detection...", "detection_failed": "Symbol detection failed.",
     "detection_attempt": "Waiting for symbol detection... (attempt {}/{})", "language": "Language",
-    "tracking": "TRACKING GAME BOARD", "debug_tooltip": "Open debug window",
+    "debug_tooltip": "Open debug window", "win": "WIN", "loss": "LOSS",
     "game_instructions": "Click on a cell to place your symbol or use the physical game board",
     "grid_incomplete_notification": "Please position the entire game board within the camera view so all grid points are visible.",
     "grid_incomplete_title": "⚠️ INCOMPLETE GAME BOARD DETECTION",
@@ -145,8 +145,17 @@ class StatusManager(QObject):
                 self.set_status_style_safe("ai", self._get_status_style("ai"))
             elif message_key_or_text == "win":
                 self.set_status_style_safe("win", self._get_status_style("win"))
+                # Show win notification popup
+                QTimer.singleShot(1000, lambda: self.show_game_end_notification("HUMAN_WIN"))
+            elif message_key_or_text == "loss":
+                self.set_status_style_safe("loss", self._get_status_style("loss"))
+                # Show loss notification popup
+                QTimer.singleShot(1000, lambda: self.show_game_end_notification("ARM_WIN"))
             elif message_key_or_text == "draw":
                 self.set_status_style_safe("draw", self._get_status_style("draw"))
+                # Show draw notification popup  
+                from app.main import game_logic
+                QTimer.singleShot(1000, lambda: self.show_game_end_notification(game_logic.TIE))
             elif message_key_or_text == "new_game_detected":
                 self.set_status_style_safe("new_game", self._get_status_style("new_game"))
             elif message_key_or_text == "grid_not_visible":
@@ -182,6 +191,7 @@ class StatusManager(QObject):
             "player": f"background-color: #2980b9; {base_style}",  # Blue for player
             "ai": f"background-color: #e74c3c; {base_style}",      # Red for AI
             "win": f"background-color: #27ae60; {base_style}",     # Green for win
+            "loss": f"background-color: #e74c3c; {base_style}",    # Red for loss
             "draw": f"background-color: #f39c12; {base_style}",    # Orange for draw
             "new_game": f"background-color: #9b59b6; {base_style}", # Purple for new game
             "error": f"background-color: #e74c3c; {base_style}",   # Red for error
@@ -231,15 +241,20 @@ class StatusManager(QObject):
 
         # Determine message and color based on winner
         from app.main import game_logic
+        print(f"DEBUG: show_game_end_notification called with winner='{winner}'")  # Debug
+        
         icon_text, message_text, color = "", "", ""
         if winner == game_logic.TIE:
             icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40f"
         elif winner == "HUMAN_WIN":
-            icon_text, message_text, color = "🏆", "VÝHRA", "#2ecc71"
+            icon_text, message_text, color = "🏆", self.tr("win"), "#2ecc71"
+            print("DEBUG: Setting win text for HUMAN_WIN")  # Debug
         elif winner == "ARM_WIN":
-            icon_text, message_text, color = "🤖", "PROHRA", "#e74c3c"
+            icon_text, message_text, color = "🤖", self.tr("loss"), "#e74c3c"
+            print("DEBUG: Setting loss text for ARM_WIN")  # Debug
         else:
             icon_text, message_text, color = "🏁", self.tr("game_over"), "#95a5a6"
+            print(f"DEBUG: Unknown winner '{winner}', using game_over")  # Debug
 
         # Create notification content
         icon_label = QLabel(icon_text)

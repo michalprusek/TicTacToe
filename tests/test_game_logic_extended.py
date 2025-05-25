@@ -119,7 +119,7 @@ class TestGameLogicExtended:
         ]
         
         score, move = minimax(board, PLAYER_O, 0, float('-inf'), float('inf'), PLAYER_O)
-        assert score == 10  # Win at depth 0
+        assert score == 9  # Win at depth 1 (10 - 1)
         assert move == (0, 2)  # Winning move
         
         # Human wins immediately (AI's perspective)

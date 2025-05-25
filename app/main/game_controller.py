@@ -193,9 +193,11 @@ class GameController(QObject):
                 self.make_arm_move_with_symbol(arm_symbol_to_play)
             elif self.current_turn == self.ai_player and not self.arm_move_in_progress and not self.waiting_for_detection:
                 self.status_changed.emit("arm_turn", True)
+                print(f"DEBUG: Emitting arm_turn - current_turn={self.current_turn}, ai_player={self.ai_player}")
                 self.logger.debug("Arm is on turn, but conditions for playing are not met.")
             elif self.current_turn == self.human_player and not self.arm_move_in_progress and not self.waiting_for_detection:
                 self.status_changed.emit("your_turn", True)
+                print(f"DEBUG: Emitting your_turn - current_turn={self.current_turn}, human_player={self.human_player}")
 
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""
@@ -211,7 +213,7 @@ class GameController(QObject):
         # Count symbols to determine turn
         x_count, o_count, total_count = self._get_board_symbol_counts(current_board_state)
 
-        # Arm plays when odd number of total symbols (after human move)
+        # Arm plays when odd number of total symbols (human played, now arm's turn)
         if total_count % 2 == 1:
             # Determine which symbol arm should play
             if x_count > o_count:
@@ -325,14 +327,17 @@ class GameController(QObject):
                 # Determine actual winner based on symbol count on board
                 # Even number of symbols = arm won (arm moves second)
                 # Odd number of symbols = human won (human moves first)
+                print(f"DEBUG: Determining winner - total_count={total_count}, game_logic_winner={game_logic_winner}")
                 if total_count % 2 == 0:
                     # Even count - arm (AI) won, but we show it from human perspective
                     self.winner = "ARM_WIN"
                     self.logger.info(f"ARM_WIN determined (even count: {total_count})")
+                    print(f"DEBUG: Set winner to ARM_WIN (even count {total_count})")
                 else:
                     # Odd count - human won
                     self.winner = "HUMAN_WIN"
                     self.logger.info(f"HUMAN_WIN determined (odd count: {total_count})")
+                    print(f"DEBUG: Set winner to HUMAN_WIN (odd count {total_count})")
 
         if self.winner:
             self.game_over = True
@@ -361,8 +366,10 @@ class GameController(QObject):
 
             if self.winner == game_logic.TIE:
                 self.status_changed.emit("draw", True)
-            else:
+            elif self.winner == "HUMAN_WIN":
                 self.status_changed.emit("win", True)
+            elif self.winner == "ARM_WIN":
+                self.status_changed.emit("loss", True)
 
             # Move to neutral position
             if self.arm_controller:
