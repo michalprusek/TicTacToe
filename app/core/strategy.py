@@ -427,10 +427,14 @@ class BernoulliStrategySelector(StrategySelector):
                 return 'basic'
 
         # For all other cases, use the original behavior
-        if random.random() < self._p:
-            return 'minimax'  # For backward compatibility
-        else:
-            return 'random'  # For backward compatibility
+        random_value = random.random()
+        selected_strategy = 'minimax' if random_value < self._p else 'random'
+
+        # OPRAVA 3: Přidat logování pro ověření strategie
+        self.logger.info(f"🎯 STRATEGY SELECTION: difficulty={self.difficulty}, p={self._p:.2f}, "
+                        f"random={random_value:.3f}, selected='{selected_strategy}'")
+
+        return selected_strategy
 
     def get_move(self, board, player):
         """
@@ -447,11 +451,18 @@ class BernoulliStrategySelector(StrategySelector):
         from app.main import game_logic  # Import here to avoid circular imports
 
         strategy = self.select_strategy()
-        # pylint: disable=consider-using-in
-        if strategy == 'advanced' or strategy == 'minimax':
-            return game_logic.get_best_move(board, player)
 
-        return game_logic.get_random_move(board, player)
+        # OPRAVA 3: Přidat logování pro ověření, která strategie se skutečně používá
+        if strategy == 'advanced' or strategy == 'minimax':
+            self.logger.info(f"🧠 USING MINIMAX STRATEGY for player {player}")
+            move = game_logic.get_best_move(board, player)
+            self.logger.info(f"🎯 MINIMAX SELECTED MOVE: {move}")
+            return move
+        else:
+            self.logger.info(f"🎲 USING RANDOM STRATEGY for player {player}")
+            move = game_logic.get_random_move(board, player)
+            self.logger.info(f"🎯 RANDOM SELECTED MOVE: {move}")
+            return move
 
 
 STRATEGY_MAP: Dict[str, Type[Strategy]] = {

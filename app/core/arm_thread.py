@@ -288,6 +288,22 @@ class ArmThread(threading.Thread):
         if self.arm_controller and self.connected:
             self.arm_controller.disconnect()
 
+    def stop_current_move(self):
+        """Stop any current arm movement immediately."""
+        if self.arm_controller and self.connected:
+            try:
+                # Clear the command queue to stop pending moves
+                while not self.command_queue.empty():
+                    try:
+                        command = self.command_queue.get_nowait()
+                        command.mark_completed(False)
+                        self.command_queue.task_done()
+                    except queue.Empty:
+                        break
+                self.logger.info("🛑 Cleared arm command queue and stopped current moves")
+            except Exception as e:
+                self.logger.error(f"Error stopping current arm move: {e}")
+
     def stop(self):
         """Stop the arm thread."""
         self.running = False

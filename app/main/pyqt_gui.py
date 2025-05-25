@@ -303,7 +303,7 @@ class TicTacToeApp(QMainWindow):
         if hasattr(self, 'main_status_message') and self.main_status_message:
             # Enhanced messages with clear instructions
             enhanced_message = message
-            
+
             # Add symbol count info to help user understand whose turn it is
             if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
                 board = self.camera_thread.last_board_state
@@ -316,7 +316,7 @@ class TicTacToeApp(QMainWindow):
                     x_count = sum(row.count(game_logic.PLAYER_X) for row in board_2d)
                     o_count = sum(row.count(game_logic.PLAYER_O) for row in board_2d)
                     total = x_count + o_count
-                    
+
                     if message == self.tr("your_turn"):
                         if total % 2 == 0:
                             enhanced_message = f"VÁŠ TAH (počet symbolů: {total} - sudý)"
@@ -326,7 +326,7 @@ class TicTacToeApp(QMainWindow):
                         enhanced_message = f"RUKA HRAJE (počet symbolů: {total} - lichý)"
                     elif message == self.tr("new_game_detected"):
                         enhanced_message = "NOVÁ HRA DETEKOVÁNA - ZAČNĚTE UMÍSTĚNÍM SYMBOLU"
-            
+
             self.main_status_message.setText(enhanced_message.upper())
             self._current_status = message
             self._last_status_change = current_time
@@ -1031,7 +1031,7 @@ class TicTacToeApp(QMainWindow):
         # V testech přeskočíme aktualizaci stavu herní desky
         if not hasattr(self, 'board_widget') or not self.board_widget:
             return
-        
+
         self.logger.debug(f"📊 update_board_from_detection called. Current turn: {self.current_turn}, "
                          f"Human: {self.human_player}, AI: {self.ai_player}, "
                          f"waiting_for_detection: {self.waiting_for_detection}, "
@@ -1094,7 +1094,7 @@ class TicTacToeApp(QMainWindow):
                 o_count = sum(row.count(game_logic.PLAYER_O) for row in board)
 
                 self.logger.info(f"První detekce: X={x_count}, O={o_count}")
-                
+
                 # Debug - zkontrolovat hodnoty
                 self.logger.info(f"DEBUG: x_count={x_count}, o_count={o_count}, x_count < o_count = {x_count < o_count}, o_count < x_count = {o_count < x_count}")
 
@@ -1187,7 +1187,7 @@ class TicTacToeApp(QMainWindow):
     def make_arm_move_with_symbol(self, symbol):
         """Unified method for making arm moves with a specific symbol"""
         import time
-        
+
         self.logger.info(f"🤖 ===== MAKE_ARM_MOVE_WITH_SYMBOL STARTED =====")
         self.logger.info(f"🤖 symbol={symbol}")
         self.logger.info(f"🤖 current_turn={self.current_turn}")
@@ -1197,37 +1197,37 @@ class TicTacToeApp(QMainWindow):
         self.logger.info(f"🤖 game_over={self.game_over}")
         self.logger.info(f"🤖 arm_move_in_progress={self.arm_move_in_progress}")
         self.logger.info(f"🤖 arm_move_scheduled={self.arm_move_scheduled}")
-        
+
         # Check if game is over
         if self.game_over:
             self.logger.warning("🤖 Game is over, cannot make move")
             return False
-        
+
         # Check if arm is busy or scheduled
         if self.arm_move_in_progress or self.arm_move_scheduled:
             self.logger.warning(f"🤖 ARM BUSY: in_progress={self.arm_move_in_progress}, scheduled={self.arm_move_scheduled}")
-            
+
             # Check if we're stuck - if waiting_for_detection is True but we're not actually waiting
             if self.waiting_for_detection and hasattr(self, 'detection_wait_time'):
                 if self.detection_wait_time > self.max_detection_wait_time:
                     self.logger.error("🚨 ARM STUCK - resetting all flags!")
                     self.reset_arm_flags()
                     return False
-            
+
             return False
-        
+
         # Check for duplicate calls and enforce minimum time between moves
         if not hasattr(self, 'last_arm_move_time'):
             self.last_arm_move_time = 0
-        
+
         current_time = time.time()
         min_time_between_moves = 5.0  # Increased to 5 seconds to ensure proper detection
-        
+
         if current_time - self.last_arm_move_time < min_time_between_moves:
             remaining_time = min_time_between_moves - (current_time - self.last_arm_move_time)
             self.logger.info(f"🤖 Too soon for next arm move. Please wait {remaining_time:.1f} more seconds.")
             return False
-        
+
         # Get the latest detected board from camera
         detected_board = None
         if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
@@ -1239,18 +1239,18 @@ class TicTacToeApp(QMainWindow):
                     [detected_board[3], detected_board[4], detected_board[5]],
                     [detected_board[6], detected_board[7], detected_board[8]]
                 ]
-        
+
         if not detected_board:
             self.logger.error("🤖 No detected board available")
             return False
-        
+
         # Count symbols to ensure it's arm's turn
         x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
         o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
         total_symbols = x_count + o_count
-        
+
         self.logger.info(f"🤖 Board state before arm move: X={x_count}, O={o_count}, total={total_symbols}")
-        
+
         # Check if it's really arm's turn based on symbol count
         # Arm should only play when there's an odd number of symbols (after human plays)
         if total_symbols % 2 == 0:
@@ -1265,7 +1265,7 @@ class TicTacToeApp(QMainWindow):
                     game_state = self.camera_thread.detection_thread.detector.game_state
                     if game_state and hasattr(game_state, 'is_physical_grid_valid'):
                         valid_grid = game_state.is_physical_grid_valid()
-        
+
         if not valid_grid:
             self.logger.warning("🤖 Cannot make arm move - grid is not valid!")
             self.update_status("Umístěte hrací plochu do záběru kamery")
@@ -1313,12 +1313,12 @@ class TicTacToeApp(QMainWindow):
 
             self.logger.info(f"✅ Ruka úspěšně nakreslila {symbol} na ({row}, {col}), čekám na detekci")
             self.logger.info(f"📍 Uložené souřadnice pro detekci: ai_move_row={self.ai_move_row}, ai_move_col={self.ai_move_col}")
-            
+
             # Clear busy flags after successful draw - we're now waiting for detection
             self.arm_move_in_progress = False
             self.arm_move_scheduled = False
             self.logger.info("🤖 Arm move flags cleared, now waiting for detection")
-            
+
             # Don't schedule cleanup here - let check_detection_timeout handle it
             # The flags will be cleared when move is detected or timeout occurs
             return True
@@ -1374,9 +1374,9 @@ class TicTacToeApp(QMainWindow):
         if not self.ai_player or self.ai_player == game_logic.EMPTY:
             self.ai_player = game_logic.PLAYER_O  # Default to O for AI
             self.logger.warning(f"Invalid AI player symbol, using default: {self.ai_player}")
-        
+
         self.logger.info(f"🤖 make_ai_move: current_turn={self.current_turn}, ai_player={self.ai_player}, human_player={self.human_player}")
-        
+
         # Get the latest detected board from camera
         detected_board = None
         if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
@@ -1388,7 +1388,7 @@ class TicTacToeApp(QMainWindow):
                     [detected_board[3], detected_board[4], detected_board[5]],
                     [detected_board[6], detected_board[7], detected_board[8]]
                 ]
-        
+
         if not detected_board:
             self.logger.error("No detected board available for AI move")
             return
@@ -1494,7 +1494,7 @@ class TicTacToeApp(QMainWindow):
             # Reset legacy scheduled flag if it exists
             if hasattr(self, '_arm_move_scheduled'):
                 delattr(self, '_arm_move_scheduled')
-            
+
             self.logger.info(f"🤖 All flags reset after detection timeout")
 
             # ✅ CRITICAL FIX: Properly determine next turn based on current board state
@@ -2413,7 +2413,7 @@ class TicTacToeApp(QMainWindow):
         if self.game_over:
             self.logger.debug("🛑 Game is over - ignoring board detection updates")
             return
-        
+
         # Logování aktuálního stavu pro debugging
         self.logger.debug(f"Detekovaný stav hry: {detected_board}")
         self.logger.debug(f"Aktuální stav: turn={self.current_turn}, waiting_for_detection={getattr(self, 'waiting_for_detection', False)}, game_over={self.game_over}")
@@ -2453,7 +2453,27 @@ class TicTacToeApp(QMainWindow):
                 if not current_is_empty:
                     break
 
-            if not current_is_empty:
+            # OPRAVA: Resetujeme hru pokud je prázdná deska detekována a buď:
+            # 1. Aktuální stav není prázdný (normální případ)
+            # 2. Máme výherní čáru (potřebujeme ji vymazat)
+            # 3. Hra je ukončená (potřebujeme začít novou)
+            should_reset = (not current_is_empty or
+                          (hasattr(self, 'board_widget') and self.board_widget and self.board_widget.winning_line) or
+                          (hasattr(self, 'game_over') and self.game_over))
+
+            if should_reset:
+                self.logger.info("🆕 Prázdná hrací plocha detekována - resetuji hru a čistím výherní čáru")
+
+                # OPRAVA 1: Vyčistit výherní čáru před resetem hry
+                if hasattr(self, 'board_widget') and self.board_widget:
+                    self.board_widget.winning_line = None
+                    self.board_widget.update()
+                    self.logger.info("✅ Výherní čára vymazána")
+
+                # OPRAVA 2: Reset všech arm flags pro novou hru
+                self.reset_arm_flags()
+                self.logger.info("✅ Všechny arm flags resetovány pro novou hru")
+
                 self.reset_game()
                 self.status_label.setText("")
             return
@@ -2476,7 +2496,28 @@ class TicTacToeApp(QMainWindow):
                         # Count symbols to determine which one arm should play
                         x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
                         o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-                        
+                        total_symbols = x_count + o_count
+
+                        # OPRAVA: Pokud je sudý počet symbolů, čekáme na tah hráče
+                        # Lichý počet symbolů = ruka hraje (po tahu hráče)
+                        if total_symbols % 2 == 0:
+                            self.logger.info(f"Symbol count: X={x_count}, O={o_count}, total={total_symbols} (sudý) → čekáme na tah hráče")
+                            # Určíme, kdo je hráč a kdo je AI podle toho, kterého symbolu je méně
+                            if x_count < o_count:
+                                self.human_player = game_logic.PLAYER_X
+                                self.ai_player = game_logic.PLAYER_O
+                            elif o_count < x_count:
+                                self.human_player = game_logic.PLAYER_O
+                                self.ai_player = game_logic.PLAYER_X
+                            else:
+                                # Stejný počet - výchozí nastavení
+                                self.human_player = game_logic.PLAYER_X
+                                self.ai_player = game_logic.PLAYER_O
+
+                            self.current_turn = self.human_player
+                            self.update_status(self.tr("your_turn"))
+                            return
+
                         # Arm plays the symbol with fewer pieces
                         if x_count < o_count:
                             self.ai_player = game_logic.PLAYER_X
@@ -2485,7 +2526,7 @@ class TicTacToeApp(QMainWindow):
                         else:
                             # Equal count - use opposite of human player as fallback
                             self.ai_player = game_logic.PLAYER_O if self.human_player == game_logic.PLAYER_X else game_logic.PLAYER_X
-                        
+
                         self.logger.info(f"Symbol count: X={x_count}, O={o_count} → AI plays {self.ai_player}")
                         self.current_turn = self.ai_player
 
@@ -2506,79 +2547,41 @@ class TicTacToeApp(QMainWindow):
                             self.last_move_time = 0
                         current_time = time.time()
 
-                        # For the first move, check if we should use AI or arm based on move_counter
-                        if self.move_counter % 2 == 0:
-                            # Even-numbered move (2nd move) - should be arm's turn
-                            self.update_status(self.tr("arm_turn"))
-                            self.main_status_panel.setStyleSheet("""
-                                background-color: #9b59b6;
-                                border-radius: 10px;
-                                border: 2px solid #8e44ad;
-                            """)
+                        # OPRAVA: Pouze při lichém počtu symbolů spustíme tah ruky
+                        # Lichý počet znamená, že hráč právě hrál a teď je na tahu ruka
+                        self.update_status(self.tr("arm_turn"))
+                        self.main_status_panel.setStyleSheet("""
+                            background-color: #9b59b6;
+                            border-radius: 10px;
+                            border: 2px solid #8e44ad;
+                        """)
 
-                            # Pro zpětnou kompatibilitu
-                            if hasattr(self, 'status_label') and self.status_label:
-                                self.status_label.setText("")
+                        # Pro zpětnou kompatibilitu
+                        if hasattr(self, 'status_label') and self.status_label:
+                            self.status_label.setText("")
 
-                            # NEAKTUALIZUJEME DESKU AUTOMATICKY - čekáme na YOLO detekci!
-                            # self.board_widget.board = detected_board.copy()
-                            # self.board_widget.update()
+                        # Set a flag to indicate we're waiting for AI/arm to move
+                        # This will prevent status flickering during continuous detection
+                        self._status_lock = True
 
-                            # Set a flag to indicate we're waiting for AI/arm to move
-                            # This will prevent status flickering during continuous detection
-                            self._status_lock = True
+                        # Ensure we don't execute duplicate moves too quickly
+                        if current_time - self.last_move_time > 3.0:
+                            self.last_move_time = current_time
 
-                            # Ensure we don't execute duplicate moves too quickly
-                            if current_time - self.last_move_time > 3.0:
-                                self.last_move_time = current_time
-
-                                # Make sure we have a valid symbol for the arm move
-                                if not self.arm_player_symbol:
-                                    self.arm_player_symbol = game_logic.PLAYER_X  # Fallback to X
-                                    self.logger.warning(f"No player symbol detected for arm move, using fallback: {self.arm_player_symbol}")
-
-                                # Make the arm move immediately for better reliability
-                                self.logger.info(f"Starting arm move immediately after first detection with symbol {self.arm_player_symbol}")
-                                self.make_arm_move(self.arm_player_symbol)
-                        else:
-                            # Odd-numbered move - should be AI's turn
-                            self.update_status(self.tr("ai_turn"))
-                            self.main_status_panel.setStyleSheet("""
-                                background-color: #3498db;
-                                border-radius: 10px;
-                                border: 2px solid #2980b9;
-                            """)
-
-                            # Pro zpětnou kompatibilitu
-                            if hasattr(self, 'status_label') and self.status_label:
-                                self.status_label.setText("")
-
-                            # NEAKTUALIZUJEME DESKU AUTOMATICKY - čekáme na YOLO detekci!
-                            # self.board_widget.board = detected_board.copy()
-                            # self.board_widget.update()
-
-                            # Set a flag to indicate we're waiting for AI/arm to move
-                            # This will prevent status flickering during continuous detection
-                            self._status_lock = True
-
-                            # Ensure we don't execute duplicate moves too quickly
-                            if current_time - self.last_move_time > 3.0:
-                                self.last_move_time = current_time
-
-                                # Make the AI move immediately for better reliability
-                                self.logger.info("Starting AI move immediately after first detection")
-                                self.make_ai_move()
+                            # Make the ARM move immediately for better reliability
+                            self.logger.info(f"Starting ARM move immediately after first detection with symbol {self.ai_player}")
+                            self.make_arm_move_with_symbol(self.ai_player)
 
                         return
 
         # Pokud je hra v průběhu a je tah hráče, kontrolujeme změny na desce
         elif self.current_turn == self.human_player:
             self.logger.info(f"🎮 Checking for human move. Current turn: {self.current_turn}, Human: {self.human_player}")
-            
+
             # Debug: Log both boards
             self.logger.debug(f"Widget board: {self.board_widget.board}")
             self.logger.debug(f"Detected board: {detected_board}")
-            
+
             # Porovnáme aktuální stav desky s detekovaným stavem
             diff = game_logic.get_board_diff(
                 self.board_widget.board, detected_board)
@@ -2633,7 +2636,7 @@ class TicTacToeApp(QMainWindow):
                                             f"arm_move_in_progress={self.arm_move_in_progress}, "
                                             f"arm_move_scheduled={self.arm_move_scheduled}, "
                                             f"_arm_move_scheduled={getattr(self, '_arm_move_scheduled', False)}")
-                            
+
                             # Check if we've been waiting too long (stuck state)
                             if hasattr(self, 'last_arm_busy_log_time'):
                                 if time.time() - self.last_arm_busy_log_time > 5.0:
@@ -2714,7 +2717,7 @@ class TicTacToeApp(QMainWindow):
                             self.logger.info(f"🤖 DEBUG: arm_move_in_progress={self.arm_move_in_progress}")
                             self.logger.info(f"🤖 DEBUG: arm_move_scheduled={self.arm_move_scheduled}")
                             return
-                        
+
                         # Provedeme tah ruky s vybraným symbolem
                         self.logger.info(f"🤖 SPOUŠTÍM TIMER PRO TAH RUKY se symbolem {arm_symbol}")
 
@@ -2736,7 +2739,7 @@ class TicTacToeApp(QMainWindow):
         elif self.game_over:
             # Check if board is empty (new game started)
             is_empty = all(cell == game_logic.EMPTY for row in detected_board for cell in row)
-            
+
             if is_empty:
                 self.logger.info("🆕 Empty board detected after game over - starting new game!")
                 # Reset the game
@@ -2749,7 +2752,7 @@ class TicTacToeApp(QMainWindow):
             else:
                 self.logger.debug("🛑 Game is over - ignoring all board updates")
                 return
-        
+
         # Pokud je hra resetována, ale na desce jsou symboly,
         # aktualizujeme GUI podle detekovaného stavu
         elif self.current_turn is None:
@@ -2785,15 +2788,15 @@ class TicTacToeApp(QMainWindow):
                         self.human_player = game_logic.PLAYER_O
                         self.ai_player = game_logic.PLAYER_X
                     self.logger.info(f"Reset detection: X={x_count} = O={o_count} → using turn order")
-                
+
                 # Nastavíme, kdo je na tahu podle počtu symbolů
                 total_symbols = x_count + o_count
                 if total_symbols % 2 == 0:
-                    # Sudý počet → X je na tahu
-                    self.current_turn = game_logic.PLAYER_X
+                    # Sudý počet → hráč je na tahu
+                    self.current_turn = self.human_player
                 else:
-                    # Lichý počet → O je na tahu  
-                    self.current_turn = game_logic.PLAYER_O
+                    # Lichý počet → ruka (AI) je na tahu
+                    self.current_turn = self.ai_player
 
                 # ✅ CRITICAL FIX: ONLY update board with actual YOLO detections
                 # Never artificially place symbols - only show what YOLO actually sees
@@ -2819,9 +2822,10 @@ class TicTacToeApp(QMainWindow):
                     if hasattr(self, 'status_label') and self.status_label:
                         self.status_label.setText("")
 
-                    # Spustíme tah AI pokud je na tahu AI, s výrazným zpožděním pro stabilnější UI
+                    # Spustíme tah ruky pokud je na tahu AI, s výrazným zpožděním pro stabilnější UI
                     if self.current_turn == self.ai_player:
-                        QTimer.singleShot(1000, self.make_ai_move)
+                        self.logger.info(f"🤖 Spouštím tah ruky se symbolem {self.ai_player} po reset detekci")
+                        QTimer.singleShot(1000, lambda: self.make_arm_move_with_symbol(self.ai_player))
 
         # 🤖 UNIFIED ARM MOVE LOGIC - Single point of control
         # DISABLED - This duplicates arm move logic already handled in the update_board_from_detection method
@@ -2877,7 +2881,7 @@ class TicTacToeApp(QMainWindow):
 
                     self.logger.info(f"🔍 Kontrola detekce: pozice ({self.ai_move_row},{self.ai_move_col}), "
                                    f"očekávaný symbol: {expected_symbol}, detekovaný: {detected_symbol}")
-                    
+
                     # Debug: vypsat celou desku
                     self.logger.debug("🎮 Aktuální detekovaná deska:")
                     for r in range(3):
@@ -2921,37 +2925,30 @@ class TicTacToeApp(QMainWindow):
 
                         # Kontrola konce hry
                         self.check_game_end()
-                        
+
                         if not self.game_over:
                             # After arm move is detected, we need to check whose turn it should be
                             # based on the total number of symbols on the board
                             x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board_2d)
                             o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board_2d)
                             total_symbols = x_count + o_count
-                            
+
                             self.logger.info(f"🔄 After arm move detection: X={x_count}, O={o_count}, total={total_symbols}")
-                            
-                            # If even number of symbols, it's the first player's turn (X)
-                            # If odd number of symbols, it's the second player's turn (O)
-                            if total_symbols % 2 == 0:
-                                self.current_turn = game_logic.PLAYER_X
-                            else:
-                                self.current_turn = game_logic.PLAYER_O
-                                
-                            self.logger.info(f"🎯 Next turn after arm move: {self.current_turn}")
-                            
-                            # Update status based on whose turn it is
-                            if self.current_turn == self.human_player:
-                                self.update_status(self.tr("your_turn"))
-                                if hasattr(self, 'status_label') and self.status_label:
-                                    self.status_label.setText(f"Váš tah ({self.human_player})")
-                            else:
-                                # This shouldn't happen after arm move, but just in case
-                                self.logger.warning(f"⚠️ Unexpected state: after arm move, turn is {self.current_turn} but human is {self.human_player}")
-                            
+
+                            # OPRAVA: Po tahu ruky je vždy na tahu hráč
+                            # Ruka hraje pouze když je lichý počet symbolů (po tahu hráče)
+                            # Po tahu ruky je sudý počet symbolů, takže je na tahu hráč
+                            self.current_turn = self.human_player
+                            self.logger.info(f"🎯 After arm move: turn passed to human player ({self.human_player})")
+
+                            # Update status for human turn
+                            self.update_status(self.tr("your_turn"))
+                            if hasattr(self, 'status_label') and self.status_label:
+                                self.status_label.setText(f"Váš tah ({self.human_player})")
+
                             # Don't force board update - let the natural detection flow handle it
                             self.logger.info("✅ Arm move detected successfully. Waiting for human player's move.")
-                        
+
                         return
                     else:
                         self.logger.debug(f"❌ Symbol {expected_symbol} ještě nebyl detekován na pozici ({self.ai_move_row},{self.ai_move_col}). "
@@ -2964,7 +2961,7 @@ class TicTacToeApp(QMainWindow):
                 self.logger.warning(f"⏰ Detection timeout! Waited {self.detection_wait_time}s for symbol {getattr(self, 'expected_symbol', '?')} at ({getattr(self, 'ai_move_row', '?')},{getattr(self, 'ai_move_col', '?')})")
                 self.detection_wait_time = 0
                 self.waiting_for_detection = False
-                
+
                 # Clear all arm move flags
                 self.arm_move_in_progress = False
                 self.arm_move_scheduled = False
@@ -3002,7 +2999,7 @@ class TicTacToeApp(QMainWindow):
                     self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #FFA500;")
                     self.current_turn = self.human_player
                     self.update_status(self.tr("your_turn"))
-                    
+
                     # Reset all move-related variables
                     self.ai_move_row = None
                     self.ai_move_col = None
@@ -3105,12 +3102,12 @@ class TicTacToeApp(QMainWindow):
                 f"Symbol {symbol} nakreslen na souřadnicích ({target_x:.1f}, {target_y:.1f}).")
             # Přesun do neutrálního stavu po nakreslení symbolu
             self.move_to_neutral_position()
-            
+
             # Wait 2 seconds after moving to neutral position to allow camera detection
             self.logger.info("⏱️ Waiting 2 seconds for camera to detect the new symbol...")
             import time
             time.sleep(2.0)
-            
+
             return True
         else:
             self.status_label.setText("")
@@ -3470,7 +3467,7 @@ class TicTacToeApp(QMainWindow):
         # Skip if game is already over or celebration already triggered
         if self.game_over or hasattr(self, '_celebration_triggered'):
             return
-        
+
         # Get the latest detected board from camera for checking winner
         detected_board = None
         if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
@@ -3482,7 +3479,7 @@ class TicTacToeApp(QMainWindow):
                     [detected_board[3], detected_board[4], detected_board[5]],
                     [detected_board[6], detected_board[7], detected_board[8]]
                 ]
-        
+
         # If no detected board, use the widget board as fallback
         if not detected_board:
             detected_board = self.board_widget.board
@@ -3494,10 +3491,15 @@ class TicTacToeApp(QMainWindow):
 
             # Set flag to prevent multiple celebrations
             self._celebration_triggered = True
-            
+
             # Reset all arm flags when game ends
             self.reset_arm_flags()
             self.logger.info("🏁 Game ended - all arm flags reset")
+
+            # Stop any pending arm moves immediately
+            if hasattr(self, 'arm_thread') and self.arm_thread:
+                self.arm_thread.stop_current_move()
+                self.logger.info("🛑 Stopped any pending arm moves")
 
             # Vytvoření animovaného oznámení o konci hry
             self.show_game_end_notification()
@@ -3629,20 +3631,16 @@ class TicTacToeApp(QMainWindow):
         """)
         layout.addWidget(text)
 
-        # Tlačítko pro novou hru
-        new_game_btn = QPushButton("Nová hra")
-        new_game_btn.setStyleSheet(f"""
-            background-color: {color};
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px;
-            border-radius: 5px;
-            min-height: 40px;
+        # Instrukce pro novou hru
+        instruction_text = QLabel("Pro novou hru vymažte hrací plochu")
+        instruction_text.setAlignment(Qt.AlignCenter)
+        instruction_text.setStyleSheet(f"""
+            font-size: 14px;
+            color: {color};
+            margin: 10px;
+            font-style: italic;
         """)
-        new_game_btn.clicked.connect(self.reset_game)
-        new_game_btn.clicked.connect(notification.hide)
-        layout.addWidget(new_game_btn)
+        layout.addWidget(instruction_text)
 
         # Nastavení velikosti a pozice
         notification.setFixedSize(300, 250)
@@ -3735,15 +3733,9 @@ class TicTacToeApp(QMainWindow):
         if hasattr(self, 'debug_window') and self.debug_window is not None and hasattr(self.debug_window, 'status_label'):
             self.debug_window.status_label.setText("")
 
-        # Vynucení okamžité kontroly stavu hrací plochy po resetování
-        # Toto zajistí, že pokud jsou na ploše symboly, budou okamžitě
-        # detekovány
-        if hasattr(
-                self,
-                'camera_thread') and self.camera_thread.last_board_state:
-            # Použijeme poslední detekovaný stav z kamery
-            self.handle_detected_game_state(
-                self.camera_thread.last_board_state)
+        # OPRAVA: Nebudeme volat handle_detected_game_state po resetu
+        # protože to může znovu nastavit výherní čáru
+        # Kamera bude pokračovat v detekci automaticky
 
     def show_debug_window(self):
         """Show the debug window"""
