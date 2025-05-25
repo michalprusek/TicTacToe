@@ -34,7 +34,9 @@ class TestVisualizationManager:
         assert manager.logger is not None
         assert hasattr(manager.logger, 'info')
         assert hasattr(manager.logger, 'error')
-        assert hasattr(manager.logger, 'debug')    def test_visualization_methods_exist(self):
+        assert hasattr(manager.logger, 'debug')
+
+    def test_visualization_methods_exist(self):
         """Test that visualization methods exist."""
         manager = VisualizationManager()
         

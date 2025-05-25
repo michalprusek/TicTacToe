@@ -147,7 +147,7 @@ def correct_grid_points_homography(
                 num_inliers
             )
             return None
-    except cv2.error as e:
+    except Exception as e:  # cv2.error is not recognized by pylint
         correction_logger.error(
             "OpenCV chyba findHomography pro mřížku: %s.", e
         )

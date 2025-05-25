@@ -40,7 +40,9 @@ class TestSymbolDetector:
         detector = SymbolDetector(mock_model)
         
         # Test the inverted mapping (YOLO detects X as O and O as X)
-        assert hasattr(detector, 'class_id_to_label')    def test_symbol_detection_basic_structure(self):
+        assert hasattr(detector, 'class_id_to_label')
+
+    def test_symbol_detection_basic_structure(self):
         """Test that symbol detection methods exist."""
         mock_model = Mock()
         detector = SymbolDetector(mock_model)

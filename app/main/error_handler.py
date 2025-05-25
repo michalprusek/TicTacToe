@@ -27,7 +27,7 @@ class ErrorHandler:
         error_msg = f"Error in {operation}: {error}"
 
         if include_traceback:
-            logger.error("{error_msg}\n{traceback.format_exc()}")
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
         else:
             logger.error(error_msg)
 

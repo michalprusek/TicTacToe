@@ -7,6 +7,8 @@ from typing import List, Dict, Tuple, Optional
 import numpy as np
 import cv2
 
+from .grid_utils import robust_sort_grid_points
+
 # Constants for game state
 EMPTY = ' '
 PLAYER_X = 'X'
@@ -113,8 +115,7 @@ class GameState:
         return self._is_valid_grid
 
     def is_game_paused_due_to_incomplete_grid(self) -> bool:
-        """Check if the game is paused because the grid is not fully
-        visible."""
+        """Check if the game is paused because the grid is not fully visible."""
         return self.game_paused_due_to_incomplete_grid
 
     def is_valid(self) -> bool:
@@ -124,7 +125,7 @@ class GameState:
                 symbol = self._board_state[r][c]
                 if symbol not in [PLAYER_X, PLAYER_O, EMPTY]:
                     self.logger.warning(
-                        "Invalid symbol %s found at (%d,%d)", symbol, r, c
+                        "Invalid symbol '%s' found at (%d,%d)", symbol, r, c
                     )
                     return False
         return True
@@ -241,7 +242,7 @@ class GameState:
 
         # ✅ CRITICAL DEBUG: Log all YOLO detections for verification
         # (fallback method)
-        self.logger.info("🔍 FALLBACK METHOD - YOLO DETECTED %d SYMBOLS:",
+        self.logger.info("🔍 FALLBACK METHOD - YOLO DETECTED %d SYMBOLS",
                           len(detected_symbols))
 
         # ✅ CRITICAL FIX: Filter out low-confidence detections
@@ -314,7 +315,7 @@ class GameState:
             #     )
 
         # if not changed_cells:
-        #     self.logger.debug("No cells were changed in this update cycle.")
+        #     self.logger.debug("No cells were changed in this update cycle.)
 
         return changed_cells
 
@@ -347,7 +348,6 @@ class GameState:
                 center_y = (box[1] + box[3]) / 2
 
                 # Convert class_id to player symbol
-                class_id = symbol['class_id']
                 player = symbol['label']  # Use label directly (X or O)
 
                 converted_symbol = {
@@ -373,7 +373,7 @@ class GameState:
             grid_points: np.ndarray,
             class_id_to_player: Dict[int, str]
     ) -> List[Tuple[int, int]]:
-        """
+        ""
         Robustní aktualizace herní desky pomocí homografie.
 
         Používá robustní homografii pro přesné mapování symbolů na buňky,
@@ -402,7 +402,7 @@ class GameState:
 
         try:
             # Použijeme robustní funkci pro získání homografie
-            sorted_points, h_final = robust_sort_grid_points(
+            _, h_final = robust_sort_grid_points(
                 grid_points, self.logger
             )
 
@@ -427,7 +427,7 @@ class GameState:
 
             # ✅ CRITICAL DEBUG: Log all YOLO detections for verification
             self.logger.info(
-                "🔍 YOLO DETECTED %d SYMBOLS:", len(detected_symbols)
+                "🔍 YOLO DETECTED %d SYMBOLS", len(detected_symbols)
             )
 
             # ✅ CRITICAL FIX: Filter out low-confidence detections
@@ -452,8 +452,8 @@ class GameState:
                                   min_confidence_threshold)
                 else:
                     self.logger.warning(
-                    "    ❌ REJECTED (confidence %.3f < %.3f)",
-                    confidence, min_confidence_threshold)
+                        "    ❌ REJECTED (confidence %.3f < %.3f)",
+                        confidence, min_confidence_threshold)
 
             # Update detected_symbols to only include high-confidence
             # detections
@@ -510,9 +510,10 @@ class GameState:
                 else:
                     # Symbol je mimo herní oblast (na okraji mřížky)
                     self.logger.warning(
-                        f"ROBUST: Symbol at {symbol_center_uv} mapped to grid "
-                        f"({grid_row},{grid_col}) which is outside game area. "
-                        f"Normalized coords: ({nx:.1f},{ny:.1f})"
+                        "ROBUST: Symbol at %s mapped to grid "
+                        "(%d,%d) which is outside game area. "
+                        "Normalized coords: (%.1f,%.1f)",
+                        symbol_center_uv, grid_row, grid_col, nx, ny
                     )
                     continue
 
@@ -632,7 +633,7 @@ class GameState:
 
     def update_from_detection(
         self,
-        frame: np.ndarray,
+        frame: np.ndarray,  # pylint: disable=unused-argument
         ordered_kpts_uv: Optional[np.ndarray],
         homography: Optional[np.ndarray],
         detected_symbols: List[Dict],
@@ -663,7 +664,7 @@ class GameState:
             self._cell_centers_uv_transformed = None
             self._cell_polygons_uv_transformed = None
             self.logger.warning(
-                "Grid not fully detected (%s points). Game paused.",
+                "Grid not fully detected (%d points). Game paused.",
                 len(ordered_kpts_uv) if ordered_kpts_uv is not None else 0
             )
             return # Stop further processing for this frame
@@ -814,10 +815,10 @@ class GameState:
         if (all(self._board_state[r][c] != EMPTY for r in range(3)
                 for c in range(3)) and self.winner is None):
             self.winner = "Draw"
-            self.logger.info("Game is a Draw.")
+            self.logger.info("Game is a Draw.)
 
     def get_latest_derived_cell_polygons(self) -> Optional[List[np.ndarray]]:
-        """
+        ""
         Returns the latest computed cell polygons based on transformed
         grid points.
         These are suitable for drawing the grid cells.
@@ -845,7 +846,8 @@ class GameState:
                 return self._cell_centers_uv_transformed[idx]
             else:
                 self.logger.warning(
-                    f"Invalid cell index {idx} for get_cell_center_uv."
+                    "Invalid cell index %d for get_cell_center_uv.",
+                    idx
                 )
                 return None
         else:
@@ -933,23 +935,23 @@ class GameState:
                     cell_centers, dtype=np.float32
                 )
                 self.logger.info(
-                    "Computed %s cell centers for game logic from "
+                    "Computed %d cell centers for game logic from "
                     "_grid_points.", len(self._cell_centers_uv_transformed)
                 )
 
                 # DEBUG: Log all cell centers for coordinate debugging
-                self.logger.info("🗺️ CELL CENTERS DEBUG:")
+                self.logger.info("🗺️ CELL CENTERS DEBUG:)
                 for i, center in enumerate(self._cell_centers_uv_transformed):
                     row, col = i // 3, i % 3
                     self.logger.info(
-                        "  Cell (%d,%d): UV=(%.1f, %.1f)",
+                          Cell (%d,%d): UV=(%.1f, %.1f)",
                         row, col, center[0], center[1]
                     )
 
                 return True
             else:
                 self.logger.error(
-                    "Failed to compute all 9 cell centers for logic. Got %s.",
+                    "Failed to compute all 9 cell centers for logic. Got %d.",
                     len(cell_centers)
                 )
                 return False
@@ -972,187 +974,4 @@ class GameState:
             return False
 
 
-def robust_sort_grid_points(
-    all_16_points: np.ndarray,
-    logger: Optional[logging.Logger] = None
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    """
-    Robustní metoda usporiadania 16 Grid Pointov a výpočtu Homografie.
 
-    Cieľom je získať usporiadaný zoznam sorted_grid_points_src (16 bodov
-    z kamery v poradí zľava doprava, zhora nadol) a k nemu zodpovedajúci
-    ideal_points_dst (16 bodov dokonalej mriežky 4x4), aby sme mohli vypočítať
-    finálnu homografiu h_final.
-
-    Args:
-        all_16_points: numpy array tvaru (16, 2) alebo zoznam túplov (x,y)
-        logger: Optional logger for debug messages
-
-    Returns:
-        Tuple of (sorted_grid_points_src, h_final) or (None, None) if failed
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    # Validate input
-    if all_16_points is None or len(all_16_points) != 16:
-        logger.warning(
-            "Invalid input: expected 16 points, got %s",
-            len(all_16_points) if all_16_points is not None else 'None'
-        )
-        return None, None
-
-    try:
-        # Convert to numpy array
-        points_np = np.array(all_16_points, dtype=np.float32)
-
-        # Step 1: Nájdenie 4 vonkajších rohov hracej plochy
-        logger.debug("Finding 4 corner points from 16 grid points")
-
-        # Heuristika pomocou súčtov a rozdielov súradníc
-        sum_xy = points_np[:, 0] + points_np[:, 1]
-        diff_yx = points_np[:, 1] - points_np[:, 0]  # y - x
-
-        tl_idx = np.argmin(sum_xy)  # Top-left: minimalizuje x+y
-        br_idx = np.argmax(sum_xy)  # Bottom-right: maximalizuje x+y
-        tr_idx = np.argmin(diff_yx)  # Top-right: minimalizuje y-x
-        bl_idx = np.argmax(diff_yx)  # Bottom-left: maximalizuje y-x
-
-        # Zabezpečenie, aby tieto indexy boli unikátne
-        corner_indices = {tl_idx, br_idx, tr_idx, bl_idx}
-
-        if len(corner_indices) < 4:
-            logger.debug(
-                "Corner detection failed, using fallback method with "
-                "cv2.minAreaRect"
-            )
-            # ZÁLOŽNÁ METÓDA: Použiť cv2.minAreaRect
-
-            # Najdenie minimal bounding rectangle všetkých 16 bodov
-            rect = cv2.minAreaRect(points_np)
-            box_points = cv2.boxPoints(rect)  # Vracia 4 rohy obdĺžnika
-
-            # Usporiadanie bodov z box_points do poradia TL, TR, BR, BL
-            # 1. Utriediť podľa y-súradnice
-            box_points_sorted_y = sorted(box_points, key=lambda p: p[1])
-            # 2. Prvé dva sú horné, druhé dva dolné
-            # Horné utriediť podľa x
-            top_points = sorted(box_points_sorted_y[:2], key=lambda p: p[0])
-            # Dolné utriediť podľa x
-            bottom_points = sorted(box_points_sorted_y[2:], key=lambda p: p[0])
-
-            # Finálne poradie TL, TR, BR, BL
-            corners_src_ordered_array = np.array([
-                top_points[0], top_points[1],
-                bottom_points[1], bottom_points[0]
-            ], dtype=np.float32)
-            logger.debug(
-                "Used fallback minAreaRect method for corner detection"
-            )
-        else:
-            corners_src_ordered_array = np.array([
-                points_np[tl_idx],
-                points_np[tr_idx],
-                points_np[br_idx],
-                points_np[bl_idx]
-            ], dtype=np.float32)
-            logger.debug(
-                "Successfully found 4 unique corner points using sum/diff "
-                "heuristics"
-            )
-
-        # Step 2: Definovanie cieľových bodov pre tieto 4 vonkajšie rohy
-        # (predbežná normalizácia)
-        TARGET_SIZE_PRELIM = 300.0
-        corners_dst_prelim = np.array([
-            [0, 0],                            # TL
-            [TARGET_SIZE_PRELIM, 0],           # TR
-            [TARGET_SIZE_PRELIM, TARGET_SIZE_PRELIM], # BR
-            [0, TARGET_SIZE_PRELIM]            # BL
-        ], dtype=np.float32)
-
-        # Step 3: Výpočet predbežnej Homografie (H_prelim)
-        H_prelim, _ = cv2.findHomography(
-            corners_src_ordered_array, corners_dst_prelim, cv2.RANSAC
-        )
-        if H_prelim is None:
-            logger.warning("Failed to compute preliminary homography")
-            return None, None
-
-        # Step 4: Transformácia všetkých 16 pôvodných Grid Pointov pomocou
-        # H_prelim
-        # points_np musí byť tvaru (N,1,2) pre perspectiveTransform
-        transformed_16_points = cv2.perspectiveTransform(
-            points_np.reshape(-1, 1, 2), H_prelim
-        )
-        # Späť na tvar (16, 2)
-        transformed_16_points = transformed_16_points.reshape(-1, 2)
-
-        # Step 5: Usporiadanie pôvodných Grid Pointov na základe ich
-        # transformovaných pozícií
-        logger.debug(
-            "Sorting original grid points based on transformed positions"
-        )
-
-        point_pairs = []  # (original_point_coords, transformed_point_coords)
-        for i in range(len(points_np)):
-            point_pairs.append({
-                'original': points_np[i],
-                'transformed': transformed_16_points[i],
-                'index': i
-            })
-
-        CELL_SPACING_PRELIM = TARGET_SIZE_PRELIM / 3.0
-
-        def get_grid_indices(transformed_pt_coords):
-            # Zaokrúhlenie na najbližší index mriežky (0, 1, 2, 3)
-            col_idx = int(round(
-                transformed_pt_coords[0] / CELL_SPACING_PRELIM
-            ))
-            row_idx = int(round(
-                transformed_pt_coords[1] / CELL_SPACING_PRELIM
-            ))
-            # Pre istotu orežeme na platné indexy 0-3
-            col_idx = max(0, min(3, col_idx))
-            row_idx = max(0, min(3, row_idx))
-            return row_idx, col_idx
-
-        # Triedenie párov
-        point_pairs.sort(
-            key=lambda pair: get_grid_indices(pair['transformed'])
-        )
-
-        # Extrahovanie usporiadaných pôvodných bodov
-        sorted_grid_points_src = np.array(
-            [pair['original'] for pair in point_pairs], dtype=np.float32
-        )
-
-        # Step 6: Definovanie ideálnych cieľových bodov pre finálnu Homografiu
-        ideal_points_dst_final = []
-        # Veľkosť JEDNEJ bunky v konečnom normalizovanom priestore
-        cell_size_final = 100
-        for r in range(4):  # 4 riadky bodov
-            for c in range(4):  # 4 stĺpce bodov
-                ideal_points_dst_final.append(
-                    [c * cell_size_final, r * cell_size_final]
-                )
-        ideal_points_dst_final = np.array(
-            ideal_points_dst_final, dtype=np.float32
-        )
-
-        # Step 7: Výpočet finálnej Homografie (h_final)
-        h_final, _ = cv2.findHomography(
-            sorted_grid_points_src, ideal_points_dst_final
-        )
-        if h_final is None:
-            logger.warning("Failed to compute final homography")
-            return None, None
-
-        logger.debug(
-            "Successfully computed robust grid sorting and homography"
-        )
-        return sorted_grid_points_src, h_final
-
-    except Exception as e:
-        logger.error("Error in robust_sort_grid_points: %s", e)
-        return None, None

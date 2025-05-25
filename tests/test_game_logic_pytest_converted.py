@@ -39,7 +39,9 @@ class TestGameLogicPytestConverted:
         moves = get_available_moves(board)
         assert len(moves) == 7
         assert (0, 0) not in moves
-        assert (1, 1) not in moves    def test_check_winner_all_scenarios(self):
+        assert (1, 1) not in moves
+
+    def test_check_winner_all_scenarios(self):
         """Test check_winner with all winning scenarios."""
         # Horizontal wins
         for row in range(3):
