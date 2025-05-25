@@ -112,6 +112,10 @@ class GameController(QObject):
         self.ai_move_retry_count = 0
         self.detection_wait_time = 0.0
 
+        # Reset celebration trigger to allow new notifications
+        if hasattr(self.main_window, '_celebration_triggered'):
+            delattr(self.main_window, '_celebration_triggered')
+        
         self.status_changed.emit("new_game_detected", True)
         self.logger.info(f"Game reset. Current turn: {self.current_turn}")
 
@@ -307,13 +311,39 @@ class GameController(QObject):
         if not board_to_check:
             return
 
-        self.winner = game_logic.check_winner(board_to_check)
+        game_logic_winner = game_logic.check_winner(board_to_check)
+
+        if game_logic_winner:
+            # Get symbol count for logging and winner determination
+            x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
+            self.logger.info(f"Symbol count at game end: X={x_count}, O={o_count}, Total={total_count}")
+            
+            # For TIE, keep it as is
+            if game_logic_winner == game_logic.TIE:
+                self.winner = game_logic.TIE
+            else:
+                # Determine actual winner based on symbol count on board
+                # Even number of symbols = arm won (arm moves second)
+                # Odd number of symbols = human won (human moves first)
+                if total_count % 2 == 0:
+                    # Even count - arm (AI) won, but we show it from human perspective
+                    self.winner = "ARM_WIN"
+                    self.logger.info(f"ARM_WIN determined (even count: {total_count})")
+                else:
+                    # Odd count - human won
+                    self.winner = "HUMAN_WIN"
+                    self.logger.info(f"HUMAN_WIN determined (odd count: {total_count})")
 
         if self.winner:
             self.game_over = True
             self.arm_move_in_progress = False
             self.waiting_for_detection = False
-            self.logger.info(f"GAME END! Winner: {self.winner}. Move count: {self.move_counter}")
+            
+            # Get symbol count again for logging if not already done
+            if 'total_count' not in locals():
+                x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
+            
+            self.logger.info(f"GAME END! Winner: {self.winner}. Move count: {self.move_counter}. Total symbols on board: {total_count}")
 
             # Show game end notification
             self._show_game_end_notification()
@@ -325,7 +355,7 @@ class GameController(QObject):
                     self.main_window.board_widget.update()
 
                 # Draw winning line if AI won
-                if self.winner == self.ai_player and self.arm_controller:
+                if self.winner == "ARM_WIN" and self.arm_controller:
                     self.logger.info("AI (arm) won! Planning to draw winning line.")
                     QTimer.singleShot(1500, self.arm_controller.draw_winning_line)
 
@@ -353,7 +383,7 @@ class GameController(QObject):
 
     def _show_game_end_notification(self):
         """Show game end notification."""
-        # This will be handled by the status manager
+        # Winner is already correctly determined in check_and_handle_game_end
         self.game_ended.emit(str(self.winner))
 
     def _get_board_symbol_counts(self, board):
@@ -361,13 +391,13 @@ class GameController(QObject):
         if board is None:
             return 0, 0, 0
 
-        board_2d = convert_board_1d_to_2d(board)
-        if not isinstance(board_2d, list) or not all(isinstance(row, list) for row in board_2d):
-            return 0, 0, 0
-
-        x_count = sum(row.count(game_logic.PLAYER_X) for row in board_2d)
-        o_count = sum(row.count(game_logic.PLAYER_O) for row in board_2d)
-        return x_count, o_count, x_count + o_count
+        counts = get_board_symbol_counts(board)
+        x_count = counts.get('X', 0)
+        o_count = counts.get('O', 0)
+        total_count = x_count + o_count
+        
+        self.logger.debug(f"Board symbol counts: X={x_count}, O={o_count}, Total={total_count}")
+        return x_count, o_count, total_count
 
     # === Consolidated game management functions from game_manager.py ===
 

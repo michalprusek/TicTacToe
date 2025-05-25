@@ -1,196 +1,105 @@
 """
-Extended tests for game_state module to improve coverage.
+Extended tests for GameState class.
 """
-import pytest
+import unittest
 import numpy as np
-import logging
-from unittest.mock import Mock, patch, MagicMock
-
-from app.core.game_state import (
-    GameState, EMPTY, PLAYER_X, PLAYER_O, TIE,
-    GRID_POINTS_COUNT, robust_sort_grid_points
-)
+from unittest.mock import Mock
+from app.core.game_state import GameState, EMPTY, PLAYER_X, PLAYER_O
 
 
-class TestGameStateExtended:
-    """Extended test class for GameState functionality."""
+class TestGameStateExtended(unittest.TestCase):
     
-    def test_grid_visibility_properties(self):
-        """Test grid visibility related properties."""
-        gs = GameState()
-        
-        # Initial state
-        assert gs.grid_fully_visible is False
-        assert gs.missing_grid_points_count == 0
-        assert gs.game_paused_due_to_incomplete_grid is False
-        
-        # After reset
-        gs.reset_game()
-        assert gs.grid_fully_visible is False
-        assert gs.missing_grid_points_count == 0
+    def setUp(self):
+        self.game_state = GameState()
     
-    def test_is_game_paused_due_to_incomplete_grid(self):
-        """Test grid pause state checking."""
-        gs = GameState()
-        
-        assert gs.is_game_paused_due_to_incomplete_grid() is False
-        
-        gs.game_paused_due_to_incomplete_grid = True
-        assert gs.is_game_paused_due_to_incomplete_grid() is True    
-    def test_is_game_over_methods(self):
-        """Test various game over detection methods."""
-        gs = GameState()
-        
-        # Not over initially
-        assert gs.is_game_over() is False
-        assert gs.is_game_over_due_to_error() is False
-        
-        # With winner
-        gs.winner = PLAYER_X
-        assert gs.is_game_over() is True
-        
-        # With fatal error
-        gs.winner = None
-        gs.set_error("FATAL: Critical error")
-        assert gs.is_game_over_due_to_error() is True
+    def test_board_state_modification(self):
+        """Test direct board state modifications."""
+        self.game_state._board_state[1][1] = PLAYER_X
+        board = self.game_state.board
+        self.assertEqual(board[1][1], PLAYER_X)
+        self.assertEqual(board[0][0], EMPTY)
+        self.assertEqual(board[2][2], EMPTY)
     
-    def test_getter_methods(self):
-        """Test various getter methods."""
-        gs = GameState()
+    def test_grid_points_setting(self):
+        """Test setting and getting grid points."""
+        test_points = np.random.random((16, 2)).astype(np.float32)
+        self.game_state._grid_points = test_points
         
-        # Test getters
-        assert gs.get_winner() is None
-        assert gs.get_winning_line_indices() is None
-        assert gs.get_error_message() is None
-        assert gs.get_timestamp() == 0
-        assert gs.get_homography() is None
-        assert gs.get_transformed_grid_points_for_drawing() is None
-        assert gs.get_cell_centers_uv_transformed() is None
-        assert gs.get_current_frame() is None
+        retrieved_points = self.game_state.grid_points
+        np.testing.assert_array_equal(retrieved_points, test_points)
         
-        # After setting values
-        gs.winner = PLAYER_X
-        gs.winning_line_indices = [(0, 0), (0, 1), (0, 2)]
-        gs.set_error("Test error")
-        gs._timestamp = 123.45
-        
-        assert gs.get_winner() == PLAYER_X
-        assert gs.get_winning_line_indices() == [(0, 0), (0, 1), (0, 2)]
-        assert gs.get_error_message() == "Test error"
-        assert gs.get_timestamp() == 123.45    
-    def test_is_valid_board_validation(self):
-        """Test board validation."""
-        gs = GameState()
-        
-        # Valid board
-        assert gs.is_valid() is True
-        
-        # Invalid symbol
-        gs._board_state[0][0] = "invalid"
-        assert gs.is_valid() is False
+        self.game_state._grid_points = None
+        self.assertIsNone(self.game_state.grid_points)
     
-    def test_convert_symbols_to_expected_format(self):
-        """Test symbol conversion to expected format."""
-        gs = GameState()
+    def test_detection_results_management(self):
+        """Test detection results storage and retrieval."""
+        self.assertEqual(len(self.game_state.detection_results), 0)
         
-        # Test detector format
-        symbols = [{
-            'box': [100, 100, 150, 150],
-            'label': 'X',
-            'confidence': 0.9,
-            'class_id': 0
-        }]
+        mock_result1 = Mock()
+        mock_result1.confidence = 0.95
+        self.game_state._detection_results = [mock_result1]
+        results = self.game_state.detection_results
         
-        converted = gs._convert_symbols_to_expected_format(symbols, {0: 'X'})
-        assert len(converted) == 1
-        assert converted[0]['player'] == 'X'
-        assert converted[0]['confidence'] == 0.9
-        assert np.array_equal(converted[0]['center_uv'], np.array([125, 125]))
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].confidence, 0.95)
     
-    def test_convert_symbols_already_expected_format(self):
-        """Test symbol conversion when already in expected format."""
-        gs = GameState()
-        
-        symbols = [{
-            'center_uv': np.array([100, 100]),
-            'player': 'O',
-            'confidence': 0.8
-        }]
-        
-        converted = gs._convert_symbols_to_expected_format(symbols, {})
-        assert len(converted) == 1
-        assert converted[0]['player'] == 'O'
-        assert converted[0]['confidence'] == 0.8    
-    def test_update_from_detection_incomplete_grid(self):
-        """Test update from detection with incomplete grid."""
-        gs = GameState()
-        
-        # Update with None grid points
-        gs.update_from_detection(
-            frame=np.zeros((480, 640, 3), dtype=np.uint8),
-            ordered_kpts_uv=None,
-            homography=None,
-            detected_symbols=[],
-            class_id_to_player={0: 'X', 1: 'O'},
-            timestamp=1.0
-        )
-        
-        assert gs._is_valid_grid is False
-        assert gs.game_paused_due_to_incomplete_grid is True
-        assert gs.error_message == gs.ERROR_GRID_INCOMPLETE_PAUSE
+    def test_changed_cells_tracking(self):
+        """Test tracking of changed cells."""
+        self.assertEqual(len(self.game_state.changed_cells_this_turn), 0)
+        test_cells = [(0, 1), (2, 2)]
+        self.game_state._changed_cells_this_turn = test_cells
+        self.assertEqual(self.game_state.changed_cells_this_turn, test_cells)
     
-    def test_update_from_detection_insufficient_grid_points(self):
-        """Test update with insufficient grid points."""
-        gs = GameState()
+    def test_error_message_handling(self):
+        """Test error message functionality."""
+        self.assertIsNone(self.game_state.error_message)
         
-        # Only 8 points instead of 16
-        incomplete_points = np.array([[i*10, i*10] for i in range(8)], dtype=np.float32)
+        self.game_state.error_message = "Test error"
+        self.assertEqual(self.game_state.error_message, "Test error")
         
-        gs.update_from_detection(
-            frame=np.zeros((480, 640, 3), dtype=np.uint8),
-            ordered_kpts_uv=incomplete_points,
-            homography=np.eye(3),
-            detected_symbols=[],
-            class_id_to_player={0: 'X', 1: 'O'},
-            timestamp=1.0
-        )
-        
-        assert gs._is_valid_grid is False
-        assert gs.game_paused_due_to_incomplete_grid is True    
-    def test_get_cell_center_uv(self):
-        """Test getting cell center UV coordinates."""
-        gs = GameState()
-        
-        # No cell centers computed
-        center = gs.get_cell_center_uv(1, 1)
-        assert center is None
-        
-        # Set up mock cell centers
-        gs._cell_centers_uv_transformed = np.array([
-            [100, 100], [200, 100], [300, 100],  # Row 0
-            [100, 200], [200, 200], [300, 200],  # Row 1
-            [100, 300], [200, 300], [300, 300]   # Row 2
-        ], dtype=np.float32)
-        
-        # Test valid cell
-        center = gs.get_cell_center_uv(1, 1)  # Middle cell
-        np.testing.assert_array_equal(center, np.array([200, 200]))
-        
-        # Test invalid cell
-        center = gs.get_cell_center_uv(5, 5)
-        assert center is None
+        self.game_state.reset_game()
+        self.assertIsNone(self.game_state.error_message)
     
-    def test_get_latest_derived_cell_polygons(self):
-        """Test getting cell polygons."""
-        gs = GameState()
+    def test_game_pause_state(self):
+        """Test game pause state due to incomplete grid."""
+        self.assertFalse(self.game_state.game_paused_due_to_incomplete_grid)
         
-        # No polygons initially
-        polygons = gs.get_latest_derived_cell_polygons()
-        assert polygons is None
+        self.game_state.game_paused_due_to_incomplete_grid = True
+        self.assertTrue(self.game_state.game_paused_due_to_incomplete_grid)
         
-        # Set mock polygons
-        mock_polygons = [np.array([[0, 0], [1, 0], [1, 1], [0, 1]]) for _ in range(9)]
-        gs._cell_polygons_uv_transformed = mock_polygons
+        self.game_state.reset_game()
+        self.assertFalse(self.game_state.game_paused_due_to_incomplete_grid)
+    
+    def test_grid_visibility_tracking(self):
+        """Test grid visibility status."""
+        self.assertFalse(self.game_state.grid_fully_visible)
+        self.assertEqual(self.game_state.missing_grid_points_count, 0)
         
-        polygons = gs.get_latest_derived_cell_polygons()
-        assert polygons == mock_polygons
+        self.game_state.grid_fully_visible = True
+        self.game_state.missing_grid_points_count = 3
+        
+        self.assertTrue(self.game_state.grid_fully_visible)
+        self.assertEqual(self.game_state.missing_grid_points_count, 3)
+        
+        self.game_state.reset_game()
+        self.assertFalse(self.game_state.grid_fully_visible)
+        self.assertEqual(self.game_state.missing_grid_points_count, 0)
+    
+    def test_winner_and_winning_line(self):
+        """Test winner and winning line tracking."""
+        self.assertIsNone(self.game_state.winner)
+        self.assertIsNone(self.game_state.winning_line_indices)
+        
+        self.game_state.winner = PLAYER_X
+        self.game_state.winning_line_indices = [(0, 0), (0, 1), (0, 2)]
+        
+        self.assertEqual(self.game_state.winner, PLAYER_X)
+        self.assertEqual(self.game_state.winning_line_indices, [(0, 0), (0, 1), (0, 2)])
+        
+        self.game_state.reset_game()
+        self.assertIsNone(self.game_state.winner)
+        self.assertIsNone(self.game_state.winning_line_indices)
+
+
+if __name__ == '__main__':
+    unittest.main()

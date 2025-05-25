@@ -32,6 +32,7 @@ from app.main.arm_movement_controller import ArmMovementController
 from app.main.ui_event_handlers import UIEventHandlers
 from app.main.status_manager import StatusManager
 from app.main.board_widget import TicTacToeBoard
+from app.main.game_statistics import GameStatisticsWidget
 from app.main.constants import DEFAULT_CAMERA_INDEX, DEFAULT_DIFFICULTY
 from app.main.game_utils import setup_logger
 from app.core.config import AppConfig
@@ -108,11 +109,9 @@ class TicTacToeApp(QMainWindow):
         self.main_status_panel = self.status_manager.create_status_panel()
         main_layout.addWidget(self.main_status_panel)
 
-
-
-        # Board container - ensure it has enough space
-        board_container = self._create_board_container()
-        main_layout.addWidget(board_container, 2)  # Give more stretch to board
+        # Board and statistics container
+        board_stats_container = self._create_board_with_statistics_container()
+        main_layout.addWidget(board_stats_container, 2)  # Give more stretch to board area
 
         # Controls panel
         controls_panel = self._create_controls_panel()
@@ -153,14 +152,33 @@ class TicTacToeApp(QMainWindow):
             }
         """)
 
+    def _create_board_with_statistics_container(self):
+        """Create container with game board and statistics side by side."""
+        container = QWidget()
+        container.setStyleSheet(
+            "background-color: #333740; border-radius: 15px; padding: 20px;"
+        )
+        
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(30)
+        
+        # Left side: Game board
+        board_container = self._create_board_container()
+        layout.addWidget(board_container, 1)
+        
+        # Right side: Statistics
+        self.statistics_widget = GameStatisticsWidget(self.status_manager)
+        self.statistics_widget.setFixedWidth(280)
+        layout.addWidget(self.statistics_widget, 0)
+        
+        return container
+
     def _create_board_container(self):
         """Create the game board container with proper 3x3 grid layout."""
         board_container = QWidget()
-        board_container.setStyleSheet(
-            "background-color: #333740; border-radius: 15px; padding: 20px;"
-        )
         board_layout = QHBoxLayout(board_container)
-        board_layout.setContentsMargins(20, 20, 20, 20)
+        board_layout.setContentsMargins(0, 0, 0, 0)
         board_layout.addStretch(1)
 
         self.board_widget = TicTacToeBoard()
@@ -266,15 +284,9 @@ class TicTacToeApp(QMainWindow):
             }
         """)
 
-        self.track_checkbox = QCheckBox(self.status_manager.tr("tracking"))
-        self.track_checkbox.stateChanged.connect(
-            self.event_handlers.handle_track_checkbox_changed
-        )
-
         button_layout.addWidget(self.reset_button)
         button_layout.addWidget(self.language_button)
         button_layout.addWidget(self.debug_button)
-        button_layout.addWidget(self.track_checkbox)
         button_layout.addStretch()
 
         return button_container
@@ -298,6 +310,16 @@ class TicTacToeApp(QMainWindow):
 
         # Connect arm controller to game controller
         self.game_controller.set_arm_controller(self.arm_controller)
+        
+        # Connect game ended signal to statistics
+        self.game_controller.game_ended.connect(
+            self._handle_game_ended
+        )
+        
+        # Connect statistics reset to show confirmation
+        self.statistics_widget.reset_requested.connect(
+            self._handle_statistics_reset
+        )
 
     def _handle_grid_incomplete(self, is_incomplete):
         """Handle grid incomplete signal from camera controller."""
@@ -318,6 +340,18 @@ class TicTacToeApp(QMainWindow):
 
         # Setup timers
         self._setup_timers()
+
+    def _handle_game_ended(self, winner):
+        """Handle game end and record statistics."""
+        human_player = self.game_controller.human_player
+        self.statistics_widget.record_game_result(winner, human_player)
+        # Show game end notification is already handled by status_manager
+        self.logger.info(f"Game ended: winner={winner}, recorded in statistics")
+
+    def _handle_statistics_reset(self):
+        """Handle statistics reset request."""
+        self.logger.info("Statistics reset requested by user")
+        # Could add confirmation dialog here if needed
 
     def _setup_timers(self):
         """Setup application timers."""

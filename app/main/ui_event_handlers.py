@@ -77,23 +77,6 @@ class UIEventHandlers(QObject):
             else:
                 self.logger.info(f"Difficulty {value}: AI will use optimal strategy {new_p*100:.0f}% of the time")
 
-    def handle_track_checkbox_changed(self, state):
-        """Handle tracking checkbox change."""
-        self.tracking_enabled = state == Qt.Checked
-
-        if self.tracking_enabled:
-            self.game_paused = True  # Pause game during tracking
-            if hasattr(self.main_window, 'status_manager'):
-                self.main_window.status_manager.update_status("tracking", True)
-            self._start_tracking()
-        else:
-            self.game_paused = False  # Resume game
-            self._stop_tracking()
-            if hasattr(self.main_window, 'status_manager'):
-                self.main_window.status_manager.update_status("your_turn", True)
-
-        self.logger.info(f"Tracking {'enabled' if self.tracking_enabled else 'disabled'}")
-
     def change_language(self):
         """Handle language change button click."""
         if hasattr(self.main_window, 'status_manager'):
@@ -305,11 +288,28 @@ class UIEventHandlers(QObject):
                 if detected_board[expected_row][expected_col] == expected_symbol:
                     self.logger.info(f"✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
                     
+                    # Successfully detected arm move - reset detection flags
+                    gc.waiting_for_detection = False
+                    gc.arm_move_in_progress = False
+                    gc.ai_move_row = None
+                    gc.ai_move_col = None
+                    gc.expected_symbol = None
+                    gc.detection_wait_time = 0.0
+                    gc.ai_move_retry_count = 0
+                    
+                    # Switch turn to human
+                    gc.current_turn = gc.human_player
+                    
                     # Update board with detected state
                     if hasattr(self.main_window, 'board_widget'):
                         self.main_window.board_widget.board = [row[:] for row in detected_board]
                         self.main_window.board_widget.update()
                         self.logger.info(f"GUI updated with detected board state")
+                    
+                    # Check for game end, then continue to human turn if game not over
+                    gc._check_game_end()
+                    if not gc.game_over:
+                        gc.status_changed.emit("your_turn", True)
                 else:
                     self.logger.warning(f"❌ Expected {expected_symbol} at ({expected_row}, {expected_col}) but detected: {detected_board[expected_row][expected_col]}")
 

@@ -236,11 +236,19 @@ class TestRobustSortGridPoints:
         assert result is None
         assert homography is None    
     @patch('cv2.findHomography')
-    def test_valid_grid_sorting(self, mock_find_homography, sample_grid_points):
+    def test_valid_grid_sorting(self, mock_find_homography):
         """Test valid grid point sorting."""
         # Mock successful homography computation
         mock_homography = np.eye(3, dtype=np.float32)
         mock_find_homography.return_value = (mock_homography, None)
+        
+        # Create sample grid points
+        sample_grid_points = np.array([
+            [100, 100], [200, 100], [300, 100], [400, 100],
+            [100, 200], [200, 200], [300, 200], [400, 200],
+            [100, 300], [200, 300], [300, 300], [400, 300],
+            [100, 400], [200, 400], [300, 400], [400, 400]
+        ], dtype=np.float32)
         
         result, homography = robust_sort_grid_points(sample_grid_points)
         

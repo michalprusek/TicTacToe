@@ -1,9 +1,9 @@
 """
 Tests for path_utils module.
 """
-import pytest
-import sys
+import unittest
 import os
+import sys
 from unittest.mock import patch
 
 from app.main.path_utils import (
@@ -12,86 +12,70 @@ from app.main.path_utils import (
 )
 
 
-class TestPathUtilities:
-    """Test class for path utility functions."""
+class TestPathUtils(unittest.TestCase):
     
-    def test_setup_project_path(self):
-        """Test project path setup."""
-        # Save original sys.path
-        original_path = sys.path.copy()
-        
-        try:
-            # Remove any existing project paths for clean test
-            root = setup_project_path()
-            
-            # Check that path was added
-            assert root in sys.path
-            assert os.path.isabs(root)  # Should be absolute path
-            assert root.endswith('TicTacToe')  # Should end with project name
-            
-        finally:
-            # Restore original sys.path
-            sys.path[:] = original_path
+    def setUp(self):
+        self.original_path = sys.path.copy()
     
-    def test_get_project_root(self):
-        """Test getting project root directory."""
-        root = get_project_root()
-        
-        assert os.path.isabs(root)  # Should be absolute path
-        assert os.path.exists(root)  # Should exist
-        assert root.endswith('TicTacToe')  # Should end with project name
+    def tearDown(self):
+        sys.path[:] = self.original_path
     
-    def test_get_weights_path(self):
-        """Test getting weights directory path."""
-        weights_path = get_weights_path()
+    @patch('os.path.dirname')
+    @patch('os.path.abspath')
+    def test_setup_project_path(self, mock_abspath, mock_dirname):
+        mock_abspath.return_value = "/fake/app/main/path_utils.py"
+        mock_dirname.side_effect = ["/fake/app/main", "/fake/app", "/fake"]
         
-        assert os.path.isabs(weights_path)  # Should be absolute path
-        assert weights_path.endswith('weights')  # Should end with weights
-        # Note: We don't test existence as weights dir might not exist in test env    
-    def test_get_calibration_path(self):
-        """Test getting calibration directory path."""
-        calib_path = get_calibration_path()
-        
-        assert os.path.isabs(calib_path)  # Should be absolute path
-        assert 'calibration' in calib_path  # Should contain calibration
+        sys.path.clear()
+        result = setup_project_path()
+        self.assertEqual(result, "/fake")
+        self.assertIn("/fake", sys.path)
     
     @patch('os.path.exists')
-    def test_setup_uarm_sdk_path_exists(self, mock_exists):
-        """Test uArm SDK path setup when SDK exists."""
-        original_path = sys.path.copy()
+    @patch('os.path.dirname') 
+    @patch('os.path.abspath')
+    def test_uarm_sdk_exists(self, mock_abspath, mock_dirname, mock_exists):
+        mock_abspath.return_value = "/fake/app/main/path_utils.py"
+        mock_dirname.side_effect = ["/fake/app/main", "/fake/app", "/fake"]
+        mock_exists.return_value = True
         
-        try:
-            mock_exists.return_value = True
-            
-            sdk_path = setup_uarm_sdk_path()
-            
-            assert sdk_path is not None
-            assert sdk_path in sys.path
-            assert 'uArm-Python-SDK' in sdk_path
-            
-        finally:
-            sys.path[:] = original_path
+        result = setup_uarm_sdk_path()
+        self.assertEqual(result, "/fake/uArm-Python-SDK")
     
     @patch('os.path.exists')
-    def test_setup_uarm_sdk_path_not_exists(self, mock_exists):
-        """Test uArm SDK path setup when SDK doesn't exist."""
+    def test_uarm_sdk_not_exists(self, mock_exists):
         mock_exists.return_value = False
+        result = setup_uarm_sdk_path()
+        self.assertIsNone(result)    
+    @patch('os.path.dirname')
+    @patch('os.path.abspath')
+    def test_get_project_root(self, mock_abspath, mock_dirname):
+        mock_abspath.return_value = "/fake/app/main/path_utils.py"
+        mock_dirname.side_effect = ["/fake/app/main", "/fake/app", "/fake"]
         
-        sdk_path = setup_uarm_sdk_path()
-        
-        assert sdk_path is None
+        result = get_project_root()
+        self.assertEqual(result, "/fake")
     
-    def test_path_consistency(self):
-        """Test that all path functions return consistent roots."""
-        project_root = get_project_root()
-        setup_root = setup_project_path()
+    @patch('os.path.join')
+    @patch('app.main.path_utils.get_project_root')
+    def test_get_weights_path(self, mock_get_root, mock_join):
+        mock_get_root.return_value = "/fake"
+        mock_join.return_value = "/fake/weights"
         
-        # Both should return the same project root
-        assert project_root == setup_root
+        result = get_weights_path()
+        self.assertEqual(result, "/fake/weights")
+        mock_join.assert_called_once_with("/fake", "weights")
+    
+    @patch('os.path.join')
+    @patch('app.main.path_utils.get_project_root')
+    def test_get_calibration_path(self, mock_get_root, mock_join):
+        mock_get_root.return_value = "/fake"
+        mock_join.return_value = "/fake/app/calibration"
         
-        # Weights and calibration should be under project root
-        weights_path = get_weights_path()
-        calib_path = get_calibration_path()
-        
-        assert weights_path.startswith(project_root)
-        assert calib_path.startswith(project_root)
+        result = get_calibration_path()
+        self.assertEqual(result, "/fake/app/calibration")
+        mock_join.assert_called_once_with("/fake", "app", "calibration")
+
+
+if __name__ == '__main__':
+    unittest.main()

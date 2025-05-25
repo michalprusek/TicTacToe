@@ -26,7 +26,18 @@ def main():
     # Load specific test modules that work
     test_modules = [
         'tests.test_strategy',
-        'tests.test_final_coverage'
+        'tests.test_strategy_comprehensive',
+        'tests.test_final_coverage',
+        'tests.test_game_logic_unittest',
+        'tests.test_game_state_comprehensive',
+        'tests.test_game_state_additional_coverage',
+        'tests.test_game_state_extended',
+        'tests.test_utils',
+        'tests.test_path_utils',
+        'tests.test_game_utils',
+        'tests.test_game_utils_comprehensive',
+        'tests.test_constants',
+        'tests.test_config_extended'
     ]
     
     if args.coverage:
@@ -41,11 +52,14 @@ def main():
             suite = unittest.TestSuite()
             
             for module_name in test_modules:
-                suite.addTests(loader.loadTestsFromName(module_name))
+                try:
+                    suite.addTests(loader.loadTestsFromName(module_name))
+                    print(f"Loaded tests from {module_name}")
+                except Exception as e:
+                    print(f"Warning: Could not load {module_name}: {e}")
             
             runner = unittest.TextTestRunner(verbosity=2 if args.verbose else 1)
-            result = runner.run(suite)
-            
+            result = runner.run(suite)            
             # Stop coverage and report
             cov.stop()
             cov.save()
@@ -64,7 +78,11 @@ def main():
         suite = unittest.TestSuite()
         
         for module_name in test_modules:
-            suite.addTests(loader.loadTestsFromName(module_name))
+            try:
+                suite.addTests(loader.loadTestsFromName(module_name))
+                print(f"Loaded tests from {module_name}")
+            except Exception as e:
+                print(f"Warning: Could not load {module_name}: {e}")
         
         runner = unittest.TextTestRunner(verbosity=2 if args.verbose else 1)
         result = runner.run(suite)

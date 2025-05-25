@@ -13,8 +13,10 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Mock PyQt5 to avoid GUI dependencies in tests
+mock_qt_core = Mock()
+mock_qt_core.PYQT_VERSION = 0x050F00  # Mock version 5.15.0
 sys.modules['PyQt5'] = Mock()
-sys.modules['PyQt5.QtCore'] = Mock()
+sys.modules['PyQt5.QtCore'] = mock_qt_core
 sys.modules['PyQt5.QtWidgets'] = Mock()
 sys.modules['PyQt5.QtGui'] = Mock()
 

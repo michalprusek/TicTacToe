@@ -234,10 +234,10 @@ class StatusManager(QObject):
         icon_text, message_text, color = "", "", ""
         if winner == game_logic.TIE:
             icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40f"
-        elif winner == getattr(self.main_window.game_controller, 'human_player', 'X'):
-            icon_text, message_text, color = "🏆", self.tr("win"), "#2ecc71"
-        elif winner == getattr(self.main_window.game_controller, 'ai_player', 'O'):
-            icon_text, message_text, color = "🤖", self.tr("win"), "#e74c3c"
+        elif winner == "HUMAN_WIN":
+            icon_text, message_text, color = "🏆", "VÝHRA", "#2ecc71"
+        elif winner == "ARM_WIN":
+            icon_text, message_text, color = "🤖", "PROHRA", "#e74c3c"
         else:
             icon_text, message_text, color = "🏁", self.tr("game_over"), "#95a5a6"
 
