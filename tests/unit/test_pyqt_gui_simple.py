@@ -74,8 +74,8 @@ class TestPyQtGuiSimple():
 
     def test_tic_tac_toe_app_init(self):
         """Test TicTacToeApp initialization"""
-        # Use the MockTicTacToeApp class from test_pyqt_gui_app_helper
-        from tests.unit.test_pyqt_gui_app_helper import MockTicTacToeApp
+        # Use the MockTicTacToeApp class from pyqt_gui_unified_helper
+        from tests.unit.pyqt_gui_unified_helper import MockTicTacToeApp
 
         # Create app using the mock class
         app = MockTicTacToeApp()
@@ -87,6 +87,48 @@ class TestPyQtGuiSimple():
         assert not app.game_over
         assert app.winner is None
         assert not app.waiting_for_detection
+
+    def test_board_conversion_consolidation(self):
+        """Test that board conversion consolidation works correctly"""
+        # Use the MockTicTacToeApp class from pyqt_gui_unified_helper
+        from tests.unit.pyqt_gui_unified_helper import MockTicTacToeApp
+
+        # Create app using the mock class
+        app = MockTicTacToeApp()
+
+        # Test that the consolidated method is used throughout the codebase
+        board_1d = ['X', 'O', '', 'X', 'O', '', '', 'X', 'O']
+        expected_2d = [
+            ['X', 'O', ''],
+            ['X', 'O', ''],
+            ['', 'X', 'O']
+        ]
+
+        # Test the consolidated method directly
+        result = app._convert_board_1d_to_2d(board_1d)
+        assert result == expected_2d
+
+        # Test with None input
+        result = app._convert_board_1d_to_2d(None)
+        assert result is None
+
+        # Test with empty list
+        result = app._convert_board_1d_to_2d([])
+        assert result == []
+
+        # Test with string input (should return as-is)
+        result = app._convert_board_1d_to_2d("invalid")
+        assert result == "invalid"
+
+        # Test with already 2D board (should return as-is)
+        board_2d = [['X', 'O', ''], ['X', 'O', ''], ['', 'X', 'O']]
+        result = app._convert_board_1d_to_2d(board_2d)
+        assert result == board_2d
+
+        # Test with invalid length 1D list (should return as-is)
+        invalid_board = ['X', 'O']  # Wrong length
+        result = app._convert_board_1d_to_2d(invalid_board)
+        assert result == invalid_board
 
 
 
