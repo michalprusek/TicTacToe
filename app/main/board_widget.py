@@ -17,15 +17,20 @@ class TicTacToeBoard(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.board = game_logic.create_board()
-        self.cell_size = 150  # Zvětšení buněk
-        self.setMinimumSize(3 * self.cell_size, 3 * self.cell_size)
-        self.setStyleSheet("background-color: #252830; border-radius: 10px;")
-        self.winning_line = None  # Pro uložení výherní čáry
-        self.highlighted_cells = []  # Seznam buněk, které mají být zvýrazněny
-        self.highlight_timer = QTimer(self)  # Timer pro animaci zvýraznění
+        self._display_board = game_logic.create_board()  # Initialize display board for camera detection
+        self.cell_size = 160  # Optimized cell size for better visibility
+        self.setFixedSize(3 * self.cell_size, 3 * self.cell_size)  # Fixed size for proper 3x3 grid
+        self.setStyleSheet("""
+            background-color: #252830; 
+            border-radius: 15px; 
+            border: 2px solid #34495e;
+        """)
+        self.winning_line = None  # Store winning line
+        self.highlighted_cells = []  # List of cells to highlight
+        self.highlight_timer = QTimer(self)  # Timer for highlight animation
         self.highlight_timer.timeout.connect(self.update_highlight)
-        self.highlight_alpha = 0  # Průhlednost zvýraznění (0-255)
-        self.highlight_fade_in = True  # Směr animace (fade in/out)
+        self.highlight_alpha = 0  # Highlight transparency (0-255)
+        self.highlight_fade_in = True  # Animation direction (fade in/out)
         self.logger = logging.getLogger(__name__)
 
     def paintEvent(self, event):
@@ -68,8 +73,7 @@ class TicTacToeBoard(QWidget):
             3 * self.cell_size,
             2 * self.cell_size)
 
-        # Draw X and O - moderní design
-        # Use display board if available, otherwise use regular board
+        # Draw X and O - use _display_board (from camera detection) if available, otherwise self.board
         display_board = getattr(self, '_display_board', self.board)
         for r in range(3):
             for c in range(3):
@@ -161,16 +165,9 @@ class TicTacToeBoard(QWidget):
         painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
     def mousePressEvent(self, event):
-        """Handle mouse press events for cell selection"""
-        if event.button() == Qt.LeftButton:
-            # Výpočet řádku a sloupce
-            col = event.x() // self.cell_size
-            row = event.y() // self.cell_size
-
-            # Kontrola platných souřadnic
-            if 0 <= row < 3 and 0 <= col < 3:
-                # Emitujeme signál s informací o kliknuté buňce
-                self.cell_clicked.emit(row, col)
+        """Mouse press events disabled - board is display only"""
+        # No interaction allowed - board is controlled by camera detection only
+        pass
 
     def highlight_cells(self, cells):
         """Highlight specified cells with animation"""
@@ -197,6 +194,10 @@ class TicTacToeBoard(QWidget):
 
     def update_board(self, board, winning_line=None, highlight_changes=False):
         """Update the board state and redraw"""
+        if not board:
+            self.logger.warning("update_board: Received None or empty board")
+            return
+        
         # Zjistíme změny mezi starým a novým stavem
         changes = []
         if highlight_changes and hasattr(self, '_display_board'):
@@ -205,12 +206,15 @@ class TicTacToeBoard(QWidget):
                     if self._display_board[r][c] != board[r][c] and board[r][c] != game_logic.EMPTY:
                         changes.append((r, c))
 
-        # Store display board separately from game state
+        # Store display board separately from game state - this is what gets drawn!
         self._display_board = [row[:] for row in board]  # Deep copy for display
         
-        # CRITICAL: DO NOT update self.board here!
-        # self.board should ONLY be updated in update_board_from_detection in pyqt_gui.py
-        # This method is just for visual updates
+        # Debug log the board update
+        self.logger.debug(f"Board updated to: {self._display_board}")
+        
+        # CRITICAL: DO NOT update self.board here! 
+        # self.board should remain as internal game logic state
+        # _display_board is what gets rendered from camera detection
         
         if winning_line is not None:
             self.winning_line = winning_line

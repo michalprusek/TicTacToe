@@ -7,7 +7,7 @@ import argparse
 import logging
 from PyQt5.QtWidgets import QApplication
 
-from app.main.pyqt_gui import TicTacToeApp
+from app.main.main_gui import TicTacToeApp
 from app.core.config import AppConfig
 
 # Configure logging
@@ -30,8 +30,8 @@ def main():
         help="Enable debug mode with additional logging and visualization"
     )
     parser.add_argument(
-        "--difficulty", type=int, default=5, choices=range(11),
-        help="Initial difficulty level (0-10, default: 5)"
+        "--difficulty", type=int, default=10, choices=range(11),
+        help="Initial difficulty level (0-10, default: 10)"
     )
     args = parser.parse_args()
 

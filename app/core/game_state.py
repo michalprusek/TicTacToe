@@ -217,6 +217,9 @@ class GameState:
             )
             return []
 
+        # Convert symbols to expected format
+        detected_symbols = self._convert_symbols_to_expected_format(detected_symbols, class_id_to_player)
+
         changed_cells = []
 
         # Debug: Log current board state
@@ -286,6 +289,48 @@ class GameState:
 
         return changed_cells
 
+    def _convert_symbols_to_expected_format(
+            self,
+            detected_symbols: List[Dict],
+            class_id_to_player: Dict[int, str]
+    ) -> List[Dict]:
+        """Convert symbols from detector format to expected format.
+
+        Args:
+            detected_symbols: Symbols from detector with 'box', 'label', 'confidence', 'class_id'
+            class_id_to_player: Mapping from class ID to player symbol
+
+        Returns:
+            Symbols with 'center_uv', 'player', 'confidence' format
+        """
+        converted_symbols = []
+
+        for symbol in detected_symbols:
+            # Check if symbol has the expected detector format
+            if all(key in symbol for key in ['box', 'label', 'confidence', 'class_id']):
+                # Calculate center from bounding box
+                box = symbol['box']
+                center_x = (box[0] + box[2]) / 2
+                center_y = (box[1] + box[3]) / 2
+
+                # Convert class_id to player symbol
+                class_id = symbol['class_id']
+                player = symbol['label']  # Use label directly (X or O)
+
+                converted_symbol = {
+                    'center_uv': np.array([center_x, center_y]),
+                    'player': player,
+                    'confidence': symbol['confidence']
+                }
+                converted_symbols.append(converted_symbol)
+            elif all(key in symbol for key in ['center_uv', 'player', 'confidence']):
+                # Already in expected format
+                converted_symbols.append(symbol)
+            else:
+                self.logger.warning(f"Symbol has unexpected format: {symbol}")
+
+        return converted_symbols
+
     def _update_board_with_symbols_robust(
             self,
             detected_symbols: List[Dict],
@@ -312,6 +357,9 @@ class GameState:
 
         if not detected_symbols:
             return []
+
+        # Convert symbols to expected format
+        detected_symbols = self._convert_symbols_to_expected_format(detected_symbols, class_id_to_player)
 
         try:
             # Použijeme robustní funkci pro získání homografie
@@ -371,6 +419,10 @@ class GameState:
 
                 # Určení buňky (0-2 pro řádek i sloupec)
                 # POZOR: Musíme mapovat správně na standardní indexování buněk
+                # Normalizované souřadnice jsou v rozsahu 0-300 (4 * CELL_SIZE_FINAL)
+                # Potřebujeme mapovat na game cells 0-2
+
+                # Mapování na grid pozice (0-3)
                 grid_col = int(nx / CELL_SIZE_FINAL)
                 grid_row = int(ny / CELL_SIZE_FINAL)
 
@@ -380,9 +432,13 @@ class GameState:
 
                 # Mapování z grid indexů na game cell indexy (0-2)
                 # Grid points jsou 4x4, game cells jsou 3x3
-                # Grid point (0,0) -> game cell (0,0)
-                # Grid point (3,3) -> game cell (2,2)
-                if grid_row < 3 and grid_col < 3:
+                # Grid má 4 řádky a 4 sloupce bodů, ale jen 3x3 buněk
+                # Buňka (0,0) je mezi grid body (0,0), (0,1), (1,0), (1,1)
+                # Buňka (2,2) je mezi grid body (2,2), (2,3), (3,2), (3,3)
+
+                # Pro správné mapování musíme použít střed buňky
+                # Pokud je symbol v grid pozici (0,0) až (2,2), patří do game cells
+                if grid_row <= 2 and grid_col <= 2:
                     final_row = grid_row
                     final_col = grid_col
                 else:
@@ -592,13 +648,10 @@ class GameState:
                     class_id_to_player
                 )
 
-                # Fallback to center-based mapping if robust method fails
+                # Only use fallback if robust method is not available (no grid points)
+                # Don't use fallback when robust method works but finds occupied cells
                 if not changed_cells:
-                    changed_cells = self._update_board_with_symbols(
-                        detected_symbols,
-                        self._cell_centers_uv_transformed,
-                        class_id_to_player
-                    )
+                    self.logger.debug("Robust mapping completed - no new symbols placed (cells may be occupied)")
 
                 if changed_cells: # If a move was made
                     self._changed_cells_this_turn = changed_cells

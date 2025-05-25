@@ -22,7 +22,7 @@ from app.core.strategy import BernoulliStrategySelector
 from app.core.arm_thread import ArmCommand
 
 # Constants
-DEFAULT_DIFFICULTY = 5
+DEFAULT_DIFFICULTY = 10
 
 
 class GameController(QObject):
@@ -62,11 +62,12 @@ class GameController(QObject):
         self.detection_wait_time = 0.0
         self.max_detection_wait_time = 5.0
         
-        # Strategy selector
-        difficulty = DEFAULT_DIFFICULTY
+        # Strategy selector - set to maximum difficulty by default
+        difficulty = DEFAULT_DIFFICULTY  # Now defaults to 10
         if hasattr(config, 'game') and hasattr(config.game, 'default_difficulty'):
             difficulty = config.game.default_difficulty
         self.strategy_selector = BernoulliStrategySelector(difficulty=difficulty)
+        self.logger.info(f"Strategy selector initialized with difficulty {difficulty} (p={difficulty/10.0:.2f})")
         
         # Arm controller reference (set by main window)
         self.arm_controller = None
@@ -148,9 +149,10 @@ class GameController(QObject):
             self.logger.warning("Failed to convert detected board to 2D format.")
             return
         
-        # Update board widget
+        # Update board widget with detected board state
         if hasattr(self.main_window, 'board_widget') and self.main_window.board_widget:
             self.main_window.board_widget.update_board(detected_board, None, highlight_changes=True)
+            self.logger.debug(f"Updated GUI board with detected state: {detected_board}")
         
         # Handle game over state
         if self.game_over:
@@ -347,7 +349,11 @@ class GameController(QObject):
     def _convert_board_1d_to_2d(self, board_1d):
         """Convert 1D board to 2D format."""
         if isinstance(board_1d, list) and len(board_1d) == 9:
-            return [board_1d[i:i + 3] for i in range(0, 9, 3)]
+            converted = [board_1d[i:i + 3] for i in range(0, 9, 3)]
+            self.logger.debug(f"Converted 1D board {board_1d} to 2D: {converted}")
+            return converted
+        
+        self.logger.debug(f"Board already 2D or None: {type(board_1d)} -> {board_1d}")
         return board_1d  # Assume it's already 2D or None
     
     def _get_board_symbol_counts(self, board):

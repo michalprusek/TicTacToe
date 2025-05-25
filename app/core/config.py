@@ -46,6 +46,9 @@ class GameDetectorConfig:
     ideal_grid_keypoints_4x4: np.ndarray = field(default_factory=lambda: np.array([
         [x, y] for y in range(4) for x in range(4)
     ], dtype=np.float32))
+    
+    # Calibration file
+    calibration_file: str = "hand_eye_calibration.json"
 
 
 @dataclass

@@ -4,6 +4,7 @@ Detection thread module for TicTacToe application.
 import time
 import logging
 import threading
+import json
 from typing import Optional, Tuple, Dict
 
 import numpy as np
@@ -69,6 +70,9 @@ class DetectionThread(threading.Thread):
 
         # Initialize detector
         self.detector = None
+        
+        # Load calibration data
+        self.calibration_data = self._load_calibration_data()
 
     def set_frame(self, frame: np.ndarray) -> None:
         """Set the latest frame for processing.
@@ -200,5 +204,23 @@ class DetectionThread(threading.Thread):
         if self.is_alive():
             self.join(timeout=1.0)  # Wait for thread to finish
             self.logger.info("Detection thread stopped")
+    
+    def _load_calibration_data(self) -> Optional[Dict]:
+        """Load calibration data from JSON file."""
+        try:
+            calibration_file = self.config.calibration_file
+            if not calibration_file.startswith('/'):
+                # Relative path, make it absolute based on project root
+                import os
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                calibration_file = os.path.join(project_root, "app", "calibration", calibration_file)
+            
+            with open(calibration_file, 'r') as f:
+                data = json.load(f)
+                self.logger.info(f"Loaded calibration data from {calibration_file}")
+                return data
+        except Exception as e:
+            self.logger.warning(f"Could not load calibration data: {e}")
+            return None
         else:
             self.logger.info("Detection thread not running")

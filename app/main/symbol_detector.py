@@ -28,7 +28,7 @@ class SymbolDetector:
         
         # Class ID to label mapping
         self.class_id_to_label = getattr(config, 'class_id_to_label', {0: 'X', 1: 'O'})
-        self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 1, 1: 2})  # X=1, O=2
+        self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 2, 1: 1})  # O=2, X=1
 
     def detect_symbols(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
         """Detects X and O symbols in the frame.

@@ -96,22 +96,32 @@ def draw_symbol_box(
         frame: The image (NumPy array) to draw on.
         box: A list containing the coordinates [x1, y1, x2, y2] of the bounding box.
         confidence: The confidence score of the detection.
-        class_id: The class ID of the detected symbol (0 for 'O', 1 for 'X').
-        label: The class label ('O' or 'X').
+        class_id: The class ID of the detected symbol (0 for X, 1 for O).
+        label: The class label ('X' or 'O').
         player_x_color: Color for 'X' symbol bounding box.
         player_o_color: Color for 'O' symbol bounding box.
         text_color: Color for the confidence text.
         font_scale: Font scale for the confidence text.
         thickness: Thickness for the bounding box lines.
     """
-    box_x1, box_y1, box_x2, box_y2 = map(int, box)
+    # Validate and clamp coordinates to frame bounds
+    frame_h, frame_w = frame.shape[:2]
+    box_x1 = max(0, min(int(box[0]), frame_w - 1))
+    box_y1 = max(0, min(int(box[1]), frame_h - 1))
+    box_x2 = max(0, min(int(box[2]), frame_w - 1))
+    box_y2 = max(0, min(int(box[3]), frame_h - 1))
+
+    # Ensure box is valid (x1 < x2, y1 < y2)
+    if box_x1 >= box_x2 or box_y1 >= box_y2:
+        return  # Skip invalid boxes
+
     font = cv2.FONT_HERSHEY_SIMPLEX
 
     # Determine color based on class_id
-    if class_id == 0:  # Assuming 0 is 'O'
-        color = player_o_color
-    elif class_id == 1:  # Assuming 1 is 'X'
+    if class_id == 0:  # class_id 0 is 'X'
         color = player_x_color
+    elif class_id == 1:  # class_id 1 is 'O'
+        color = player_o_color
     else:
         color = (0, 255, 0)  # Default to green if class_id is unexpected
 
@@ -124,9 +134,12 @@ def draw_symbol_box(
     cv2.rectangle(frame, (box_x1, box_y1), (box_x2, box_y2), color, thickness)
 
     # Calculate text size to position it above the box
-    (text_width, text_height), baseline = cv2.getTextSize(
-        display_text, font, font_scale, thickness
-    )
+    try:
+        (text_width, text_height), baseline = cv2.getTextSize(
+            display_text, font, font_scale, thickness
+        )
+    except Exception:
+        return  # Skip if text size calculation fails
 
     # Position text background and text
     text_bg_y1 = box_y1 - text_height - baseline - 5
@@ -137,31 +150,45 @@ def draw_symbol_box(
         text_bg_y1 = box_y1 + 5
         text_bg_y2 = box_y1 + text_height + baseline + 5
 
+    # Clamp text background coordinates
+    text_bg_x1 = max(0, box_x1)
+    text_bg_x2 = min(frame_w - 1, box_x1 + text_width)
+    text_bg_y1 = max(0, text_bg_y1)
+    text_bg_y2 = min(frame_h - 1, text_bg_y2)
+
     # Draw a filled rectangle as background for the text for better visibility
-    cv2.rectangle(
-        frame,
-        (box_x1, text_bg_y1),
-        (box_x1 + text_width, text_bg_y2),
-        color,  # Use symbol color for text background
-        cv2.FILLED
-    )
+    try:
+        cv2.rectangle(
+            frame,
+            (text_bg_x1, text_bg_y1),
+            (text_bg_x2, text_bg_y2),
+            color,  # Use symbol color for text background
+            cv2.FILLED
+        )
+    except Exception:
+        pass  # Skip text background if drawing fails
 
     # Determine text color for contrast with background
-    # Simple check: if background is dark, use white text, else black.
-    # This assumes BGR format for color.
-    # A more robust method would convert to a colorspace like HSL/HSV.
     luminance = 0.299 * color[2] + 0.587 * color[1] + 0.114 * color[0]
     text_on_primary_color = (0, 0, 0) if luminance > 128 else (255, 255, 255)
 
-    cv2.putText(
-        frame,
-        display_text,
-        (box_x1, box_y1 - baseline - 5 if text_bg_y1 >=0 else box_y1 + text_height + 5),
-        font,
-        font_scale,
-        text_on_primary_color,
-        thickness
-    )
+    # Calculate text position
+    text_x = max(0, min(box_x1, frame_w - text_width))
+    text_y = box_y1 - baseline - 5 if text_bg_y1 >= 0 else box_y1 + text_height + 5
+    text_y = max(text_height, min(text_y, frame_h - 5))
+
+    try:
+        cv2.putText(
+            frame,
+            display_text,
+            (text_x, text_y),
+            font,
+            font_scale,
+            text_on_primary_color,
+            thickness
+        )
+    except Exception:
+        pass  # Skip text if drawing fails
 
 
 def draw_text_lines(

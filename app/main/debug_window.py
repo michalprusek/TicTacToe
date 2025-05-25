@@ -45,6 +45,7 @@ class DebugWindow(QMainWindow):
 
         # Camera view
         self.camera_view = CameraView()
+        self.camera_view.set_camera_status("📷 Připojování kamery...")
         main_layout.addWidget(self.camera_view, 1)
 
         # Controls layout
@@ -91,7 +92,7 @@ class DebugWindow(QMainWindow):
         self.conf_value_label = QLabel("0.45")
         grid_conf_layout.addWidget(self.conf_value_label)
         detection_layout.addLayout(grid_conf_layout)
-        
+
         # Symbol confidence threshold (adjustable)
         symbol_conf_layout = QHBoxLayout()
         symbol_conf_layout.addWidget(QLabel("Práh jistoty symbolů:"))
@@ -145,7 +146,7 @@ class DebugWindow(QMainWindow):
 
         # Confidence threshold
         self.conf_slider.valueChanged.connect(self.handle_conf_changed)
-        
+
         # Symbol confidence threshold
         self.symbol_conf_slider.valueChanged.connect(self.handle_symbol_conf_changed)
 
@@ -185,14 +186,14 @@ class DebugWindow(QMainWindow):
                 elif hasattr(detection_thread, "config"):
                     detection_thread.config.bbox_conf_threshold = conf
                     detection_thread.config.pose_conf_threshold = conf
-    
+
     @pyqtSlot(int)
     def handle_symbol_conf_changed(self, value: int):
         """Handle symbol confidence threshold change."""
         conf = value / 100.0
         self.symbol_conf_value_label.setText(f"{conf:.2f}")
         self.logger.info(f"Změna prahu jistoty symbolů na {conf:.2f}")
-        
+
         # Update symbol confidence in game state
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
             if hasattr(self.parent().camera_thread, "detection_thread") and self.parent().camera_thread.detection_thread:
@@ -296,6 +297,14 @@ class DebugWindow(QMainWindow):
         else:
             self.board_state_label.setText("Stav hry: Nedetekováno")
             self.board_state_label.setStyleSheet("color: red; font-size: 14px; font-weight: bold;")
+
+    def update_camera_status(self, status_message):
+        """Update camera status in the view."""
+        self.camera_view.set_camera_status(status_message)
+
+    def set_camera_active(self, active):
+        """Set camera active state."""
+        self.camera_view.set_camera_active(active)
 
     def closeEvent(self, event):
         """Handle window close event."""
