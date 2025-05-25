@@ -13,14 +13,13 @@ import cv2
 import numpy as np
 
 # Import required modules
-import sys
-import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+from app.main.path_utils import setup_project_path
+setup_project_path()
 
 from app.main.camera_thread import CameraThread
+from app.main.constants import DEFAULT_CAMERA_INDEX
+from app.main.game_utils import setup_logger
+from app.main.error_handler import ErrorHandler
 
 
 class CameraController(QObject):
@@ -221,20 +220,21 @@ class CameraController(QObject):
         """Update debug window with camera data."""
         # Check if debug window exists and update it
         if hasattr(self.main_window, 'debug_window') and self.main_window.debug_window:
-            try:
-                # Update camera view in debug window
-                if hasattr(self.main_window.debug_window, 'camera_view'):
-                    if processed_frame is not None:
-                        self.main_window.debug_window.camera_view.update_frame(processed_frame)
-                    else:
-                        self.main_window.debug_window.camera_view.update_frame(raw_frame)
+            self._update_debug_window_safe(processed_frame, raw_frame, game_state_obj)
 
-                # Update detection info
-                if hasattr(self.main_window.debug_window, 'update_detection_info'):
-                    self.main_window.debug_window.update_detection_info(game_state_obj)
+    def _update_debug_window_safe(self, processed_frame, raw_frame, game_state_obj):
+        """Safely update debug window with error handling."""
+        try:
+            # Update camera view in debug window
+            if hasattr(self.main_window.debug_window, 'camera_view'):
+                frame_to_show = processed_frame if processed_frame is not None else raw_frame
+                self.main_window.debug_window.camera_view.update_frame(frame_to_show)
 
-            except Exception as e:
-                self.logger.error(f"Error updating debug window: {e}")
+            # Update detection info
+            if hasattr(self.main_window.debug_window, 'update_detection_info'):
+                self.main_window.debug_window.update_detection_info(game_state_obj)
+        except Exception as e:
+            ErrorHandler.log_error(self.logger, "debug window update", e, False)
 
     def get_current_board_state(self):
         """Get current board state from camera."""

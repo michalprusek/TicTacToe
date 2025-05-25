@@ -7,26 +7,19 @@ import os
 from typing import Optional, Tuple, Dict, Any
 
 # Import uArm - required for operation
-# Add uArm-Python-SDK to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-uarm_sdk_path = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "uArm-Python-SDK")
-
-if os.path.exists(uarm_sdk_path):
-    sys.path.insert(0, uarm_sdk_path)
+from app.main.path_utils import setup_uarm_sdk_path
+uarm_sdk_path = setup_uarm_sdk_path()
+if uarm_sdk_path:
     print(f"Added uArm SDK path: {uarm_sdk_path}")
 else:
-    print(f"uArm SDK path not found: {uarm_sdk_path}")
+    print("uArm SDK path not found")
 
 from uarm.wrapper import SwiftAPI
 
-
-# --- Constants (Local Definitions) --- #
-DEFAULT_SPEED = 100000            # Maximální rychlost pohybu (mm/min)
-# Násobitel rychlosti pro překonání limitu firmware
-MAX_SPEED_FACTOR = 2
-DEFAULT_SAFE_Z = 15.0             # Height for safe travel moves (mm)
-DEFAULT_DRAW_Z = 5.0              # Height while drawing (mm)
+# Import shared constants
+from app.main.constants import (
+    DEFAULT_SPEED, MAX_SPEED_FACTOR, DEFAULT_SAFE_Z, DEFAULT_DRAW_Z
+)
 POSITION_TOLERANCE = 5.0          # Tolerance for position checks (mm)
 # Multiplier for travel speed (faster than drawing)
 TRAVEL_SPEED_MULTIPLIER = 1.5

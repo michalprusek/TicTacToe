@@ -13,6 +13,7 @@ from app.core.detector_constants import (
     DEBUG_BBOX_THICKNESS,
     DEBUG_FPS_COLOR
 )
+from app.main.frame_utils import FrameConverter
 from app.main import drawing_utils
 
 
@@ -233,10 +234,7 @@ class VisualizationManager:
 
         # Scale down the frame for the debug window
         try:
-            scale_factor = self.debug_window_scale_factor
-            debug_frame_height = int(frame.shape[0] * scale_factor)
-            debug_frame_width = int(frame.shape[1] * scale_factor)
-            debug_frame = cv2.resize(frame, (debug_frame_width, debug_frame_height))
+            debug_frame = FrameConverter.resize_frame(frame, self.debug_window_scale_factor)
 
             # Prepare text lines for debug info
             texts_to_draw = [f"FPS: {fps:.2f}"]

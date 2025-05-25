@@ -763,6 +763,8 @@ class GameState:
         Compute cell centers in UV space if grid points are valid.
         This should only happen if is_physical_grid_valid() is true.
         Updates self._cell_centers_uv_transformed.
+
+        Calculates cell centers as the average of the 4 grid points that surround each cell.
         """
         if self._grid_points is None or len(self._grid_points) != GRID_POINTS_COUNT:
             self.logger.debug(
@@ -772,39 +774,54 @@ class GameState:
             return False
 
         try:
+            # Calculate cell centers as average of the 4 grid points that surround each cell
+            # Grid points are arranged in a 4x4 grid (16 points total)
+            # Cell (r,c) is surrounded by grid points at positions:
+            # - top-left: r*4 + c
+            # - top-right: r*4 + (c+1)
+            # - bottom-left: (r+1)*4 + c
+            # - bottom-right: (r+1)*4 + (c+1)
+
             cell_centers = []
             for r_cell in range(3):  # cell row
                 for c_cell in range(3):  # cell col
-                    p_tl_idx = r_cell * 4 + c_cell
-                    p_tr_idx = r_cell * 4 + (c_cell + 1)
-                    p_bl_idx = (r_cell + 1) * 4 + c_cell
-                    p_br_idx = (r_cell + 1) * 4 + (c_cell + 1)
+                    # Calculate grid point indices that surround this cell
+                    p_tl_idx = r_cell * 4 + c_cell          # top-left
+                    p_tr_idx = r_cell * 4 + (c_cell + 1)    # top-right
+                    p_bl_idx = (r_cell + 1) * 4 + c_cell    # bottom-left
+                    p_br_idx = (r_cell + 1) * 4 + (c_cell + 1)  # bottom-right
 
+                    # Validate indices
                     if not (0 <= p_tl_idx < GRID_POINTS_COUNT and
                             0 <= p_tr_idx < GRID_POINTS_COUNT and
                             0 <= p_bl_idx < GRID_POINTS_COUNT and
                             0 <= p_br_idx < GRID_POINTS_COUNT):
                         self.logger.error(
-                            f"Invalid point indices for cell ({r_cell},{c_cell}) "
-                            f"when calculating centers."
+                            f"Invalid point indices for cell ({r_cell},{c_cell}): "
+                            f"TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}"
                         )
                         raise ValueError(
                             "Invalid grid point indices for cell center calculation"
                         )
 
-                    center_x = (
-                        self._grid_points[p_tl_idx][0] +
-                        self._grid_points[p_tr_idx][0] +
-                        self._grid_points[p_bl_idx][0] +
-                        self._grid_points[p_br_idx][0]
-                    ) / 4.0
-                    center_y = (
-                        self._grid_points[p_tl_idx][1] +
-                        self._grid_points[p_tr_idx][1] +
-                        self._grid_points[p_bl_idx][1] +
-                        self._grid_points[p_br_idx][1]
-                    ) / 4.0
+                    # Get the four corner points of the cell
+                    p_tl = self._grid_points[p_tl_idx]
+                    p_tr = self._grid_points[p_tr_idx]
+                    p_bl = self._grid_points[p_bl_idx]
+                    p_br = self._grid_points[p_br_idx]
+
+                    # Calculate center as average of four corners
+                    center_x = (p_tl[0] + p_tr[0] + p_bl[0] + p_br[0]) / 4.0
+                    center_y = (p_tl[1] + p_tr[1] + p_bl[1] + p_br[1]) / 4.0
+
                     cell_centers.append([center_x, center_y])
+
+                    self.logger.debug(f"  Cell ({r_cell},{c_cell}): "
+                                    f"TL={p_tl_idx}({p_tl[0]:.1f},{p_tl[1]:.1f}) "
+                                    f"TR={p_tr_idx}({p_tr[0]:.1f},{p_tr[1]:.1f}) "
+                                    f"BL={p_bl_idx}({p_bl[0]:.1f},{p_bl[1]:.1f}) "
+                                    f"BR={p_br_idx}({p_br[0]:.1f},{p_br[1]:.1f}) "
+                                    f"→ center=({center_x:.1f}, {center_y:.1f})")
 
             if len(cell_centers) == 9:
                 self._cell_centers_uv_transformed = np.array(

@@ -8,6 +8,7 @@ import logging
 import time
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
+from app.main.game_utils import convert_board_1d_to_2d, get_board_symbol_counts
 
 # Language dictionaries
 LANG_CS = {
@@ -193,7 +194,7 @@ class StatusManager(QObject):
         if board is None:
             return 0, 0, 0
 
-        board_2d = self._convert_board_1d_to_2d(board)
+        board_2d = convert_board_1d_to_2d(board)
         if not isinstance(board_2d, list) or not all(isinstance(row, list) for row in board_2d):
             return 0, 0, 0
 
@@ -202,12 +203,6 @@ class StatusManager(QObject):
         x_count = sum(row.count(game_logic.PLAYER_X) for row in board_2d)
         o_count = sum(row.count(game_logic.PLAYER_O) for row in board_2d)
         return x_count, o_count, x_count + o_count
-
-    def _convert_board_1d_to_2d(self, board_1d):
-        """Convert 1D board to 2D format."""
-        if isinstance(board_1d, list) and len(board_1d) == 9:
-            return [board_1d[i:i + 3] for i in range(0, 9, 3)]
-        return board_1d  # Assume it's already 2D or None
 
     def show_game_end_notification(self, winner):
         """Show game end notification."""

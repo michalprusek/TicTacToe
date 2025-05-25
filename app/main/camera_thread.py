@@ -10,9 +10,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from app.core.detection_thread import DetectionThread
 from app.core.config import GameDetectorConfig
 from app.core.game_state import GameState
-
-# Default camera index (external camera)
-DEFAULT_CAMERA_INDEX = 0
+from app.main.constants import DEFAULT_CAMERA_INDEX
 
 
 class CameraThread(QThread):

@@ -5,6 +5,7 @@ import cv2
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
+from app.main.frame_utils import FrameConverter
 
 
 class CameraView(QLabel):
@@ -28,19 +29,9 @@ class CameraView(QLabel):
         """Update the displayed frame"""
         if frame is not None:
             try:
-                h, w, ch = frame.shape
-                bytes_per_line = ch * w
-                # Convert BGR to RGB
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                qt_image = QImage(
-                    rgb_frame.data,
-                    w,
-                    h,
-                    bytes_per_line,
-                    QImage.Format_RGB888)
-
-                # Vytvoření pixmapy s rámečkem
-                pixmap = QPixmap.fromImage(qt_image).scaled(
+                # Vytvoření pixmapy s rámečkem pomocí FrameConverter
+                pixmap = FrameConverter.frame_to_pixmap(
+                    frame,
                     self.width() - 10,
                     self.height() - 10,
                     Qt.KeepAspectRatio,

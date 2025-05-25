@@ -22,10 +22,8 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon
 
 # Add project root to path if not already there
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+from app.main.path_utils import setup_project_path
+setup_project_path()
 
 # Import refactored modules
 from app.main.game_controller import GameController
@@ -34,11 +32,9 @@ from app.main.arm_movement_controller import ArmMovementController
 from app.main.ui_event_handlers import UIEventHandlers
 from app.main.status_manager import StatusManager
 from app.main.board_widget import TicTacToeBoard
+from app.main.constants import DEFAULT_CAMERA_INDEX, DEFAULT_DIFFICULTY
+from app.main.game_utils import setup_logger
 from app.core.config import AppConfig
-
-# Constants
-DEFAULT_CAMERA_INDEX = 0
-DEFAULT_DIFFICULTY = 10
 
 
 class TicTacToeApp(QMainWindow):
@@ -47,11 +43,7 @@ class TicTacToeApp(QMainWindow):
     def __init__(self, config=None):
         super().__init__()
 
-        self.logger = logging.getLogger(__name__)
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
-        )
+        self.logger = setup_logger(__name__)
 
         # Configuration
         self.config = config if config is not None else AppConfig()

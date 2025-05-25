@@ -9,22 +9,16 @@ import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal
 
 # Import required modules
-import sys
-import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+from app.main.path_utils import setup_project_path
+setup_project_path()
 
 from app.main.arm_controller import ArmController
 from app.core.arm_thread import ArmThread
 from app.main import game_logic
-
-# Constants
-DEFAULT_SAFE_Z = 15.0
-DEFAULT_DRAW_Z = 5.0
-DRAWING_SPEED = 50000
-MAX_SPEED = 100000
+from app.main.constants import (
+    DEFAULT_SAFE_Z, DEFAULT_DRAW_Z, DRAWING_SPEED, MAX_SPEED
+)
+from app.main.game_utils import setup_logger
 PARK_X = 150
 PARK_Y = 0
 DEFAULT_SYMBOL_SIZE = 15.0
@@ -340,86 +334,77 @@ class ArmMovementController(QObject):
 
             # Get calibration data
             calibration_data = camera_controller.get_calibration_data()
-            if calibration_data and "calibration_points_raw" in calibration_data:
-                cal_points = calibration_data["calibration_points_raw"]
-                
-                # Find closest calibration point and use it for better accuracy
-                min_dist = float('inf')
-                closest_point = None
-                for point in cal_points:
-                    cal_uv = point["target_uv"]
-                    dist = ((uv_center[0] - cal_uv[0])**2 + (uv_center[1] - cal_uv[1])**2)**0.5
-                    if dist < min_dist:
-                        min_dist = dist
-                        closest_point = point
+            if calibration_data and "perspective_transform_matrix_xy_to_uv" in calibration_data:
+                # Use matrix transformation with resolution scaling correction
+                xy_to_uv_matrix = calibration_data["perspective_transform_matrix_xy_to_uv"]
 
-                if closest_point and min_dist < 150:  # Use nearest neighbor if close enough
-                    cal_uv = closest_point["target_uv"]
-                    cal_xyz = closest_point["robot_xyz"]
-                    
-                    # Simple offset-based interpolation from closest point
-                    uv_offset_x = uv_center[0] - cal_uv[0]
-                    uv_offset_y = uv_center[1] - cal_uv[1]
-                    
-                    # Estimated scale factors (pixels to mm) based on calibration data
-                    scale_x = 0.18  # mm per pixel in X direction (adjusted)
-                    scale_y = 0.18  # mm per pixel in Y direction (adjusted)
-                    
-                    # Apply offset with scaling
-                    arm_x = cal_xyz[0] + (uv_offset_x * scale_x)
-                    arm_y = cal_xyz[1] + (uv_offset_y * scale_y)
-                    
-                    self.logger.info(f"  📍 Step 3 - Using nearest neighbor interpolation:")
-                    self.logger.info(f"    Closest cal point UV: ({cal_uv[0]}, {cal_uv[1]}) → XYZ: ({cal_xyz[0]:.1f}, {cal_xyz[1]:.1f})")
-                    self.logger.info(f"    UV offset: ({uv_offset_x:.1f}, {uv_offset_y:.1f})")
-                    self.logger.info(f"    Scale factors: ({scale_x:.3f}, {scale_y:.3f}) mm/pixel")
-                    self.logger.info(f"    Final coordinates: ({arm_x:.1f}, {arm_y:.1f})")
-                    
-                elif "perspective_transform_matrix_xy_to_uv" in calibration_data:
-                    # Fallback to matrix transformation
-                    xy_to_uv_matrix = calibration_data["perspective_transform_matrix_xy_to_uv"]
-                    
-                    if xy_to_uv_matrix:
-                        try:
-                            # Inverse matrix for UV->XY transformation
-                            xy_to_uv_matrix = np.array(xy_to_uv_matrix, dtype=np.float32)
-                            uv_to_xy_matrix = np.linalg.inv(xy_to_uv_matrix)
+                if xy_to_uv_matrix:
+                    try:
+                        # RESOLUTION SCALING CORRECTION
+                        # Determine calibration resolution from calibration points
+                        cal_points = calibration_data.get("calibration_points_raw", [])
+                        if cal_points:
+                            # Find max UV coordinates in calibration data
+                            max_u = max(point["target_uv"][0] for point in cal_points)
+                            max_v = max(point["target_uv"][1] for point in cal_points)
+                            # Estimate calibration resolution (add margin)
+                            calibration_width = max_u + 200  # Add margin
+                            calibration_height = max_v + 200
+                        else:
+                            # Fallback to common resolution
+                            calibration_width = 1920
+                            calibration_height = 1080
 
-                            # Homogeneous coordinates for transformation
-                            uv_point_homogeneous = np.array([uv_center[0], uv_center[1], 1.0], dtype=np.float32).reshape(3, 1)
-                            xy_transformed_homogeneous = np.dot(uv_to_xy_matrix, uv_point_homogeneous)
+                        # Current runtime resolution (assume camera resolution)
+                        runtime_width = 1920  # Current camera width
+                        runtime_height = 1080  # Current camera height
 
-                            if xy_transformed_homogeneous[2, 0] != 0:
-                                arm_x = xy_transformed_homogeneous[0, 0] / xy_transformed_homogeneous[2, 0]
-                                arm_y = xy_transformed_homogeneous[1, 0] / xy_transformed_homogeneous[2, 0]
-                                self.logger.info(f"  📍 Step 3 - Matrix transformation: ({arm_x:.1f}, {arm_y:.1f})")
-                            else:
-                                raise RuntimeError("Division by zero in UV->XY transformation")
+                        # Calculate scaling factors
+                        scale_x = runtime_width / calibration_width
+                        scale_y = runtime_height / calibration_height
 
-                        except Exception as e:
-                            raise RuntimeError(f"Error in UV->XY transformation for ({row},{col}): {e}")
-                    else:
-                        raise RuntimeError("Missing transformation matrix in calibration data")
+                        # Scale UV coordinates from runtime to calibration resolution
+                        uv_scaled = [
+                            uv_center[0] / scale_x,
+                            uv_center[1] / scale_y
+                        ]
+
+                        self.logger.info(f"  🔧 Resolution scaling:")
+                        self.logger.info(f"    Calibration resolution: {calibration_width}x{calibration_height}")
+                        self.logger.info(f"    Runtime resolution: {runtime_width}x{runtime_height}")
+                        self.logger.info(f"    Scale factors: ({scale_x:.4f}, {scale_y:.4f})")
+                        self.logger.info(f"    Original UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+                        self.logger.info(f"    Scaled UV: ({uv_scaled[0]:.1f}, {uv_scaled[1]:.1f})")
+
+                        # Inverse matrix for UV->XY transformation
+                        xy_to_uv_matrix = np.array(xy_to_uv_matrix, dtype=np.float32)
+                        uv_to_xy_matrix = np.linalg.inv(xy_to_uv_matrix)
+
+                        # Homogeneous coordinates for transformation using SCALED coordinates
+                        uv_point_homogeneous = np.array([uv_scaled[0], uv_scaled[1], 1.0], dtype=np.float32).reshape(3, 1)
+                        xy_transformed_homogeneous = np.dot(uv_to_xy_matrix, uv_point_homogeneous)
+
+                        if xy_transformed_homogeneous[2, 0] != 0:
+                            arm_x = xy_transformed_homogeneous[0, 0] / xy_transformed_homogeneous[2, 0]
+                            arm_y = xy_transformed_homogeneous[1, 0] / xy_transformed_homogeneous[2, 0]
+                            self.logger.info(f"  📍 Step 3 - Matrix transformation with scaling: ({arm_x:.1f}, {arm_y:.1f})")
+                        else:
+                            raise RuntimeError("Division by zero in UV->XY transformation")
+
+                    except Exception as e:
+                        raise RuntimeError(f"Error in UV->XY transformation for ({row},{col}): {e}")
                 else:
-                    raise RuntimeError("No suitable calibration method available")
-
-                # DEBUG: Compare with calibration data
-                self.logger.info(f"  🔍 CALIBRATION COMPARISON:")
-                self.logger.info(f"    Current UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
-                self.logger.info(f"    Transformed to: ({arm_x:.1f}, {arm_y:.1f})")
-
-                if closest_point:
-                    cal_uv = closest_point["target_uv"]
-                    cal_xyz = closest_point["robot_xyz"]
-                    self.logger.info(f"    Closest calibration point:")
-                    self.logger.info(f"      UV: ({cal_uv[0]}, {cal_uv[1]}) → XYZ: ({cal_xyz[0]:.1f}, {cal_xyz[1]:.1f}, {cal_xyz[2]:.1f})")
-                    self.logger.info(f"      Distance from current UV: {min_dist:.1f} pixels")
-
-                self.logger.info(f"  🎯 FINAL COORDINATES for ({row},{col}): X={arm_x:.1f}, Y={arm_y:.1f}")
-
-                return arm_x, arm_y
+                    raise RuntimeError("Missing transformation matrix in calibration data")
             else:
-                raise RuntimeError("Missing calibration data")
+                raise RuntimeError("No perspective transformation matrix available in calibration data")
+
+            # DEBUG: Log final coordinates
+            self.logger.info(f"  🔍 CALIBRATION COMPARISON:")
+            self.logger.info(f"    Current UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+            self.logger.info(f"    Transformed to: ({arm_x:.1f}, {arm_y:.1f})")
+            self.logger.info(f"  🎯 FINAL COORDINATES for ({row},{col}): X={arm_x:.1f}, Y={arm_y:.1f}")
+
+            return arm_x, arm_y
         else:
             raise RuntimeError("Camera controller not available")
 
