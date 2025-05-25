@@ -14,68 +14,30 @@ if project_root not in sys.path:
 # Import the new main GUI module
 from app.main.main_gui import TicTacToeApp
 
-
-# Constants
-DEFAULT_SAFE_Z = 15.0
-DEFAULT_DRAW_Z = 5.0
-DEFAULT_SYMBOL_SIZE_MM = 40.0
-DEFAULT_CAMERA_INDEX = 0
-DEFAULT_DIFFICULTY = 10
-CAMERA_REFRESH_RATE = 30
-PARK_X = -150
-PARK_Y = -150
-NEUTRAL_X = 200
-NEUTRAL_Y = 0
-NEUTRAL_Z = 15
-_APP_DIR = os.path.dirname(os.path.abspath(__file__))
-_CALIBRATION_DIR = os.path.join(os.path.dirname(_APP_DIR), "calibration")
-CALIBRATION_FILE = os.path.join(_CALIBRATION_DIR, "hand_eye_calibration.json")
-
-MAX_SPEED = 100000
-DRAWING_SPEED = MAX_SPEED // 2
-
-LANG_CS = {
-    "your_turn": "VÁŠ TAH", "ai_turn": "TAH AI", "arm_turn": "TAH RUKY",
-    "arm_moving": "RUKA SE POHYBUJE", "place_symbol": "POLOŽTE SYMBOL",
-    "waiting_detection": "ČEKÁM NA DETEKCI", "win": "VÝHRA", "draw": "REMÍZA",
-    "new_game": "Nová hra", "reset": "Reset", "debug": "Debug", "camera": "Kamera",
-    "difficulty": "Obtížnost", "arm_connect": "Připojit ruku",
-    "arm_disconnect": "Odpojit ruku", "game_over": "KONEC HRY",
-    "grid_not_visible": "⚠️ MŘÍŽKA NENÍ VIDITELNÁ!", "grid_visible": "✅ MŘÍŽKA VIDITELNÁ",
-    "move_to_neutral": "PŘESUN DO NEUTRÁLNÍ POZICE", "new_game_detected": "NOVÁ HRA DETEKOVÁNA",
-    "move_success": "Ruka v neutrální pozici", "move_failed": "Nepodařilo se přesunout ruku",
-    "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...", "detection_failed": "Detekce tahu selhala.",
-    "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})", "language": "Jazyk",
-    "tracking": "SLEDOVÁNÍ HRACÍ PLOCHY"
-}
-
-LANG_EN = {
-    "your_turn": "YOUR TURN", "ai_turn": "AI TURN", "arm_turn": "ARM TURN",
-    "arm_moving": "ARM MOVING", "place_symbol": "PLACE SYMBOL",
-    "waiting_detection": "WAITING FOR DETECTION", "win": "WIN", "draw": "DRAW",
-    "new_game": "New Game", "reset": "Reset", "debug": "Debug", "camera": "Camera",
-    "difficulty": "Difficulty", "arm_connect": "Connect arm",
-    "arm_disconnect": "Disconnect arm", "game_over": "GAME OVER",
-    "grid_not_visible": "⚠️ GRID NOT VISIBLE!", "grid_visible": "✅ GRID VISIBLE",
-    "move_to_neutral": "MOVING TO NEUTRAL POSITION", "new_game_detected": "NEW GAME DETECTED",
-    "move_success": "Arm in neutral position", "move_failed": "Failed to move arm",
-    "waiting_for_symbol": "⏳ Waiting for symbol {} detection...", "detection_failed": "Symbol detection failed.",
-    "detection_attempt": "Waiting for symbol detection... (attempt {}/{})", "language": "Language",
-    "tracking": "TRACKING GAME BOARD"
-}
+# For backward compatibility, export the main class
+__all__ = ['TicTacToeApp']
 
 
-class TicTacToeApp(QMainWindow):
-    def __init__(self, config=None):
-        super().__init__()
+# Entry point for backward compatibility
+if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QApplication
 
-        self.logger = logging.getLogger(__name__)
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
+    # Basic logger configuration if not set elsewhere
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
+        )
 
-        self.config = config if config is not None else AppConfig()
-        self.current_language = LANG_CS
-        self.is_czech = True
-        self.setWindowTitle(self.config.game.gui_window_title if hasattr(self.config, 'game') else "Piškvorky")
+    app = QApplication(sys.argv)
+    window = TicTacToeApp(config=None)
+    window.show()
+    sys.exit(app.exec_())
+
+
+
+
 
         try:
             icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -663,6 +625,23 @@ class TicTacToeApp(QMainWindow):
 
         # Zkontroluj end game podmínky na základě YOLO detekce
         self.check_game_end()
+
+        # Aktualizuj turn management pouze na základě skutečného počtu symbolů z YOLO
+        if not self.game_over:
+            x_count, o_count, total_symbols = self._get_board_symbol_counts(detected_board)
+
+            if total_symbols % 2 == 0:
+                # Sudý počet = lidský hráč je na tahu
+                if self.current_turn != self.human_player and not self.arm_move_in_progress:
+                    self.current_turn = self.human_player
+                    self.update_status("your_turn")
+                    self.logger.debug(f"Turn switch: Human player turn (total symbols: {total_symbols})")
+            else:
+                # Lichý počet = AI/ruka je na tahu
+                if self.current_turn != self.ai_player and not self.arm_move_in_progress:
+                    self.current_turn = self.ai_player
+                    self.update_status("arm_turn")
+                    self.logger.debug(f"Turn switch: AI/arm turn (total symbols: {total_symbols})")
 
         # --- Hlavní logika pro rozhodnutí a spuštění tahu ruky ---
         if not self.game_over:
