@@ -54,63 +54,58 @@ class CameraThread(QThread):
     def run(self):
         """Main thread loop for capturing frames and processing game state."""
         self.running = True
-        try:
-            import cv2
-            self.cap = cv2.VideoCapture(self.camera_index)
-            if not self.cap.isOpened():
-                self.logger.error(f"Failed to open camera {self.camera_index}")
-                return
+        import cv2
+        self.cap = cv2.VideoCapture(self.camera_index)
+        if not self.cap.isOpened():
+            raise RuntimeError(f"Failed to open camera {self.camera_index}")
 
-            # Nastavení rozlišení kamery (volitelné)
-            # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        # Nastavení rozlišení kamery (volitelné)
+        # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-            # Pokus o vypnutí autofokusu (nemusí fungovat na všech kamerách)
-            if self.config.disable_autofocus:
-                self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-                self.logger.info(f"Autofocus status: {self.cap.get(cv2.CAP_PROP_AUTOFOCUS)}")
+        # Pokus o vypnutí autofokusu (nemusí fungovat na všech kamerách)
+        if self.config.disable_autofocus:
+            self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+            self.logger.info(f"Autofocus status: {self.cap.get(cv2.CAP_PROP_AUTOFOCUS)}")
 
-            # Hlavní smyčka pro čtení snímků z kamery
-            while self.running:
-                ret, frame = self.cap.read()
-                if ret:
-                    # Předání snímku detekčnímu vláknu
-                    self.detection_thread.set_frame(frame)
+        # Hlavní smyčka pro čtení snímků z kamery
+        while self.running:
+            ret, frame = self.cap.read()
+            if not ret:
+                raise RuntimeError(f"Failed to read frame from camera {self.camera_index}")
 
-                    # Získání výsledků detekce
-                    processed_frame, game_state = self.detection_thread.get_latest_result()
+            # Předání snímku detekčnímu vláknu
+            self.detection_thread.set_frame(frame)
 
-                    # Pokud máme zpracovaný snímek, odešleme ho do GUI
-                    if processed_frame is not None:
-                        self.frame_ready.emit(processed_frame)
+            # Získání výsledků detekce
+            processed_frame, game_state = self.detection_thread.get_latest_result()
 
-                        # Odeslání aktuální FPS
-                        metrics = self.detection_thread.get_performance_metrics()
-                        self.fps_updated.emit(metrics['avg_fps'])
+            # Pokud máme zpracovaný snímek, odešleme ho do GUI
+            if processed_frame is not None:
+                self.frame_ready.emit(processed_frame)
 
-                    # Pokud máme platný stav hry, aktualizujeme
-                    if game_state and game_state.is_valid():
-                        current_time = time.time()
-                        current_board = game_state.board
+                # Odeslání aktuální FPS
+                metrics = self.detection_thread.get_performance_metrics()
+                self.fps_updated.emit(metrics['avg_fps'])
 
-                        # Kontrola, zda se stav hry změnil
-                        if self._has_board_changed(current_board):
-                            # Resetujeme čas stability
-                            self.last_board_state = current_board
-                            self.last_board_update_time = current_time
-                        elif (current_time - self.last_board_update_time) >= self.board_state_stable_time:
-                            # Stav je stabilní po dostatečnou dobu, můžeme ho odeslat
-                            # Převedeme 2D pole na 1D seznam pro signál
-                            flat_board = [cell for row in current_board for cell in row]
-                            self.game_state_updated.emit(flat_board)
+            # Pokud máme platný stav hry, aktualizujeme
+            if game_state and game_state.is_valid():
+                current_time = time.time()
+                current_board = game_state.board
 
-                # Omezení FPS pro snížení zatížení CPU
-                time.sleep(1.0 / self.config.target_fps)
+                # Kontrola, zda se stav hry změnil
+                if self._has_board_changed(current_board):
+                    # Resetujeme čas stability
+                    self.last_board_state = current_board
+                    self.last_board_update_time = current_time
+                elif (current_time - self.last_board_update_time) >= self.board_state_stable_time:
+                    # Stav je stabilní po dostatečnou dobu, můžeme ho odeslat
+                    # Převedeme 2D pole na 1D seznam pro signál
+                    flat_board = [cell for row in current_board for cell in row]
+                    self.game_state_updated.emit(flat_board)
 
-        except Exception as e:
-            self.logger.error(f"Error in camera thread: {e}")
-        finally:
-            self.stop()
+            # Omezení FPS pro snížení zatížení CPU
+            time.sleep(1.0 / self.config.target_fps)
 
     def stop(self):
         """Stops the camera thread and releases resources."""

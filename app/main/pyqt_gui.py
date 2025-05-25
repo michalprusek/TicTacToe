@@ -1,4135 +1,1333 @@
+# This file is being refactored - main functionality moved to main_gui.py
+# This file will be deprecated after refactoring is complete
+
 import sys
-import time
-import json
 import os
 import logging
-import numpy as np
-import cv2
-from unittest.mock import MagicMock
-from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QSlider,
-    QPushButton,
-    QCheckBox,
-    QGraphicsOpacityEffect
-)
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QThread
-from PyQt5.QtGui import QIcon
 
-from app.main import game_logic
-from app.main.arm_controller import ArmController
-from app.main.debug_window import DebugWindow
-from app.main.camera_view import CameraView
-from app.core.config import AppConfig
-from app.core.strategy import BernoulliStrategySelector
-from app.core.arm_thread import ArmThread
-from app.core.game_state import GameState
+# Add project root to path if not already there
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-# Import refactored modules
-from app.main.camera_thread import CameraThread
-from app.main.board_widget import TicTacToeBoard
+# Import the new main GUI module
+from app.main.main_gui import TicTacToeApp
+
 
 # Constants
 DEFAULT_SAFE_Z = 15.0
 DEFAULT_DRAW_Z = 5.0
 DEFAULT_SYMBOL_SIZE_MM = 40.0
 DEFAULT_CAMERA_INDEX = 0
-DEFAULT_DIFFICULTY = 10  # Maximum difficulty on 0-10 scale
-CAMERA_REFRESH_RATE = 30  # ms
-PARK_X = -150  # X coordinate for parking position (mm)
-PARK_Y = -150  # Y coordinate for parking position (mm)
-NEUTRAL_X = 200  # Default X coordinate for neutral position (mm)
-NEUTRAL_Y = 0    # Default Y coordinate for neutral position (mm)
-NEUTRAL_Z = 15   # Default Z coordinate for neutral position (mm)
-# Absolutní cesta ke kalibračnímu souboru
-CALIBRATION_FILE = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
-MAX_SPEED = 100000  # Maximální rychlost pohybu ruky (uArm Swift Pro)
-DRAWING_SPEED = MAX_SPEED // 2  # Poloviční rychlost pro kreslení
+DEFAULT_DIFFICULTY = 10
+CAMERA_REFRESH_RATE = 30
+PARK_X = -150
+PARK_Y = -150
+NEUTRAL_X = 200
+NEUTRAL_Y = 0
+NEUTRAL_Z = 15
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+_CALIBRATION_DIR = os.path.join(os.path.dirname(_APP_DIR), "calibration")
+CALIBRATION_FILE = os.path.join(_CALIBRATION_DIR, "hand_eye_calibration.json")
 
-# Language dictionaries for localization
+MAX_SPEED = 100000
+DRAWING_SPEED = MAX_SPEED // 2
+
 LANG_CS = {
-    "your_turn": "VÁŠ TAH",
-    "ai_turn": "TAH AI",
-    "arm_turn": "TAH RUKY",
-    "arm_moving": "RUKA SE POHYBUJE",
-    "place_symbol": "POLOŽTE SYMBOL",
-    "waiting_detection": "ČEKÁM NA DETEKCI",
-    "win": "VÝHRA",
-    "draw": "REMÍZA",
-    "new_game": "Nová hra",
-    "reset": "Reset",
-    "debug": "Debug",
-    "camera": "Kamera",
-    "difficulty": "Obtížnost",
-    "arm_connect": "Připojit ruku",
-    "arm_disconnect": "Odpojit ruku",
-    "game_over": "KONEC HRY",
-    "grid_not_visible": "⚠️ MŘÍŽKA NENÍ VIDITELNÁ!",
-    "grid_visible": "✅ MŘÍŽKA VIDITELNÁ",
-    "move_to_neutral": "PŘESUN DO NEUTRÁLNÍ POZICE",
-    "new_game_detected": "NOVÁ HRA DETEKOVÁNA",
-    "move_success": "Ruka v neutrální pozici",
-    "move_failed": "Nepodařilo se přesunout ruku do neutrální pozice",
-    "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...",
-    "detection_failed": "Detekce tahu selhala.",
-    "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})",
-    "language": "Jazyk",
+    "your_turn": "VÁŠ TAH", "ai_turn": "TAH AI", "arm_turn": "TAH RUKY",
+    "arm_moving": "RUKA SE POHYBUJE", "place_symbol": "POLOŽTE SYMBOL",
+    "waiting_detection": "ČEKÁM NA DETEKCI", "win": "VÝHRA", "draw": "REMÍZA",
+    "new_game": "Nová hra", "reset": "Reset", "debug": "Debug", "camera": "Kamera",
+    "difficulty": "Obtížnost", "arm_connect": "Připojit ruku",
+    "arm_disconnect": "Odpojit ruku", "game_over": "KONEC HRY",
+    "grid_not_visible": "⚠️ MŘÍŽKA NENÍ VIDITELNÁ!", "grid_visible": "✅ MŘÍŽKA VIDITELNÁ",
+    "move_to_neutral": "PŘESUN DO NEUTRÁLNÍ POZICE", "new_game_detected": "NOVÁ HRA DETEKOVÁNA",
+    "move_success": "Ruka v neutrální pozici", "move_failed": "Nepodařilo se přesunout ruku",
+    "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...", "detection_failed": "Detekce tahu selhala.",
+    "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})", "language": "Jazyk",
     "tracking": "SLEDOVÁNÍ HRACÍ PLOCHY"
 }
 
 LANG_EN = {
-    "your_turn": "YOUR TURN",
-    "ai_turn": "AI TURN",
-    "arm_turn": "ARM TURN",
-    "arm_moving": "ARM MOVING",
-    "place_symbol": "PLACE SYMBOL",
-    "waiting_detection": "WAITING FOR DETECTION",
-    "win": "WIN",
-    "draw": "DRAW",
-    "new_game": "New Game",
-    "reset": "Reset",
-    "debug": "Debug",
-    "camera": "Camera",
-    "difficulty": "Difficulty",
-    "arm_connect": "Connect arm",
-    "arm_disconnect": "Disconnect arm",
-    "game_over": "GAME OVER",
-    "grid_not_visible": "⚠️ GRID NOT VISIBLE!",
-    "grid_visible": "✅ GRID VISIBLE",
-    "move_to_neutral": "MOVING TO NEUTRAL POSITION",
-    "new_game_detected": "NEW GAME DETECTED",
-    "move_success": "Arm in neutral position",
-    "move_failed": "Failed to move arm to neutral position",
-    "waiting_for_symbol": "⏳ Waiting for symbol {} detection...",
-    "detection_failed": "Symbol detection failed.",
-    "detection_attempt": "Waiting for symbol detection... (attempt {}/{})",
-    "language": "Language",
+    "your_turn": "YOUR TURN", "ai_turn": "AI TURN", "arm_turn": "ARM TURN",
+    "arm_moving": "ARM MOVING", "place_symbol": "PLACE SYMBOL",
+    "waiting_detection": "WAITING FOR DETECTION", "win": "WIN", "draw": "DRAW",
+    "new_game": "New Game", "reset": "Reset", "debug": "Debug", "camera": "Camera",
+    "difficulty": "Difficulty", "arm_connect": "Connect arm",
+    "arm_disconnect": "Disconnect arm", "game_over": "GAME OVER",
+    "grid_not_visible": "⚠️ GRID NOT VISIBLE!", "grid_visible": "✅ GRID VISIBLE",
+    "move_to_neutral": "MOVING TO NEUTRAL POSITION", "new_game_detected": "NEW GAME DETECTED",
+    "move_success": "Arm in neutral position", "move_failed": "Failed to move arm",
+    "waiting_for_symbol": "⏳ Waiting for symbol {} detection...", "detection_failed": "Symbol detection failed.",
+    "detection_attempt": "Waiting for symbol detection... (attempt {}/{})", "language": "Language",
     "tracking": "TRACKING GAME BOARD"
 }
 
 
-# CameraThread class has been moved to app/main/camera_thread.py
-
-
-# TicTacToeBoard class has been moved to app/main/board_widget.py
-
-
-# CameraView class has been moved to app/main/debug_window.py
-
-
 class TicTacToeApp(QMainWindow):
-    """Main application window"""
-
     def __init__(self, config=None):
         super().__init__()
 
-        # Inicializace loggeru
         self.logger = logging.getLogger(__name__)
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
 
-        # Use provided config or create a default one
         self.config = config if config is not None else AppConfig()
-
-        # Inicializace jazyka (výchozí je čeština)
         self.current_language = LANG_CS
         self.is_czech = True
+        self.setWindowTitle(self.config.game.gui_window_title if hasattr(self.config, 'game') else "Piškvorky")
 
-        self.setWindowTitle(self.config.game.gui_window_title)
+        try:
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                     "resources", "app_icon.png")
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+            else:
+                self.logger.warning(f"Soubor ikony nenalezen: {icon_path}")
+        except Exception as e:
+            self.logger.error(f"Chyba při nastavování ikony: {e}")
 
-        # Nastavení ikony aplikace
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                                 "resources", "app_icon.png")
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
 
-        # Zobrazení na celou obrazovku - v testech chceme normální velikost
         if 'pytest' not in sys.modules:
             self.showFullScreen()
 
-        # Initialize game state
-        self.game_state = GameState()
-
-        # Game state
-        self.human_player = None
-        self.ai_player = None
-        self.current_turn = None
+        # Game state attributes
+        self.human_player = game_logic.PLAYER_X
+        self.ai_player = game_logic.PLAYER_O # AI/Ruka bude hrát za O
+        self.current_turn = game_logic.PLAYER_X # Hráč (X) vždy začíná
         self.game_over = False
         self.winner = None
+        self.move_counter = 0 # Počítadlo všech platných tahů
 
-        # 🤖 UNIFIED ARM MOVE SYSTEM - Single source of truth for arm moves
+        # Arm control flags
         self.waiting_for_detection = False
-        self.arm_move_in_progress = False  # Flag to prevent multiple simultaneous moves
-        self.arm_move_scheduled = False   # Flag to prevent duplicate scheduling
-        self.last_arm_move_time = 0       # Timestamp of last arm move
-        self.arm_move_cooldown = 2.0      # Reduced cooldown between arm moves (seconds)
+        self.arm_move_in_progress = False
+        self.arm_move_scheduled = False # Tento příznak se zdá nadbytečný, pokud správně řídíme in_progress a cooldown
+        self.last_arm_move_time = 0
+        self.arm_move_cooldown = 3.0 # Sekundy
 
-        # 🔧 TURN MANAGEMENT SYSTEM - Centralized turn control
-        self.turn_lock = False            # Prevents turn changes during critical operations
-        self.last_turn_change_time = 0    # Timestamp of last turn change
-        self.turn_validation_enabled = True  # Enable/disable turn validation
-
-        # Legacy flags for compatibility (will be phased out)
-        self.waiting_for_valid_moves = False
-        self.ai_move_row = None
+        # Detection retry logic
+        self.ai_move_row = None # Kam ruka naposledy kreslila
         self.ai_move_col = None
+        self.expected_symbol = None # Jaký symbol ruka kreslila
         self.ai_move_retry_count = 0
-        self.max_retry_count = 3
-        self.detection_wait_time = 0
+        self.max_retry_count = 2 # Sníženo pro rychlejší reakci
+        self.detection_wait_time = 0.0
         self.max_detection_wait_time = 5.0
 
-        # Atributy pro sledování hrací plochy
         self.tracking_enabled = False
         self.game_paused = False
         self.tracking_timer = QTimer(self)
         self.tracking_timer.timeout.connect(self.track_grid_center)
-        self.tracking_interval = 200  # Interval sledování v ms - sníženo pro rychlejší odezvu
+        self.tracking_interval = 200
 
-        # Debug window - vytvoříme jen při potřebě, ne automaticky
-        self.debug_mode = self.config.debug_mode
+        self.debug_mode = self.config.debug_mode if hasattr(self.config, 'debug_mode') else False
         self.debug_window = None
-        # Nevytváříme debug window automaticky - jen při kliknutí na tlačítko
 
-        # Strategy selector with configured difficulty
         self.strategy_selector = BernoulliStrategySelector(
-            difficulty=self.config.game.default_difficulty)
+            difficulty=self.config.game.default_difficulty if hasattr(self.config, 'game') else DEFAULT_DIFFICULTY)
 
-        # Initialize components
-        self.init_game_components()
+        self.init_game_components() # Musí být před init_ui, pokud UI závisí na komponentách
         self.init_ui()
 
-        # Start camera thread with specified camera index (external camera - 0)
-        self.camera_thread = CameraThread(camera_index=0)  # Vždy použijeme kameru 0
-        self.camera_thread.game_state_updated.connect(
-            self.handle_detected_game_state)
-
-        # Připojíme signál kamery přímo k update_camera_view metody hlavního okna
-        # Tato metoda se postará o aktualizaci jak hlavního okna, tak debug okna
+        self.camera_thread = CameraThread(camera_index=DEFAULT_CAMERA_INDEX)
+        self.camera_thread.game_state_updated.connect(self.handle_detected_game_state)
         self.camera_thread.frame_ready.connect(self.update_camera_view)
-
-        # Debug window signály připojíme jen když se debug window vytvoří
-        # Nepřipojujeme automaticky při startu
-
+        self.camera_thread.fps_updated.connect(self.update_fps_display)
         self.camera_thread.start()
 
-        # Debug okno se otevře jen při kliknutí na debug tlačítko
-        # V debug mode jen zapneme debug okno při prvním kliknutí
         if self.debug_mode:
-            # Automaticky otevřeme debug okno jen v debug mode
             QTimer.singleShot(1000, self.show_debug_window)
 
-        # Timer for periodic updates
         self.timer_setup()
+        self.reset_game() # Začít s čistou hrou a stavy
 
     def timer_setup(self):
-        """Set up timers for periodic updates"""
-        # Update UI texts with current language
         self.update_ui_texts()
-
-        # Timer for game state updates
         self.update_timer = QTimer(self)
-        self.update_timer.timeout.connect(self.update_game_state)
-        self.update_timer.start(100)  # 10 FPS for game logic updates
+        self.update_timer.timeout.connect(self.update_game_state_machine)
+        self.update_timer.start(100) # 10 FPS
 
     def tr(self, key):
-        """Translate text based on current language"""
         return self.current_language.get(key, key)
 
-    def _convert_board_1d_to_2d(self, board):
-        """🔧 CONSOLIDATED: Convert 1D board list to 2D board array"""
-        if isinstance(board, list) and len(board) == 9:
-            return [
-                [board[0], board[1], board[2]],
-                [board[3], board[4], board[5]],
-                [board[6], board[7], board[8]]
-            ]
-        return board
+    def _convert_board_1d_to_2d(self, board_1d):
+        if isinstance(board_1d, list) and len(board_1d) == 9:
+            return [board_1d[i:i + 3] for i in range(0, 9, 3)]
+        return board_1d # Předpokládá, že už je 2D nebo None
 
     def _get_board_symbol_counts(self, board):
-        """🔧 CONSOLIDATED: Get X and O symbol counts from board"""
-        if board is None:
-            return 0, 0, 0
-
-        # Convert to 2D if needed
+        if board is None: return 0, 0, 0
         board_2d = self._convert_board_1d_to_2d(board)
-
+        if not isinstance(board_2d, list) or not all(isinstance(row, list) for row in board_2d):
+            return 0,0,0 # Nevalidní formát desky
         x_count = sum(row.count(game_logic.PLAYER_X) for row in board_2d)
         o_count = sum(row.count(game_logic.PLAYER_O) for row in board_2d)
-        total = x_count + o_count
-
-        return x_count, o_count, total
+        return x_count, o_count, x_count + o_count
 
     def _check_arm_availability(self):
-        """🔧 CONSOLIDATED: Check if arm is available for commands"""
-        arm_thread_available = (hasattr(self, 'arm_thread') and
-                               self.arm_thread and
-                               self.arm_thread.connected)
-        arm_controller_available = (hasattr(self, 'arm_controller') and
-                                   self.arm_controller and
-                                   self.arm_controller.connected)
-        return arm_thread_available, arm_controller_available
+        arm_thread_available = (hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected)
+        # arm_controller je teď spíše záložní/legacy, arm_thread je preferovaný
+        return arm_thread_available, False # Druhá hodnota je pro arm_controller
 
     def set_status_style_safe(self, style_key, style_css):
-        """Safely set status panel style only if it's different from current style"""
-        if not hasattr(self, '_current_style'):
-            self._current_style = None
-
-        if self._current_style != style_key:
-            self._current_style = style_key
+        if not hasattr(self, '_current_style_key'): self._current_style_key = None
+        if self._current_style_key != style_key:
+            self._current_style_key = style_key
             if hasattr(self, 'main_status_panel') and self.main_status_panel:
                 self.main_status_panel.setStyleSheet(style_css)
 
-    def update_status(self, message):
-        """Update status message with message"""
-        # Check if we need to initialize the status lock
-        if not hasattr(self, '_status_lock'):
-            self._status_lock = False
-            self._current_status = None
-            self._last_status_change = 0
-            self._status_update_count = 0
-            self._current_style = None  # Track current style to prevent redundant setStyleSheet calls
+    def update_status(self, message_key_or_text, is_key=True):
+        message = self.tr(message_key_or_text) if is_key else message_key_or_text
 
-        # Get color codes for different statuses for later consistency
-        arm_color = "#9b59b6"
-        arm_border = "#8e44ad"
-        ai_color = "#3498db"
-        ai_border = "#2980b9"
-        player_color = "#e74c3c"
-        player_border = "#c0392b"
+        if not hasattr(self, '_status_lock_time'): self._status_lock_time = 0
+        if not hasattr(self, '_current_status_text'): self._current_status_text = ""
 
-        # Only allow status updates every 3 seconds for locked statuses
         current_time = time.time()
-        if self._status_lock and current_time - self._last_status_change < 3.0:
-            # Don't update if locked and not enough time has passed, but ensure consistent styling
-            if hasattr(self, 'main_status_message') and self.main_status_message:
-                if message == self.tr("arm_turn") or message == self.tr("arm_moving"):
-                    self.set_status_style_safe("arm", f"""
-                        background-color: {arm_color};
-                        border-radius: 10px;
-                        border: 2px solid {arm_border};
-                    """)
-                elif message == self.tr("ai_turn"):
-                    self.set_status_style_safe("ai", f"""
-                        background-color: {ai_color};
-                        border-radius: 10px;
-                        border: 2px solid {ai_border};
-                    """)
-                elif message == self.tr("your_turn"):
-                    self.set_status_style_safe("player", f"""
-                        background-color: {player_color};
-                        border-radius: 10px;
-                        border: 2px solid {player_border};
-                    """)
+        # Zjednodušené zamykání statusu - pokud se zpráva změní, aktualizuj
+        # ale ne příliš často pro stejný typ zprávy (např. arm_turn)
+        if message == self._current_status_text and current_time - self._status_lock_time < 1.0:
             return
 
-        # Don't update if it's the same message
-        if message == self._current_status:
-            return
+        self._current_status_text = message
+        self._status_lock_time = current_time
 
-        # Prevent rapid status updates (max 1 per second)
-        current_time = time.time()
-        if current_time - self._last_status_change < 1.0:
-            self._status_update_count += 1
-            if self._status_update_count > 3:  # Allow max 3 rapid updates, then block
-                return
-        else:
-            self._status_update_count = 0  # Reset counter after 1 second
-
-        # Update status with enhanced message
         if hasattr(self, 'main_status_message') and self.main_status_message:
-            # Enhanced messages with clear instructions
-            enhanced_message = message
-
-            # Add symbol count info to help user understand whose turn it is
+            board_for_status = None
             if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
-                board = self.camera_thread.last_board_state
-                x_count, o_count, total = self._get_board_symbol_counts(board)
+                 board_for_status = self.camera_thread.last_board_state
+            elif hasattr(self, 'board_widget'):
+                 board_for_status = self.board_widget.board
 
-                if message == self.tr("your_turn"):
-                    if total % 2 == 0:
-                        enhanced_message = f"VÁŠ TAH (počet symbolů: {total} - sudý)"
-                    else:
-                        enhanced_message = f"ČEKEJTE - RUKA HRAJE (počet: {total} - lichý)"
-                elif message == self.tr("arm_turn"):
-                    enhanced_message = f"RUKA HRAJE (počet symbolů: {total} - lichý)"
-                elif message == self.tr("new_game_detected"):
-                    enhanced_message = "NOVÁ HRA DETEKOVÁNA - ZAČNĚTE UMÍSTĚNÍM SYMBOLU"
+            x_count, o_count, total_symbols = self._get_board_symbol_counts(board_for_status)
 
-            self.main_status_message.setText(enhanced_message.upper())
-            self._current_status = message
-            self._last_status_change = current_time
+            status_text_to_show = message.upper()
+            style_key = "default"
 
-            # Set appropriate styling and lock status based on message type
-            if message == self.tr("arm_turn") or message == self.tr("arm_moving"):
-                self._status_lock = True
-                self.set_status_style_safe("arm", f"""
-                    background-color: {arm_color};
-                    border-radius: 10px;
-                    border: 2px solid {arm_border};
-                """)
-            elif message == self.tr("ai_turn"):
-                self._status_lock = True
-                self.set_status_style_safe("ai", f"""
-                    background-color: {ai_color};
-                    border-radius: 10px;
-                    border: 2px solid {ai_border};
-                """)
-            elif message == self.tr("your_turn"):
-                self._status_lock = False
-                self.set_status_style_safe("player", f"""
-                    background-color: {player_color};
-                    border-radius: 10px;
-                    border: 2px solid {player_border};
-                """)
-            else:
-                self._status_lock = False
+            # Nastavení stylu podle typu zprávy
+            if message_key_or_text == "your_turn":
+                status_text_to_show = f"{self.tr('your_turn')} ({self.human_player}) [S: {total_symbols}]"
+                self.set_status_style_safe("player", self._get_status_style("player"))
+            elif message_key_or_text == "arm_turn":
+                status_text_to_show = f"{self.tr('arm_turn')} ({self.ai_player}) [S: {total_symbols}]"
+                self.set_status_style_safe("arm", self._get_status_style("arm"))
+            elif message_key_or_text == "arm_moving":
+                self.set_status_style_safe("arm_moving", self._get_status_style("arm"))
+            elif message_key_or_text == "win":
+                winner_symbol = self.winner if self.winner else "?"
+                status_text_to_show = f"{self.tr('win')} - {winner_symbol}"
+                self.set_status_style_safe("win", self._get_status_style("win"))
+            elif message_key_or_text == "draw":
+                self.set_status_style_safe("draw", self._get_status_style("draw"))
+            elif message_key_or_text == "game_over":
+                 self.set_status_style_safe("game_over", self._get_status_style("error")) # Použijeme error styl pro konec hry
+            elif message_key_or_text == "grid_not_visible":
+                 self.set_status_style_safe("error", self._get_status_style("error"))
+            elif message_key_or_text == "grid_visible":
+                 self.set_status_style_safe("success", self._get_status_style("success"))
+                 QTimer.singleShot(2000, self.reset_status_panel_style) # Reset po chvíli
+            # ... další specifické zprávy
 
-        # Nastavíme status_label na prázdný text, aby se nic nezobrazovalo dole
+            self.main_status_message.setText(status_text_to_show)
+
         if hasattr(self, 'status_label') and self.status_label:
-            self.status_label.setText("")
-
-    def change_language(self):
-        """Toggle between Czech and English"""
-        self.is_czech = not self.is_czech
-        self.current_language = LANG_CS if self.is_czech else LANG_EN
-
-        # Update UI texts
-        self.update_ui_texts()
-
-    def update_ui_texts(self):
-        """Update all UI texts based on current language"""
-        # Update button texts
-        if hasattr(self, 'reset_button'):
-            self.reset_button.setText(self.tr("new_game"))
-
-        if hasattr(self, 'debug_button'):
-            self.debug_button.setText(self.tr("debug"))
-
-        if hasattr(self, 'language_button'):
-            self.language_button.setText("🇨🇿" if self.is_czech else "🇬🇧")
-
-        # Update labels
-        if hasattr(self, 'difficulty_label'):
-            self.difficulty_label.setText(self.tr("difficulty"))
-
-        # Update main status based on current game state
-        self.update_game_status()
-
-    def update_game_status(self):
-        """Update main status message based on current game state"""
-        # Pokud je hra ve stavu výhra/remíza
-        if hasattr(self, 'game_over') and self.game_over:
-            winner = None
-            if hasattr(self, 'board_widget') and hasattr(self.board_widget, 'winner'):
-                winner = self.board_widget.winner
-
-            if winner:
-                if winner == self.human_player:
-                    self.update_status(self.tr("win"))
-                else:
-                    self.update_status(self.tr("ai_turn") + " - " + self.tr("win"))
-            else:
-                self.update_status(self.tr("draw"))
-        # Pokud se čeká na tah hráče
-        elif hasattr(self, 'current_turn') and self.current_turn == self.human_player:
-            self.update_status(self.tr("your_turn"))
-        # Pokud hraje AI
-        elif hasattr(self, 'current_turn') and self.current_turn == self.ai_player:
-            self.update_status(self.tr("ai_turn"))
-
-    def reset_status_panel_style(self):
-        """Reset status panel style to default"""
-        self.set_status_style_safe("default", """
-            background-color: #3498db;
-            border-radius: 10px;
-            border: 2px solid #2980b9;
-        """)
-
-    def update_fps_display(self, fps):
-        """Update FPS display"""
-        if hasattr(self, 'fps_label') and self.fps_label:
-            self.fps_label.setText(f"FPS: {fps}")
-
-    def connect_signals(self):
-        """Connect signals to slots"""
-        # V testech přeskočíme připojení signálů
-        if not hasattr(self, 'camera_thread') or not self.camera_thread:
-            return
-
-        # Camera thread signals
-        self.camera_thread.frame_ready.connect(self.update_camera_view)
-        self.camera_thread.game_state_updated.connect(self.handle_detected_game_state)
-        self.camera_thread.fps_updated.connect(self.update_fps_display)
-
-        # Board signals
-        if hasattr(self, 'board') and self.board:
-            self.board.board_clicked.connect(self.handle_cell_clicked)
-        elif hasattr(self, 'board_widget') and self.board_widget:
-            self.board_widget.cell_clicked.connect(self.handle_cell_clicked)
-
-        # Button signals
-        if hasattr(self, 'reset_button') and self.reset_button:
-            self.reset_button.clicked.connect(self.handle_reset_button_click)
-        if hasattr(self, 'debug_button') and self.debug_button:
-            self.debug_button.clicked.connect(self.handle_debug_button_click)
-        if hasattr(self, 'calibrate_button') and self.calibrate_button:
-            self.calibrate_button.clicked.connect(self.handle_calibrate_button_click)
-        if hasattr(self, 'park_button') and self.park_button:
-            self.park_button.clicked.connect(self.handle_park_button_click)
-        if hasattr(self, 'track_checkbox') and self.track_checkbox:
-            self.track_checkbox.stateChanged.connect(self.handle_track_checkbox_changed)
-
-        # Slider signals
-        if hasattr(self, 'difficulty_slider') and self.difficulty_slider:
-            self.difficulty_slider.valueChanged.connect(self.handle_difficulty_changed)
-
-    def update_camera_view(self, frame):
-        """🔧 SIMPLIFIED: Update camera view with new frame"""
-        if frame is None:
-            return
-
-        # Get processed frame and game state
-        processed_frame, game_state = self._get_detection_data()
-
-        # Update main camera view
-        self._update_main_camera_view(frame)
-
-        # Handle grid issues and warnings
-        if game_state:
-            self._handle_grid_warnings(game_state)
-            self._update_board_from_game_state(game_state)
-
-        # Update debug window
-        self._update_debug_window(processed_frame, frame, game_state)
-
-    def _get_detection_data(self):
-        """🔧 CONSOLIDATED: Get processed frame and game state from detection thread"""
-        processed_frame = None
-        game_state = None
-
-        if hasattr(self, 'camera_thread') and self.camera_thread:
-            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                # Get latest processed frame
-                result = self.camera_thread.detection_thread.get_latest_result()
-                if result and result[0] is not None:
-                    processed_frame = result[0]
-
-                # Get game state
-                if hasattr(self.camera_thread.detection_thread, 'latest_game_state'):
-                    game_state = self.camera_thread.detection_thread.latest_game_state
-
-        return processed_frame, game_state
-
-    def _update_main_camera_view(self, frame):
-        """🔧 CONSOLIDATED: Update main camera view with frame"""
-        if hasattr(self, 'camera_view') and self.camera_view:
-            if hasattr(self.camera_view, 'update_image'):
-                self.camera_view.update_image(frame)
-            elif hasattr(self.camera_view, 'update_frame'):
-                self.camera_view.update_frame(frame)
-
-    def _handle_grid_warnings(self, game_state):
-        """🔧 CONSOLIDATED: Handle grid warnings and validation"""
-        # Check for grid issues
-        has_grid_issue = hasattr(game_state, 'grid_issue_type') and hasattr(game_state, 'grid_issue_message')
-
-        # Check traditional way if no dynamic attributes
-        if hasattr(game_state, '_grid_points') and game_state._grid_points is not None:
-            non_zero_count = np.count_nonzero(np.sum(np.abs(game_state._grid_points), axis=1))
-            if non_zero_count < 16:  # 16 grid points expected
-                setattr(game_state, 'grid_issue_type', 'incomplete_visibility')
-                setattr(game_state, 'grid_issue_message',
-                        f"CHYBA: Mřížka není kompletně viditelná!\nPouze {non_zero_count}/16 bodů viditelných.\nUmístěte mřížku plně do záběru kamery.")
-                has_grid_issue = True
-            elif non_zero_count == 16:
-                # Grid fully visible, clear issue flags
-                if hasattr(game_state, 'grid_issue_type'):
-                    if hasattr(self, 'logger'):
-                        self.logger.info("Grid points all visible. Clearing grid_issue_type.")
-                    delattr(game_state, 'grid_issue_type')
-                if hasattr(game_state, 'grid_issue_message'):
-                    delattr(game_state, 'grid_issue_message')
-                has_grid_issue = False
-
-        # Handle warnings
-        if has_grid_issue:
-            self._show_grid_warning(game_state)
-        else:
-            self._hide_grid_warning()
-
-    def _show_grid_warning(self, game_state):
-        """🔧 CONSOLIDATED: Show grid warning panel"""
-        if not hasattr(self, 'warning_panel') or not self.warning_panel.isVisible():
-            if not hasattr(self, 'warning_panel'):
-                self._create_warning_panel(game_state)
-            else:
-                self.warning_text.setText(game_state.grid_issue_message)
-
-            self.warning_panel.show()
-            self.warning_panel.raise_()
-
-        # Stop game until grid is visible
-        if not hasattr(self, 'grid_warning_active') or not self.grid_warning_active:
-            self.grid_warning_active = True
-            self.waiting_for_detection = False
-            self.ai_move_retry_count = 0
-            self.update_status(self.tr("grid_not_visible"))
-            self.set_status_style_safe("error", """
-                background-color: #e74c3c;
-                border-radius: 10px;
-                border: 2px solid #c0392b;
-            """)
-
-    def _hide_grid_warning(self):
-        """🔧 CONSOLIDATED: Hide grid warning panel"""
-        if hasattr(self, 'grid_warning_active') and self.grid_warning_active:
-            self.grid_warning_active = False
-            if hasattr(self, 'warning_panel'):
-                self.warning_panel.hide()
-            self.update_status(self.tr("grid_visible"))
-            self.set_status_style_safe("success", """
-                background-color: #2ecc71;
-                border-radius: 10px;
-                border: 2px solid #27ae60;
-            """)
-            QTimer.singleShot(3000, self.reset_status_panel_style)
-
-    def _create_warning_panel(self, game_state):
-        """🔧 CONSOLIDATED: Create warning panel UI"""
-        self.warning_panel = QWidget(self)
-        self.warning_panel.setStyleSheet("""
-            background-color: #A93226;
-            border-radius: 10px;
-            border: 2px solid #E74C3C;
-        """)
-        warning_layout = QVBoxLayout(self.warning_panel)
-
-        self.warning_icon = QLabel("⚠️")
-        self.warning_icon.setStyleSheet("""
-            color: #FFFFFF;
-            font-size: 32px;
-            margin: 0px;
-        """)
-        self.warning_icon.setAlignment(Qt.AlignCenter)
-        warning_layout.addWidget(self.warning_icon)
-
-        self.warning_text = QLabel(game_state.grid_issue_message)
-        self.warning_text.setStyleSheet("""
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px;
-        """)
-        self.warning_text.setAlignment(Qt.AlignCenter)
-        self.warning_text.setWordWrap(True)
-        warning_layout.addWidget(self.warning_text)
-
-        # Position warning panel
-        self.warning_panel.setFixedSize(500, 150)
-        board_x = self.board_widget.x()
-        board_y = self.board_widget.y()
-        board_width = self.board_widget.width()
-        warn_x = board_x + (board_width // 2) - 250
-        warn_y = max(0, board_y - 170)
-        self.warning_panel.move(warn_x, warn_y)
-
-    def _update_board_from_game_state(self, game_state):
-        """🔧 CONSOLIDATED: Update board from game state"""
-        # Update board from detected state
-        if hasattr(game_state, 'board') and game_state.board is not None:
-            self.update_board_from_detection(game_state.board)
-
-        # Update GUI board state
-        if hasattr(game_state, '_board_state') and hasattr(self, 'board_widget'):
-            detected_board = game_state._board_state
-            self.board_widget.update_board(detected_board, None, highlight_changes=False)
-
-    def _update_debug_window(self, processed_frame, frame, game_state):
-        """🔧 CONSOLIDATED: Update debug window with frame and game state"""
-        if hasattr(self, 'debug_window') and self.debug_window:
-            display_frame = processed_frame if processed_frame is not None else frame
-            try:
-                self.debug_window.camera_view.update_frame(display_frame.copy())
-                if game_state and hasattr(game_state, '_board_state'):
-                    self.debug_window.update_board_state(game_state._board_state)
-            except Exception as e:
-                print(f"Chyba při aktualizaci debug okna: {e}")
+            self.status_label.setText("") # Starý status label se již nepoužívá pro hlavní info
 
     def _get_status_style(self, status_type):
-        """🔧 CONSOLIDATED: Get consistent status styling for different status types"""
         styles = {
             'arm': "background-color: #9b59b6; border-radius: 10px; border: 2px solid #8e44ad;",
-            'ai': "background-color: #3498db; border-radius: 10px; border: 2px solid #2980b9;",
+            'ai': "background-color: #3498db; border-radius: 10px; border: 2px solid #2980b9;", # AI je v podstatě ruka
             'player': "background-color: #e74c3c; border-radius: 10px; border: 2px solid #c0392b;",
             'win': "background-color: #2ecc71; border-radius: 10px; border: 2px solid #27ae60;",
             'draw': "background-color: #f1c40f; border-radius: 10px; border: 2px solid #f39c12;",
             'error': "background-color: #e74c3c; border-radius: 10px; border: 2px solid #c0392b;",
             'success': "background-color: #2ecc71; border-radius: 10px; border: 2px solid #27ae60;",
-            'arm_win': "background-color: #9b59b6; border-radius: 10px; border: 2px solid #8e44ad; animation: pulse 1s infinite;",
-            'human_win': "background-color: #2ecc71; border-radius: 10px; border: 2px solid #27ae60; animation: pulse 1s infinite;"
+            'default': "background-color: #34495e; border-radius: 10px; border: 2px solid #2c3e50;"
         }
-        return styles.get(status_type, styles['ai'])
+        return styles.get(status_type, styles['default'])
+
+    def reset_status_panel_style(self):
+        self.set_status_style_safe("default", self._get_status_style("default"))
+        # Po resetu stylu aktualizujeme text podle aktuálního stavu hry
+        if self.game_over:
+            if self.winner == game_logic.TIE: self.update_status("draw")
+            elif self.winner: self.update_status("win")
+            else: self.update_status("game_over")
+        elif self.current_turn == self.human_player: self.update_status("your_turn")
+        elif self.current_turn == self.ai_player: self.update_status("arm_turn")
+        else: self.update_status(self.tr("new_game_detected"), is_key=False)
+
+
+    def change_language(self):
+        self.is_czech = not self.is_czech
+        self.current_language = LANG_CS if self.is_czech else LANG_EN
+        self.update_ui_texts()
+
+    def update_ui_texts(self):
+        if hasattr(self, 'reset_button'): self.reset_button.setText(self.tr("new_game"))
+        if hasattr(self, 'debug_button'): self.debug_button.setText(self.tr("debug"))
+        if hasattr(self, 'language_button'): self.language_button.setText("🇨🇿" if self.is_czech else "🇬🇧")
+        if hasattr(self, 'difficulty_label'): self.difficulty_label.setText(self.tr("difficulty"))
+
+        # Aktualizace hlavního statusu na základě aktuálního stavu
+        if self.game_over:
+            if self.winner == game_logic.TIE: self.update_status("draw")
+            elif self.winner: self.update_status("win") # Zpráva "WIN" je obecná, konkrétní výherce v textu
+            else: self.update_status("game_over") # Pokud není jasný výherce, ale hra skončila
+        elif self.current_turn == self.human_player:
+            self.update_status("your_turn")
+        elif self.current_turn == self.ai_player:
+             # Rozlišení, zda ruka kreslí nebo přemýšlí
+            if self.arm_move_in_progress or self.waiting_for_detection:
+                 self.update_status("arm_moving")
+            else:
+                 self.update_status("arm_turn")
+        else: # Hra ještě nezačala nebo je v neznámém stavu
+            self.update_status(self.tr("new_game_detected"), is_key=False)
+
+
+    def update_fps_display(self, fps):
+        if hasattr(self, 'debug_window') and self.debug_window and hasattr(self.debug_window, 'update_fps'):
+            self.debug_window.update_fps(fps)
+        # Můžete přidat i zobrazení FPS do hlavního okna, pokud chcete
+        # if hasattr(self, 'main_fps_label'): self.main_fps_label.setText(f"FPS: {fps:.1f}")
+
+
+    def update_camera_view(self, frame):
+        if frame is None: return
+
+        processed_frame, game_state_from_detection = self._get_detection_data()
+
+        self._update_main_camera_view(frame) # Vždy zobrazí surový frame, pokud není implementováno jinak
+
+        if game_state_from_detection: # game_state_from_detection je objekt GameState nebo podobný
+            self._handle_grid_warnings(game_state_from_detection)
+            # Aktualizace desky v GUI z detekce se děje v handle_detected_game_state
+            # self._update_board_from_game_state(game_state_from_detection) # Toto může být duplicitní
+
+        self._update_debug_window(processed_frame if processed_frame is not None else frame,
+                                  frame, game_state_from_detection)
+
+    def _get_detection_data(self):
+        processed_frame, game_state = None, None
+        if hasattr(self, 'camera_thread') and self.camera_thread:
+            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
+                result = self.camera_thread.detection_thread.get_latest_result()
+                if result and result[0] is not None: processed_frame = result[0]
+                if hasattr(self.camera_thread.detection_thread, 'latest_game_state'):
+                    game_state = self.camera_thread.detection_thread.latest_game_state
+        return processed_frame, game_state
+
+    def _update_main_camera_view(self, frame):
+        # V této aplikaci hlavní okno nemá přímý CameraView, ten je v DebugWindow.
+        # Pokud byste ho chtěli přidat, zde by byla aktualizace.
+        pass
+
+    def _handle_grid_warnings(self, game_state_obj): # game_state_obj je instance GameState
+        has_grid_issue = False
+        grid_issue_message = ""
+
+        if hasattr(game_state_obj, 'is_physical_grid_valid') and callable(game_state_obj.is_physical_grid_valid):
+            if not game_state_obj.is_physical_grid_valid():
+                has_grid_issue = True
+                # Pokus o získání konkrétnější zprávy, pokud je k dispozici
+                if hasattr(game_state_obj, 'grid_issue_message'):
+                    grid_issue_message = game_state_obj.grid_issue_message
+                elif hasattr(game_state_obj, '_grid_points'):
+                     non_zero_count = np.count_nonzero(np.sum(np.abs(game_state_obj._grid_points), axis=1)) if game_state_obj._grid_points is not None else 0
+                     grid_issue_message = f"Mřížka není kompletně viditelná! Detekováno {non_zero_count}/16 bodů."
+                else:
+                    grid_issue_message = self.tr("grid_not_visible")
+
+        if has_grid_issue:
+            if not hasattr(self, 'grid_warning_active') or not self.grid_warning_active:
+                self.logger.warning(f"Zobrazuji varování mřížky: {grid_issue_message}")
+                self._show_grid_warning_panel(grid_issue_message) # ZMĚNA: Přepracováno pro panel
+                self.grid_warning_active = True
+                self.update_status("grid_not_visible")
+        else:
+            if hasattr(self, 'grid_warning_active') and self.grid_warning_active:
+                self.logger.info("Skrývám varování mřížky.")
+                self._hide_grid_warning_panel() # ZMĚNA: Přepracováno pro panel
+                self.grid_warning_active = False
+                self.update_status("grid_visible")
+                QTimer.singleShot(2000, self.reset_status_panel_style)
+
+
+    def _show_grid_warning_panel(self, message):
+        if not hasattr(self, 'warning_panel'):
+            self.warning_panel = QWidget(self)
+            self.warning_panel.setStyleSheet("background-color: rgba(231, 76, 60, 0.9); border-radius: 10px; border: 1px solid #c0392b;")
+            layout = QVBoxLayout(self.warning_panel)
+            self.warning_icon_label = QLabel("⚠️")
+            self.warning_icon_label.setAlignment(Qt.AlignCenter)
+            self.warning_icon_label.setStyleSheet("font-size: 30px; color: white; margin-bottom: 5px;")
+            self.warning_text_label = QLabel(message)
+            self.warning_text_label.setAlignment(Qt.AlignCenter)
+            self.warning_text_label.setWordWrap(True)
+            self.warning_text_label.setStyleSheet("font-size: 14px; color: white; font-weight: bold;")
+            layout.addWidget(self.warning_icon_label)
+            layout.addWidget(self.warning_text_label)
+            self.warning_panel.setFixedSize(400, 120) # Menší panel
+
+        self.warning_text_label.setText(message) # Aktualizace textu, pokud se změní
+        # Umístění panelu (např. nad herní deskou nebo uprostřed)
+        if hasattr(self, 'board_widget') and self.board_widget:
+            board_rect = self.board_widget.geometry()
+            panel_x = board_rect.center().x() - self.warning_panel.width() // 2
+            panel_y = board_rect.y() - self.warning_panel.height() - 10 # Nad deskou
+            if panel_y < 0: panel_y = board_rect.center().y() - self.warning_panel.height() // 2 # Pokud by šlo mimo, tak doprostřed
+            self.warning_panel.move(max(0, panel_x), max(0, panel_y))
+        else: # Fallback na střed okna
+            self.warning_panel.move((self.width() - self.warning_panel.width()) // 2, (self.height() - self.warning_panel.height()) // 2)
+
+        self.warning_panel.show()
+        self.warning_panel.raise_()
+
+    def _hide_grid_warning_panel(self):
+        if hasattr(self, 'warning_panel') and self.warning_panel.isVisible():
+            self.warning_panel.hide()
+
+    def _update_board_from_game_state(self, game_state_obj): # game_state_obj je instance GameState
+        if hasattr(game_state_obj, '_board_state') and hasattr(self, 'board_widget'):
+            # game_state_obj._board_state by měla být 2D deska
+            detected_board = self._convert_board_1d_to_2d(game_state_obj._board_state)
+            if detected_board:
+                 self.board_widget.update_board(detected_board, None, highlight_changes=False)
+
+    def _update_debug_window(self, processed_frame, raw_frame, game_state_obj):
+        if hasattr(self, 'debug_window') and self.debug_window and self.debug_window.isVisible():
+            display_frame = processed_frame if processed_frame is not None else raw_frame
+            try:
+                if hasattr(self.debug_window, 'camera_view') and self.debug_window.camera_view:
+                     self.debug_window.camera_view.update_frame(display_frame.copy())
+                if game_state_obj and hasattr(game_state_obj, '_board_state'):
+                    board_to_update = self._convert_board_1d_to_2d(game_state_obj._board_state)
+                    if board_to_update and hasattr(self.debug_window, 'update_board_state'):
+                        self.debug_window.update_board_state(board_to_update)
+            except Exception as e:
+                self.logger.error(f"Chyba při aktualizaci debug okna: {e}")
+
 
     def handle_cell_clicked(self, row, col):
-        """Handle cell click event"""
-        # V testech přeskočíme obsluhu kliknutí
-        if not hasattr(self, 'board_widget') or not self.board_widget:
+        self.logger.info(f"Hráč klikl na buňku ({row}, {col})")
+        if self.game_over or self.current_turn != self.human_player or self.arm_move_in_progress or self.waiting_for_detection:
+            self.logger.warning(f"Klik ignorován: game_over={self.game_over}, current_turn={self.current_turn}, arm_busy={self.arm_move_in_progress or self.waiting_for_detection}")
             return
 
-        # Pokud je hra ukončena nebo není hráčův tah, ignorujeme kliknutí
-        if self.game_over or self.current_turn != self.human_player:
-            return
-
-        # Pokud je buňka již obsazena, ignorujeme kliknutí
         if self.board_widget.board[row][col] != game_logic.EMPTY:
+            self.logger.info("Buňka je již obsazena.")
             return
 
-        # NEAKTUALIZUJEME BOARD AUTOMATICKY - čekáme na YOLO detekci!
-        # self.board_widget.board[row][col] = self.human_player
-        self.board_widget.update()
+        # Hráčův tah se nezaznamenává přímo do self.board_widget.board zde.
+        # Místo toho čekáme, až kamera detekuje nový symbol.
+        # Tato metoda v podstatě jen signalizuje záměr hráče.
+        # Hlavní logika se odehraje v handle_detected_game_state.
+        self.logger.info(f"Hráč ({self.human_player}) zamýšlí táhnout na ({row},{col}). Čekám na detekci symbolem.")
+        self.update_status(self.tr("waiting_detection"), is_key=False) # Informujeme, že čekáme na detekci hráčova tahu
 
-        # Increment move counter to track even/odd turns
-        self.move_counter += 1
-
-        # On first move, remember the player's symbol for arm moves
-        if self.move_counter == 1:
-            self.arm_player_symbol = self.human_player
-            self.logger.info(f"Player is using symbol {self.arm_player_symbol}")
-
-        # Kontrola konce hry
-        self.check_game_end()
-
-        # Pokud hra neskončila, předáme tah AI
-        if not self.game_over:
-            self.current_turn = self.ai_player
-            self.status_label.setText("")
-
-            # For even-numbered moves, the robotic arm should play instead of the player
-            # Check if this was an odd-numbered move (player's turn)
-            if self.move_counter % 2 == 1:
-                # The next move (even-numbered) should be played by the arm using the player's symbol
-                self.logger.info(f"Move #{self.move_counter+1}: Arm will play using player symbol {self.arm_player_symbol}")
-                # We still need to update the status to indicate it's player's (arm) turn
-                self.update_status(self.tr("arm_turn"))
-                self.main_status_panel.setStyleSheet("""
-                    background-color: #9b59b6;
-                    border-radius: 10px;
-                    border: 2px solid #8e44ad;
-                """)
-
-                # Schedule the arm's move to happen after a short delay
-                # CRITICAL: Use ai_player symbol (the one with fewer pieces)
-                arm_symbol = self.ai_player
-                self.logger.info(f"Scheduling arm move with symbol {arm_symbol} (ai_player)")
-                QTimer.singleShot(1000, lambda: self.make_arm_move(arm_symbol))
 
     def handle_reset_button_click(self):
-        """Handle reset button click event"""
+        self.logger.info("Stisknuto tlačítko Reset.")
         self.reset_game()
 
     def reset_game(self):
-        """Reset game state"""
-        # V testech přeskočíme reset hry
-        if not hasattr(self, 'board_widget') or not self.board_widget:
-            return
+        self.logger.info("Resetuji hru.")
+        if hasattr(self, 'board_widget') and self.board_widget:
+            empty_board = game_logic.create_board()
+            self.board_widget.update_board(empty_board, None, highlight_changes=False)
+            self.board_widget.winning_line = None
+            self.board_widget.update()
 
-        # CRITICAL: Do not reset board_widget.board here!
-        # Board should only be updated from YOLO detections in update_board_from_detection
-        # Just clear the visual display
-        empty_board = game_logic.create_board()
-        self.board_widget.update_board(empty_board, None, highlight_changes=False)
-        self.board_widget.winning_line = None
-        self.board_widget.update()
-
-        # Reset stavu hry
         self.game_over = False
         self.winner = None
-        self.waiting_for_detection = False
-        self.ai_move_row = None
-        self.ai_move_col = None
-        self.ai_move_retry_count = 0
 
-        # Reset counter for tracking even/odd turns
-        self.move_counter = 0
-
-        # Store player symbol for arm moves
-        self.arm_player_symbol = None
-
-        # Výběr hráče
         self.human_player = game_logic.PLAYER_X
         self.ai_player = game_logic.PLAYER_O
-        self.current_turn = self.human_player
+        self.current_turn = game_logic.PLAYER_X # Hráč X vždy začíná
+        self.move_counter = 0
 
-        # Aktualizace stavu
-        self.status_label.setText("")
+        # Reset arm flags
+        self.waiting_for_detection = False
+        self.arm_move_in_progress = False
+        self.arm_move_scheduled = False # I když je možná nadbytečný, resetujeme
+        self.ai_move_row = None
+        self.ai_move_col = None
+        self.expected_symbol = None
+        self.ai_move_retry_count = 0
+        self.detection_wait_time = 0.0
+        self.last_arm_move_time = 0 # Aby ruka mohla hned hrát, pokud je na tahu po resetu
 
-    def handle_debug_button_click(self):
-        """Handle debug button click event"""
-        self.show_debug_window()
+        if hasattr(self, '_celebration_triggered'): # Reset příznaku pro oslavu
+            del self._celebration_triggered
+
+        self.update_status("new_game_detected")
+        self.logger.info(f"Hra resetována. Na tahu: {self.current_turn}")
+        self.move_to_neutral_position() # Po resetu přesuň ruku do neutrálu
 
 
-
-    def handle_calibrate_button_click(self):
-        """Handle calibrate button click event"""
-        self.calibrate_arm()
-
-    def calibrate_arm(self):
-        """Calibrate robotic arm"""
-        # V testech přeskočíme kalibraci ruky
-        if not hasattr(self, 'arm_controller') or not self.arm_controller:
-            return
-
-        # Kontrola připojení ruky
-        if not self.arm_controller.connected:
-            self.status_label.setText("")
-            return
-
-        # Kalibrace ruky
-        self.status_label.setText("")
-        # TODO: Implementace kalibrace
-        self.status_label.setText("")
-
-    def handle_park_button_click(self):
-        """Handle park button click event"""
-        self.park_arm()
+    def handle_debug_button_click(self): self.show_debug_window()
+    def handle_calibrate_button_click(self): self.calibrate_arm()
+    def handle_park_button_click(self): self.park_arm()
 
     def park_arm(self):
-        """Park robotic arm using unified interface"""
         return self._unified_arm_command('park', x=PARK_X, y=PARK_Y, wait=True)
 
+    def calibrate_arm(self):
+        if not hasattr(self, 'arm_thread') or not self.arm_thread or not self.arm_thread.connected: # ZMĚNA: Kontrola arm_thread
+            self.update_status(self.tr("Robotická ruka není připojena!"), is_key=False)
+            return
+        self.update_status(self.tr("Probíhá kalibrace... (není implementováno)"), is_key=False)
+        self.logger.info("Funkce kalibrace není plně implementována v tomto zjednodušeném kódu.")
+
+
     def handle_difficulty_changed(self, value):
-        """Handle difficulty slider value change with immediate synchronization"""
-        # Update GUI label immediately
-        if hasattr(self, 'difficulty_value_label') and self.difficulty_value_label:
-            self.difficulty_value_label.setText(f"{value}")
-
-        # ✅ IMMEDIATE SYNCHRONIZATION: Update strategy selector difficulty in real-time
-        if hasattr(self, 'strategy_selector') and self.strategy_selector:
-            # Store old value for comparison
-            old_p = getattr(self.strategy_selector, 'p', None)
-
-            # BernoulliStrategySelector has a difficulty property that accepts 0-10
+        if hasattr(self, 'difficulty_value_label'): self.difficulty_value_label.setText(f"{value}")
+        if hasattr(self, 'strategy_selector'):
             self.strategy_selector.difficulty = value
-
-            # Get new probability value
             new_p = self.strategy_selector.p
-
-            # Enhanced logging with real-time feedback
-            self.logger.info(f"🎯 DIFFICULTY SYNC: {value}/10 → p={new_p:.2f} "
-                           f"({'RANDOM' if new_p == 0.0 else 'MIXED' if 0.0 < new_p < 1.0 else 'INTELLIGENT'} play)")
-
-            # Log change if there was a previous value
-            if old_p is not None and old_p != new_p:
-                self.logger.info(f"🔄 Strategy probability changed: {old_p:.2f} → {new_p:.2f}")
-
-            # Provide immediate user feedback about strategy behavior
-            if hasattr(self, 'status_label') and self.status_label and not self.game_over:
-                strategy_description = self._get_strategy_description(new_p)
-                # Only update status if we're not in the middle of a game action
-                if not getattr(self, 'waiting_for_detection', False) and not getattr(self, 'arm_move_in_progress', False):
-                    current_text = self.status_label.text()
-                    if not any(keyword in current_text.lower() for keyword in ['čekám', 'kreslím', 'detekce', 'tah']):
-                        self.status_label.setText(f"Obtížnost: {strategy_description}")
-        else:
-            self.logger.warning("⚠️ Strategy selector not available for difficulty update")
-
-    def _get_strategy_description(self, p_value):
-        """Get user-friendly description of strategy behavior based on probability"""
-        if p_value == 0.0:
-            return "Náhodné tahy (0% inteligence)"
-        elif p_value == 1.0:
-            return "Inteligentní tahy (100% inteligence)"
-        else:
-            intelligence_percent = int(p_value * 100)
-            return f"Smíšené tahy ({intelligence_percent}% inteligence)"
+            self.logger.info(f"Obtížnost změněna na {value}/10 -> p={new_p:.2f}")
 
     def handle_track_checkbox_changed(self, state):
-        """Handle track checkbox state change"""
         self.tracking_enabled = state == Qt.Checked
-
         if self.tracking_enabled:
-            # Pozastavit hru a zablokovat veškerou interakci s herní deskou
-            self.waiting_for_detection = True
-            self.game_paused = True
-
-            # Informovat uživatele o sledování hrací plochy
-            self.update_status(self.tr("Sledování středu hrací plochy aktivováno"))
-
-            # Zablokovat tlačítka hry
-            if hasattr(self, 'start_game_button'):
-                self.start_game_button.setEnabled(False)
-
-            # Spustit timer pro kontinuální sledování
+            self.game_paused = True # Pozastavit hru během sledování
+            self.update_status("tracking")
             self.tracking_timer.start(self.tracking_interval)
-            self.logger.info("Sledování hrací plochy aktivováno")
-
-            # Okamžitě zkusit sledovat střed hrací plochy
-            self.track_grid_center()
+            self.track_grid_center() # Zkusit hned
+            self.logger.info("Sledování hrací plochy aktivováno.")
         else:
-            # Zastavit timer pro sledování
             self.tracking_timer.stop()
-
-            # Obnovit hru a umožnit interakci s herní deskou
-            self.waiting_for_detection = False
             self.game_paused = False
-
-            # Přesunout ruku do neutrální pozice
-            self.move_to_neutral_position()
-
-            # Aktivovat tlačítka hry
-            if hasattr(self, 'start_game_button'):
-                self.start_game_button.setEnabled(True)
-
-            # Obnovit stav hry
-            self.update_status(self.tr("your_turn"))
-            self.logger.info("Sledování hrací plochy deaktivováno")
+            self.move_to_neutral_position() # Vrátit ruku
+            self.update_status("your_turn") # Vrátit normální stav (předpoklad)
+            self.logger.info("Sledování hrací plochy deaktivováno.")
 
     def track_grid_center(self):
-        """Sleduje střed hrací plochy a pohybuje rukou podle něj, i když se hýbe hrací plochou"""
-        if not self.tracking_enabled:
+        if not self.tracking_enabled or self.game_paused == False : return # Sledujeme jen když je aktivní A hra je pauznutá
+
+        arm_available, _ = self._check_arm_availability()
+        if not arm_available:
+            self.logger.warning("Sledování: Ruka není připojena.")
             return
 
-        # Kontrola, zda je robotická ruka připojena
-        arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and hasattr(self.arm_thread, 'connected') and self.arm_thread.connected
-        arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and hasattr(self.arm_controller, 'connected') and self.arm_controller.connected
-
-        if not (arm_thread_available or arm_controller_available):
-            self.logger.warning("Robotická ruka není připojena pro sledování")
+        _, game_state_obj = self._get_detection_data()
+        if not game_state_obj or not hasattr(game_state_obj, '_grid_points') or game_state_obj._grid_points is None:
+            self.logger.warning("Sledování: Mřížka není detekována.")
             return
 
-        # Získání stavu hry z kamery - stejný postup jako v draw_ai_symbol
-        game_state = None
+        grid_points = game_state_obj._grid_points
+        if len(grid_points) < 16: # Potřebujeme všechny body pro stabilní střed
+            self.logger.warning(f"Sledování: Nedostatek bodů mřížky ({len(grid_points)}/16).")
+            return
 
-        # Zkusíme získat stav hry ze všech možných zdrojů
-        if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
+        grid_center_uv = np.mean(grid_points, axis=0) # Střed v pixelech
+
+        # Převod na souřadnice ruky
+        # Tato část vyžaduje, aby get_cell_coordinates_from_yolo byla upravena tak,
+        # aby mohla přijímat přímo UV souřadnice, nebo zde implementovat transformaci.
+        # Pro zjednodušení předpokládáme, že máme funkci pro transformaci UV na XY.
+        # Zde použijeme zjednodušenou verzi get_cell_coordinates_from_yolo,
+        # která by měla interně zvládnout transformaci.
+        # Předáváme fiktivní řádek/sloupec, protože chceme transformovat grid_center_uv.
+
+        # Dočasné řešení pro transformaci (mělo by být robustnější)
+        # Zde by měla být logika z get_cell_coordinates_from_yolo pro transformaci
+        target_x, target_y = self.transform_uv_to_xy_for_tracking(grid_center_uv)
+
+        if target_x is not None and target_y is not None:
+            safe_z_tracking = DEFAULT_SAFE_Z + 20 # Výše při sledování
+            self.logger.info(f"Sledování: Přesun na střed mřížky XY: ({target_x:.1f}, {target_y:.1f}, Z:{safe_z_tracking})")
+            self._unified_arm_command('go_to_position', x=target_x, y=target_y, z=safe_z_tracking, speed=MAX_SPEED // 4, wait=False)
+        else:
+            self.logger.warning("Sledování: Nepodařilo se transformovat souřadnice středu mřížky.")
+
+    def transform_uv_to_xy_for_tracking(self, uv_coords):
+        # Tato funkce je zjednodušená kopie logiky z get_cell_coordinates_from_yolo
+        # pro transformaci libovolných UV souřadnic.
+        if hasattr(self, 'calibration_data') and self.calibration_data and "uv_to_xy_matrix" in self.calibration_data:
             try:
-                result = self.camera_thread.detection_thread.get_latest_result()
-                if result and len(result) >= 2 and result[1] is not None:
-                    game_state = result[1]
-                    self.logger.debug("Získán stav hry z detection_thread")
-                elif hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                    if hasattr(self.camera_thread.detection_thread.detector, 'game_state'):
-                        game_state = self.camera_thread.detection_thread.detector.game_state
-                        self.logger.debug("Získán stav hry z detektoru v detection_thread")
+                uv_to_xy_matrix = np.array(self.calibration_data["uv_to_xy_matrix"])
+                uv_point = np.array([[uv_coords[0], uv_coords[1], 1.0]], dtype=np.float32).T
+                xy_point = np.matmul(uv_to_xy_matrix, uv_point)
+                if xy_point[2, 0] != 0:
+                    return xy_point[0, 0] / xy_point[2, 0], xy_point[1, 0] / xy_point[2, 0]
             except Exception as e:
-                self.logger.debug(f"Chyba při získávání stavu z detection_thread: {e}")
+                self.logger.error(f"Chyba při transformaci UV pro sledování: {e}")
+                return None, None
 
-        # Záložní zdroj: game_state z camera_thread.detector (již nepoužíváno)
-        # Všechny přístupy by měly být přes detection_thread.detector
-
-        # Záložní zdroj: last_board_state z camera_thread
-        if game_state is None and hasattr(self.camera_thread, 'last_board_state') and self.camera_thread.last_board_state is not None:
-            try:
-                from app.core.game_state import GameState
-                game_state = GameState()
-                game_state.board = self.camera_thread.last_board_state
-                self.logger.debug("Vytvořen nový GameState z last_board_state")
-            except Exception as e:
-                self.logger.debug(f"Chyba při vytváření GameState z last_board_state: {e}")
-
-        # Bez game_state nemůžeme pokračovat
-        if game_state is None:
-            self.update_status(self.tr("Čekám na detekci herní plochy..."))
-            self.logger.warning("Stav hry není k dispozici pro sledování")
-            return
-
-        # Kontrola, zda máme body mřížky
-        if not hasattr(game_state, '_grid_points') or game_state._grid_points is None:
-            self.update_status(self.tr("Čekám na detekci herní plochy..."))
-            self.logger.warning("Mřížka není detekována pro sledování")
-            return
-
-        # Kontrola počtu bodů mřížky
-        grid_points = game_state._grid_points
-        if len(grid_points) < 16:
-            self.update_status(self.tr(f"Detekováno jen {len(grid_points)}/16 bodů mřížky"))
-            self.logger.warning(f"Nedostatek bodů mřížky pro sledování: {len(grid_points)}/16")
-            return
-
-        # Výpočet středu mřížky - průměrujeme všechny x a y souřadnice
-        grid_center = np.mean(grid_points, axis=0)
-        self.logger.info(f"Střed mřížky vypočten jako průměr {len(grid_points)} bodů: {grid_center}")
-
-        # Použijeme stejný přístup jako v get_cell_coordinates_from_yolo, ale pro střed
-        # Získání rozměrů snímku - nejprve z detektoru, pak výchozí hodnoty
-        frame_width = 640  # Výchozí hodnota
-        frame_height = 480  # Výchozí hodnota
-
-        detector = None
-        if hasattr(self.camera_thread, 'detector'):
-            detector = self.camera_thread.detector
-
-        if detector and hasattr(detector, 'frame_width') and hasattr(detector, 'frame_height'):
-            frame_width = detector.frame_width or frame_width
-            frame_height = detector.frame_height or frame_height
-
-        # Převedeme souřadnice středu mřížky na normalizované souřadnice (0-1)
-        norm_u = grid_center[0] / frame_width
-        norm_v = grid_center[1] / frame_height
-        self.logger.info(f"Normalizované souřadnice středu mřížky: u={norm_u:.3f}, v={norm_v:.3f}")
-
-        # Převedeme normalizované souřadnice stejným způsobem, jakým se převádí souřadnice buněk
-        # Nejprve zkusíme použít transformační matici, pokud existuje
-        target_x = None
-        target_y = None
-
-        if hasattr(self, 'calibration_data') and self.calibration_data:
-            if "uv_to_xy_matrix" in self.calibration_data:
-                try:
-                    # Převedeme souřadnice pomocí homografie
-                    uv_to_xy_matrix = np.array(self.calibration_data["uv_to_xy_matrix"])
-
-                    # Příprava bodu pro transformaci (potřebujeme homogenní souřadnice)
-                    uv_point = np.array([[grid_center[0], grid_center[1], 1.0]], dtype=np.float32).T
-
-                    # Aplikace transformace
-                    xy_point = np.matmul(uv_to_xy_matrix, uv_point)
-
-                    # Normalizace homogenních souřadnic
-                    if xy_point[2, 0] != 0:
-                        target_x = xy_point[0, 0] / xy_point[2, 0]
-                        target_y = xy_point[1, 0] / xy_point[2, 0]
-
-                        self.logger.info(f"Transformované souřadnice středu mřížky: UV({grid_center[0]:.1f}, {grid_center[1]:.1f}) -> XY({target_x:.1f}, {target_y:.1f})")
-                except Exception as e:
-                    self.logger.error(f"Chyba při transformaci souřadnic: {e}")
-
-        # Pokud transformace pomocí matice selhala, použijeme zjednodušenou metodu
-        if target_x is None or target_y is None:
-            self.logger.info("Používám zjednodušenou transformaci souřadnic (bez kalibrace)")
-
-            # Definice pracovního prostoru
-            arm_min_x = 150
-            arm_max_x = 300
-            arm_min_y = -50
-            arm_max_y = 50
-
-            # Načtení pracovního prostoru z kalibračních dat
-            if hasattr(self, 'calibration_data') and self.calibration_data:
-                if "arm_workspace" in self.calibration_data:
-                    workspace = self.calibration_data["arm_workspace"]
-                    arm_min_x = workspace.get("min_x", arm_min_x)
-                    arm_max_x = workspace.get("max_x", arm_max_x)
-                    arm_min_y = workspace.get("min_y", arm_min_y)
-                    arm_max_y = workspace.get("max_y", arm_max_y)
-                    self.logger.info(f"Použity hodnoty arm_workspace: X({arm_min_x}-{arm_max_x}), Y({arm_min_y}-{arm_max_y})")
-
-            # Převedeme normalizované souřadnice na souřadnice robotické ruky
-            # Invertujeme osu Y, protože v obraze je osa Y směrem dolů, ale v
-            # robotické ruce je směrem nahoru
-            target_x = arm_min_x + norm_u * (arm_max_x - arm_min_x)
-            target_y = arm_min_y + (1 - norm_v) * (arm_max_y - arm_min_y)
-            self.logger.info(f"Vypočtené souřadnice pro střed mřížky: ({target_x:.1f}, {target_y:.1f})")
-
-        # Použití safe_z z kalibračních dat (nebo výchozí hodnota)
-        safe_z = 50
-        if hasattr(self, 'calibration_data') and self.calibration_data:
-            safe_z = self.calibration_data.get("safe_z", safe_z)
-            self.logger.info(f"Použita bezpečná výška z kalibrace: {safe_z}")
-
-        # Aktualizace status labelu
-        self.update_status(self.tr(f"Sledování středu mřížky na ({target_x:.1f}, {target_y:.1f}, {safe_z})"))
-
-        # Pohyb ruky na vypočtené souřadnice
-        if arm_thread_available:
-            self.logger.info(f"Sledování středu mřížky pomocí arm_thread: ({target_x:.1f}, {target_y:.1f}, {safe_z})")
-            success = self.arm_thread.go_to_position(x=target_x, y=target_y, z=safe_z, wait=False)
-            if not success:
-                self.logger.warning("Nepodařilo se odeslat příkaz pro pohyb ruky pomocí arm_thread")
-        elif arm_controller_available:
-            self.logger.info(f"Sledování středu mřížky pomocí arm_controller: ({target_x:.1f}, {target_y:.1f}, {safe_z})")
-            success = self.arm_controller.go_to_position(x=target_x, y=target_y, z=safe_z, wait=False)
-            if not success:
-                self.logger.warning("Nepodařilo se odeslat příkaz pro pohyb ruky pomocí arm_controller")
-
+        # Fallback na jednodušší transformaci, pokud není matice
+        self.logger.warning("Sledování: Chybí uv_to_xy_matrix, používám zjednodušenou transformaci.")
+        # Zde by byla logika pro normalizované souřadnice a mapování na pracovní prostor ruky
+        # Toto je velmi hrubý odhad a vyžaduje kalibraci:
+        # Předpoklad: kamera vidí oblast cca 200x200mm kolem středu (200,0)
+        # a obraz má např. 640x480px
+        # frame_width_approx = 640
+        # frame_height_approx = 480
+        # arm_center_x = NEUTRAL_X
+        # arm_center_y = NEUTRAL_Y
+        # scale_x = 200 / frame_width_approx # mm/px
+        # scale_y = 200 / frame_height_approx # mm/px
+        #
+        # target_x = arm_center_x + (uv_coords[0] - frame_width_approx/2) * scale_x
+        # target_y = arm_center_y - (uv_coords[1] - frame_height_approx/2) * scale_y # Y osa kamery je často opačná
+        # return target_x, target_y
+        return None, None # Bez kalibrace je těžké toto správně implementovat
 
 
     def _unified_arm_command(self, command, *args, **kwargs):
-        """🤖 UNIFIED ARM INTERFACE: Single point for all arm operations"""
-        # Convert positional arguments to keyword arguments for backward compatibility
-        if args:
-            # Handle common patterns like draw_o(x, y, radius, speed=speed)
-            if command in ['draw_o', 'draw_x'] and len(args) >= 3:
-                kwargs.setdefault('x', args[0])
-                kwargs.setdefault('y', args[1])
-                kwargs.setdefault('radius', args[2])
-                if len(args) >= 4:
-                    kwargs.setdefault('speed', args[3])
-            elif command == 'go_to_position' and len(args) >= 2:
-                kwargs.setdefault('x', args[0])
-                kwargs.setdefault('y', args[1])
-                if len(args) >= 3:
-                    kwargs.setdefault('z', args[2])
-            elif command == 'park' and len(args) >= 2:
-                kwargs.setdefault('x', args[0])
-                kwargs.setdefault('y', args[1])
-        # Check arm availability
-        arm_thread_available = (hasattr(self, 'arm_thread') and self.arm_thread and
-                               hasattr(self.arm_thread, 'connected') and self.arm_thread.connected)
-        arm_controller_available = (hasattr(self, 'arm_controller') and self.arm_controller and
-                                   hasattr(self.arm_controller, 'connected') and self.arm_controller.connected)
+        arm_thread_available, _ = self._check_arm_availability()
+        if not arm_thread_available:
+            raise RuntimeError(f"Arm command '{command}' failed: robotic arm is not available")
 
-        if not (arm_thread_available or arm_controller_available):
-            self.logger.warning(f"🚫 No arm available for command: {command}")
+        # Použijeme ArmThread API
+        if command == 'draw_o':
+            success = self.arm_thread.draw_o(
+                center_x=kwargs.get('x'),
+                center_y=kwargs.get('y'),
+                radius=kwargs.get('radius'),
+                speed=kwargs.get('speed', DRAWING_SPEED)
+            )
+        elif command == 'draw_x':
+            success = self.arm_thread.draw_x(
+                center_x=kwargs.get('x'),
+                center_y=kwargs.get('y'),
+                size=kwargs.get('size'),
+                speed=kwargs.get('speed', DRAWING_SPEED)
+            )
+        elif command == 'go_to_position':
+            success = self.arm_thread.go_to_position(
+                x=kwargs.get('x'),
+                y=kwargs.get('y'),
+                z=kwargs.get('z'),
+                speed=kwargs.get('speed', MAX_SPEED),
+                wait=kwargs.get('wait', True)
+            )
+        elif command == 'park':
+            success = self.arm_thread.go_to_position(
+                x=kwargs.get('x', PARK_X),
+                y=kwargs.get('y', PARK_Y),
+                z=kwargs.get('z', DEFAULT_SAFE_Z),
+                speed=MAX_SPEED // 2,
+                wait=kwargs.get('wait', True)
+            )
+        else:
+            raise ValueError(f"Unknown arm command: {command}")
+
+        if not success:
+            raise RuntimeError(f"Arm command '{command}' failed to execute")
+
+        self.logger.info(f"Příkaz pro ruku '{command}' proveden přes arm_thread, úspěch: {success}")
+        return success
+
+
+    def update_board_from_detection(self, detected_board_2d):
+        # Tato metoda se volá POUZE pro vizuální aktualizaci desky v GUI na základě detekce.
+        # Neměla by spouštět herní logiku.
+        if not hasattr(self, 'board_widget') or not self.board_widget: return
+
+        # Zde můžeme porovnat s self.board_widget.board a zvýraznit změny, pokud je to žádoucí.
+        # Pro zjednodušení jen aktualizujeme.
+        self.board_widget.update_board(detected_board_2d, self.board_widget.winning_line, highlight_changes=True)
+        # self.logger.debug(f"GUI deska aktualizována z detekce: {detected_board_2d}")
+
+    def handle_detected_game_state(self, detected_board_from_camera):
+        # detected_board_from_camera je PŘEDPOKLADANĚ již 2D list nebo None
+        if detected_board_from_camera is None:
+            self.logger.debug("Detekována prázdná deska (None) z kamery.")
+            return
+
+        detected_board = self._convert_board_1d_to_2d(detected_board_from_camera)
+        if not detected_board: # Pokud konverze selže nebo je výsledek stále None/False
+            self.logger.warning("Nepodařilo se převést detekovanou desku na 2D formát.")
+            return
+
+        self.logger.debug(f"Detekovaný stav hry (po konverzi): {detected_board}")
+
+        # POUZE aktualizuj vizuální zobrazení s tím, co YOLO skutečně detekoval
+        self.update_board_from_detection(detected_board)
+
+        if self.game_over:
+            # Pokud je hra u konce, zkontrolujeme, zda není deska prázdná (signál pro novou hru)
+            is_empty_now = all(cell == game_logic.EMPTY for row in detected_board for cell in row)
+            if is_empty_now:
+                self.logger.info("Detekována prázdná deska po konci hry - resetuji pro novou hru.")
+                self.reset_game()
+            return
+
+        # ÚPLNĚ ODSTRANĚNÁ LOGIKA "VYMÝŠLENÍ" TAHŮ
+        # Nyní pouze aktualizujeme board_widget.board s tím, co YOLO skutečně detekoval
+        # a necháme _should_arm_play_now rozhodnout o tahu ruky na základě aktuálního stavu
+        if hasattr(self, 'board_widget') and self.board_widget:
+            self.board_widget.board = [row[:] for row in detected_board]
+
+        # Zkontroluj end game podmínky na základě YOLO detekce
+        self.check_game_end()
+
+        # --- Hlavní logika pro rozhodnutí a spuštění tahu ruky ---
+        if not self.game_over:
+            should_play, arm_symbol_to_play = self._should_arm_play_now(detected_board)
+            if should_play and arm_symbol_to_play:
+                self.logger.info(f"ROZHODNUTÍ: Ruka by měla hrát symbolem {arm_symbol_to_play}.")
+                # Nastavíme, že AI (ruka) hraje tímto symbolem
+                self.ai_player = arm_symbol_to_play
+                # Pokud člověk hrál X, AI je O. Pokud člověk hrál O, AI je X.
+                # Toto by mělo být konzistentní s self.ai_player nastaveným na začátku.
+                # Pro náš cíl "ruka hraje, když je lichý počet" je důležitější arm_symbol_to_play.
+
+                self.current_turn = self.ai_player # Je na tahu ruka
+                self.update_status("arm_moving") # Ruka se začne hýbat
+
+                # Spustíme tah ruky
+                # Předpokládáme, že self.ai_player byl správně nastaven na začátku (např. O)
+                # a arm_symbol_to_play je ten, který má skutečně hrát
+                self.make_arm_move_with_symbol(arm_symbol_to_play)
+            elif self.current_turn == self.ai_player and not self.arm_move_in_progress and not self.waiting_for_detection:
+                # Ruka by měla hrát, ale _should_arm_play_now vrátilo False (např. sudý počet, cooldown)
+                # Pokud je current_turn stále ai_player, ale ruka nehraje, aktualizujeme status
+                self.update_status("arm_turn") # Zobrazí "TAH RUKY", ale ruka čeká na vhodný okamžik
+                self.logger.debug("Ruka je na tahu, ale podmínky pro hraní (_should_arm_play_now) nejsou splněny.")
+
+    def _should_arm_play_now(self, current_board_state):
+        self.logger.debug(f"Kontroluji, zda má ruka hrát. InProgress: {self.arm_move_in_progress}, Cooldown: {time.time() - self.last_arm_move_time < self.arm_move_cooldown}")
+        if self.game_over or self.arm_move_in_progress or (time.time() - self.last_arm_move_time < self.arm_move_cooldown):
+            return False, None
+
+        # Kontrola validity mřížky
+        _, game_state_obj = self._get_detection_data()
+        grid_valid = False
+        if game_state_obj and hasattr(game_state_obj, 'is_physical_grid_valid') and callable(game_state_obj.is_physical_grid_valid):
+            grid_valid = game_state_obj.is_physical_grid_valid()
+
+        if not grid_valid:
+            self.logger.warning("Ruka nemůže hrát: mřížka není validní.")
+            if not (hasattr(self, 'grid_warning_active') and self.grid_warning_active): # Aby se nezobrazovalo stále
+                 self.update_status("grid_not_visible")
+            return False, None
+
+        x_count, o_count, total_symbols = self._get_board_symbol_counts(current_board_state)
+        self.logger.debug(f"Analýza desky pro tah ruky: X={x_count}, O={o_count}, Celkem={total_symbols}")
+
+        if total_symbols % 2 == 1: # Lichý počet symbolů => ruka má hrát
+            # Ruka by měla hrát symbolem, kterého je na desce méně.
+            # Pokud je jich stejně, a X začíná, pak O (AI) je na tahu.
+            # Naše AI (ruka) je self.ai_player (např. O)
+            # Symbol k zahrání by měl být self.ai_player.
+            # Pokud by logika byla "ruka hraje symbol, kterého je méně":
+            # arm_symbol_candidate = game_logic.PLAYER_X if x_count < o_count else game_logic.PLAYER_O
+            # if x_count == o_count: # Pokud je jich stejně, a X začal, O je na tahu.
+            #    arm_symbol_candidate = game_logic.PLAYER_O (pokud AI hraje za O)
+
+            # Pro náš cíl "hrát když je lichý počet", symbolem AI (self.ai_player)
+            self.logger.info(f"Lichý počet symbolů ({total_symbols}). Ruka by měla hrát za {self.ai_player}.")
+            return True, self.ai_player
+        else:
+            self.logger.debug(f"Sudý počet symbolů ({total_symbols}). Ruka nehraje.")
+            return False, None
+
+
+    def make_arm_move_with_symbol(self, symbol_to_play):
+        self.logger.info(f"Spouštím tah ruky se symbolem: {symbol_to_play}")
+        if self.game_over or self.arm_move_in_progress: # Přidána kontrola arm_move_in_progress
+            self.logger.warning("Tah ruky přerušen: hra skončila nebo ruka je již v pohybu.")
             return False
 
-        success = False
+        # Získání aktuální desky z kamery pro strategii
+        current_board_for_strategy = None
+        if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
+            current_board_for_strategy = self._convert_board_1d_to_2d(self.camera_thread.last_board_state)
 
-        # Execute command using preferred arm interface
-        if arm_thread_available:
-            success = self._execute_arm_thread_command(command, **kwargs)
-        elif arm_controller_available:
-            success = self._execute_arm_controller_command(command, **kwargs)
+        if not current_board_for_strategy:
+            self.logger.error("Nelze provést tah ruky: není dostupný aktuální stav desky pro strategii.")
+            # Možná resetovat stav, aby se hra mohla obnovit?
+            self.current_turn = self.human_player # Vrať tah hráči
+            self.update_status("your_turn")
+            return False
+
+        # Nastavení příznaků PŘED zahájením pohybu
+        self.arm_move_in_progress = True
+        self.last_arm_move_time = time.time()
+        self.update_status("arm_moving") # Zobraz, že se ruka pohybuje
+
+        move = self.strategy_selector.get_move(current_board_for_strategy, symbol_to_play)
+        if not move:
+            self.logger.warning(f"Strategie nenašla platný tah pro symbol {symbol_to_play}.")
+            self.arm_move_in_progress = False # Uvolnit ruku
+            self.current_turn = self.human_player # Něco je špatně, vrátit tah hráči
+            self.update_status("your_turn")
+            return False
+
+        row, col = move
+        self.logger.info(f"AI strategie vybrala tah: ({row}, {col}) pro symbol {symbol_to_play}")
+
+        # Uložit informace o očekávaném tahu pro detekci
+        self.ai_move_row = row
+        self.ai_move_col = col
+        self.expected_symbol = symbol_to_play
+        self.detection_wait_time = 0.0 # Resetovat časovač čekání na detekci
+        self.ai_move_retry_count = 0   # Resetovat počítadlo opakování
+
+        if self.draw_ai_symbol(row, col, symbol_to_play):
+            self.logger.info(f"Symbol {symbol_to_play} úspěšně odeslán ke kreslení na ({row},{col}). Čekám na detekci.")
+            self.waiting_for_detection = True
+            # arm_move_in_progress zůstává True, dokud není detekce potvrzena (nebo timeout)
+            return True
+        else:
+            self.logger.error(f"Nepodařilo se zahájit kreslení symbolu {symbol_to_play} na ({row},{col}).")
+            self.arm_move_in_progress = False # Uvolnit ruku
+            self.waiting_for_detection = False # Nebudeme čekat na detekci
+            self.current_turn = self.human_player # Vrátit tah hráči
+            self.update_status("your_turn")
+            return False
+
+
+    def update_game_state_machine(self): # Dříve update_game_state
+        if self.game_paused or self.game_over : return # Pokud je hra pauznutá nebo skončila, nic nedělat
+
+        if hasattr(self, 'grid_warning_active') and self.grid_warning_active:
+            return # Pokud je problém s mřížkou, neaktualizovat logiku hry
+
+        if self.waiting_for_detection:
+            self.detection_wait_time += 0.1 # Timer je každých 100ms
+
+            # Kontrola detekce symbolu
+            board_after_arm_move = None
+            if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
+                board_after_arm_move = self._convert_board_1d_to_2d(self.camera_thread.last_board_state)
+
+            if board_after_arm_move and \
+               self.ai_move_row is not None and self.ai_move_col is not None and \
+               0 <= self.ai_move_row < 3 and 0 <= self.ai_move_col < 3 and \
+               board_after_arm_move[self.ai_move_row][self.ai_move_col] == self.expected_symbol:
+
+                self.logger.info(f"ÚSPĚŠNÁ DETEKCE: Symbol {self.expected_symbol} na ({self.ai_move_row},{self.ai_move_col}).")
+                self.waiting_for_detection = False
+                self.arm_move_in_progress = False # Ruka dokončila pohyb a byl detekován
+
+                self.board_widget.board = [r[:] for r in board_after_arm_move] # Aktualizovat interní desku widgetu
+                self.board_widget.update() # Překreslit GUI desku
+
+                self.move_counter += 1
+                self.check_game_end()
+
+                if not self.game_over:
+                    self.current_turn = self.human_player
+                    self.update_status("your_turn")
+
+                self.ai_move_row, self.ai_move_col, self.expected_symbol = None, None, None
+                self.ai_move_retry_count = 0
+                self.detection_wait_time = 0.0
+                self.move_to_neutral_position() # Po úspěšné detekci do neutrálu
+
+            elif self.detection_wait_time >= self.max_detection_wait_time:
+                self.logger.warning(f"TIMEOUT DETEKCE: Symbol {self.expected_symbol} na ({self.ai_move_row},{self.ai_move_col}) nebyl detekován včas.")
+
+                if self.ai_move_retry_count < self.max_retry_count:
+                    self.ai_move_retry_count += 1
+                    self.logger.info(f"Opakuji kreslení, pokus {self.ai_move_retry_count}/{self.max_retry_count}.")
+                    self.update_status(self.tr("detection_attempt").format(self.ai_move_retry_count, self.max_retry_count), is_key=False)
+                    self.detection_wait_time = 0.0 # Resetovat časovač pro další pokus
+                    # Příznak arm_move_in_progress je stále True, takže nový tah se nespustí, dokud tento nedoběhne
+                    # Musíme ho na chvíli uvolnit, aby se mohl spustit draw_ai_symbol
+                    self.arm_move_in_progress = False
+                    if not self.draw_ai_symbol(self.ai_move_row, self.ai_move_col, self.expected_symbol):
+                        # Pokud ani opakované kreslení nelze zahájit
+                        self.logger.error("Opakované kreslení selhalo.")
+                        self.waiting_for_detection = False
+                        self.arm_move_in_progress = False
+                        self.current_turn = self.human_player
+                        self.update_status("your_turn")
+                    else:
+                        self.arm_move_in_progress = True # Znovu nastavit, protože kreslení začalo
+                else:
+                    self.logger.error("Maximum pokusů o detekci dosaženo. Vzdávám tah ruky.")
+                    self.waiting_for_detection = False
+                    self.arm_move_in_progress = False
+                    self.current_turn = self.human_player # Vzdát to a nechat hrát člověka
+                    self.update_status("detection_failed")
+                    QTimer.singleShot(2000, lambda: self.update_status("your_turn")) # Po chvíli vrátit na tah hráče
+
+                self.ai_move_row, self.ai_move_col, self.expected_symbol = None, None, None # Po timeoutu/vyčerpání pokusů zapomenout
+        # else:
+            # Zde by mohla být logika pro případ, kdy není self.waiting_for_detection,
+            # ale to se nyní řeší v handle_detected_game_state přes _should_arm_play_now
+            # pass
+
+
+    def draw_ai_symbol(self, row, col, symbol_to_draw):
+        self.logger.info(f"Požadavek na kreslení {symbol_to_draw} na ({row},{col})")
+        arm_available, _ = self._check_arm_availability()
+        if not arm_available:
+            raise RuntimeError(f"Cannot draw symbol {symbol_to_draw}: robotic arm is not available")
+
+        # Získání souřadnic z YOLO a kalibrace
+        target_x, target_y = self.get_cell_coordinates_from_yolo(row, col)
+        if target_x is None or target_y is None:
+            raise RuntimeError(f"Cannot get coordinates for drawing at ({row},{col})")
+
+        self.logger.info(f"Kreslím {symbol_to_draw} na fyzické souřadnice ({target_x:.1f}, {target_y:.1f})")
+
+        # Parametry pro kreslení z kalibrace nebo výchozí
+        draw_z = self.calibration_data.get("draw_z", DEFAULT_DRAW_Z) if hasattr(self, 'calibration_data') else DEFAULT_DRAW_Z
+        safe_z = self.calibration_data.get("safe_z", DEFAULT_SAFE_Z) if hasattr(self, 'calibration_data') else DEFAULT_SAFE_Z
+        symbol_size = self.calibration_data.get("symbol_size_mm", DEFAULT_SYMBOL_SIZE_MM) if hasattr(self, 'calibration_data') else DEFAULT_SYMBOL_SIZE_MM
+
+        # Sestavení příkazu pro _unified_arm_command
+        # Předpokládáme, že ArmThread má metody draw_o a draw_x
+        if symbol_to_draw == game_logic.PLAYER_O:
+            success = self._unified_arm_command('draw_o', x=target_x, y=target_y, radius=symbol_size / 2,
+                                              draw_z=draw_z, safe_z=safe_z, speed=DRAWING_SPEED)
+        elif symbol_to_draw == game_logic.PLAYER_X:
+            success = self._unified_arm_command('draw_x', x=target_x, y=target_y, size=symbol_size,
+                                              draw_z=draw_z, safe_z=safe_z, speed=DRAWING_SPEED)
+        else:
+            self.logger.error(f"Neznámý symbol pro kreslení: {symbol_to_draw}")
+            return False
+
+        if success:
+            self.logger.info(f"Příkaz ke kreslení {symbol_to_draw} odeslán.")
+            # Přesun do neutrální pozice se děje až po detekci, ne hned po kreslení
+            # self.move_to_neutral_position() # Toto se přesune
+        else:
+            self.logger.error(f"Odeslání příkazu ke kreslení {symbol_to_draw} selhalo.")
 
         return success
 
-    def _get_command_params(self, command, **kwargs):
-        """🔧 CONSOLIDATED: Extract common command parameters"""
-        params = {
-            'park': {
-                'x': kwargs.get('x', PARK_X),
-                'y': kwargs.get('y', PARK_Y),
-                'wait': kwargs.get('wait', True)
-            },
-            'move_to_neutral': {
-                'x': kwargs.get('x', NEUTRAL_X),
-                'y': kwargs.get('y', NEUTRAL_Y),
-                'z': kwargs.get('z', NEUTRAL_Z),
-                'wait': kwargs.get('wait', False)
-            },
-            'draw_symbol': {
-                'symbol': kwargs.get('symbol'),
-                'x': kwargs.get('x'),
-                'y': kwargs.get('y'),
-                'speed': kwargs.get('speed', DRAWING_SPEED)
-            },
-            'draw_o': {
-                'x': kwargs.get('x'),
-                'y': kwargs.get('y'),
-                'radius': kwargs.get('radius', DEFAULT_SYMBOL_SIZE_MM / 2),
-                'speed': kwargs.get('speed', DRAWING_SPEED)
-            },
-            'draw_x': {
-                'x': kwargs.get('x'),
-                'y': kwargs.get('y'),
-                'size': kwargs.get('size', DEFAULT_SYMBOL_SIZE_MM),
-                'speed': kwargs.get('speed', DRAWING_SPEED)
-            }
-        }
-        return params.get(command, kwargs)
 
-    def _execute_arm_thread_command(self, command, **kwargs):
-        """Execute command using arm_thread interface"""
-        try:
-            params = self._get_command_params(command, **kwargs)
+    def get_cell_coordinates_from_yolo(self, row, col):
+        """
+        Získá skutečné XY souřadnice robotické ruky pro danou buňku (row, col)
+        na základě aktuální detekce mřížky a kalibrace.
+        """
+        # Získej aktuální stav detekce
+        _, game_state_obj = self._get_detection_data()
+        if not game_state_obj:
+            raise RuntimeError(f"Cannot get detection state for cell ({row},{col})")
 
-            if command == 'park':
-                return self.arm_thread.go_to_position(x=params['x'], y=params['y'], wait=params['wait'])
-            elif command == 'move_to_neutral':
-                return self.arm_thread.go_to_position(x=params['x'], y=params['y'], z=params['z'], wait=params['wait'])
-            elif command == 'go_to_position':
-                return self.arm_thread.go_to_position(**kwargs)
-            elif command == 'draw_symbol':
-                if params['symbol'] == game_logic.PLAYER_O:
-                    return self.arm_thread.draw_o(params['x'], params['y'], DEFAULT_SYMBOL_SIZE_MM / 2, speed=params['speed'])
-                else:
-                    return self.arm_thread.draw_x(params['x'], params['y'], DEFAULT_SYMBOL_SIZE_MM, speed=params['speed'])
-            elif command == 'draw_o':
-                return self.arm_thread.draw_o(params['x'], params['y'], params['radius'], speed=params['speed'])
-            elif command == 'draw_x':
-                return self.arm_thread.draw_x(params['x'], params['y'], params['size'], speed=params['speed'])
-            return False
-        except Exception as e:
-            self.logger.error(f"Arm thread command failed: {e}")
-            return False
+        # Získej UV souřadnice středu buňky z aktuální detekce
+        uv_center = game_state_obj.get_cell_center_uv(row, col)
+        if uv_center is None:
+            raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection")
 
-    def _execute_arm_controller_command(self, command, **kwargs):
-        """Execute command using arm_controller interface"""
-        try:
-            params = self._get_command_params(command, **kwargs)
+        # Transformuj UV souřadnice na XY pomocí inverzní transformace
+        if hasattr(self, 'calibration_data') and self.calibration_data:
+            # Kalibrace obsahuje xy_to_uv matici, potřebujeme inverzní
+            xy_to_uv_matrix = self.calibration_data.get("perspective_transform_matrix_xy_to_uv")
+            if xy_to_uv_matrix:
+                try:
+                    # Inverze matice pro UV->XY transformaci
+                    xy_to_uv_matrix = np.array(xy_to_uv_matrix, dtype=np.float32)
+                    uv_to_xy_matrix = np.linalg.inv(xy_to_uv_matrix)
 
-            if command == 'park':
-                return self.arm_controller.park(x=params['x'], y=params['y'])
-            elif command == 'move_to_neutral':
-                return self.arm_controller.go_to_position(x=params['x'], y=params['y'], z=params['z'], wait=params['wait'])
-            elif command == 'go_to_position':
-                return self.arm_controller.go_to_position(**kwargs)
-            elif command == 'draw_symbol':
-                if params['symbol'] == game_logic.PLAYER_O:
-                    return self.arm_controller.draw_o(params['x'], params['y'], DEFAULT_SYMBOL_SIZE_MM / 2, speed=params['speed'])
-                else:
-                    return self.arm_controller.draw_x(params['x'], params['y'], DEFAULT_SYMBOL_SIZE_MM, speed=params['speed'])
-            elif command == 'draw_o':
-                return self.arm_controller.draw_o(params['x'], params['y'], params['radius'], speed=params['speed'])
-            elif command == 'draw_x':
-                return self.arm_controller.draw_x(params['x'], params['y'], params['size'], speed=params['speed'])
-            return False
-        except Exception as e:
-            self.logger.error(f"Arm controller command failed: {e}")
-            return False
+                    # Homogenní souřadnice pro transformaci
+                    uv_point_homogeneous = np.array([uv_center[0], uv_center[1], 1.0], dtype=np.float32).reshape(3,1)
+                    xy_transformed_homogeneous = np.dot(uv_to_xy_matrix, uv_point_homogeneous)
 
-    def handle_arm_connection_toggled(self, connected):
-        """Handle arm connection toggle event using unified interface"""
-        if hasattr(self, 'arm_thread') and self.arm_thread:
-            if connected and not self.arm_thread.connected:
-                self.arm_thread.connect()
-            elif not connected and self.arm_thread.connected:
-                self.arm_thread.disconnect()
-        elif hasattr(self, 'arm_controller') and self.arm_controller:
-            if connected and not self.arm_controller.connected:
-                self.arm_controller.connect()
-            elif not connected and self.arm_controller.connected:
-                self.arm_controller.disconnect()
-
-    def update_board_from_detection(self, board):
-        """Update board visualization without triggering game logic"""
-        # V testech přeskočíme aktualizaci stavu herní desky
-        if not hasattr(self, 'board_widget') or not self.board_widget:
-            return
-
-        self.logger.debug(f"📊 update_board_from_detection called. Current turn: {self.current_turn}, "
-                         f"Human: {self.human_player}, AI: {self.ai_player}, "
-                         f"waiting_for_detection: {self.waiting_for_detection}, "
-                         f"arm_move_in_progress: {self.arm_move_in_progress}")
-
-        # Aktualizace stavu herní desky v GUI bez zvýraznění změn
-        # Pouze vizuální aktualizace bez spouštění herní logiky
-        if hasattr(self.board_widget, 'update_board'):
-            self.board_widget.update_board(board, None, highlight_changes=False)
-
-    def handle_detected_game_state(self, board):
-        """Handle detected game state event"""
-        # V testech přeskočíme obsluhu detekovaného stavu hry
-        if not hasattr(self, 'board_widget') or not self.board_widget:
-            return
-
-        # Zjistíme změny mezi starým a novým stavem
-        changes = []
-        for r in range(3):
-            for c in range(3):
-                if self.board_widget.board[r][c] != board[r][c] and board[r][c] != game_logic.EMPTY:
-                    changes.append((r, c))
-                    if hasattr(self, 'logger'):
-                        self.logger.info(f"Detekována změna na pozici ({r}, {c}): {self.board_widget.board[r][c]} -> {board[r][c]}")
-
-        # Aktualizace stavu herní desky v GUI
-        # Zvýrazníme změny pouze pokud existují nové symboly
-        has_new_symbols = len(changes) > 0
-
-        # CRITICAL: Only update board_widget.board from YOLO detections in update_board_from_detection
-        # DO NOT update board here - this causes GUI to show moves not yet detected by camera
-        # The board parameter here is just for analysis, not for updating GUI
-
-        # Aktualizujeme vizuální reprezentaci herní desky
-        self.board_widget.update_board(board, None, highlight_changes=has_new_symbols)
-
-        # Kontrola, zda čekáme na platné tahy
-        if hasattr(self, 'waiting_for_valid_moves') and self.waiting_for_valid_moves:
-            # Zjistíme, zda jsou k dispozici platné tahy
-            valid_moves = []
-            for r in range(3):
-                for c in range(3):
-                    if board[r][c] == game_logic.EMPTY:
-                        valid_moves.append((r, c))
-
-            if valid_moves:
-                self.logger.info(f"Platné tahy jsou nyní k dispozici: {valid_moves}")
-                self.waiting_for_valid_moves = False
-                self.current_turn = self.ai_player
-                self.make_ai_move()
-                return
-
-        # Pokračujeme s herní logikou pouze pokud existují nové symboly
-        # To zabrání opakovanému spouštění herní logiky pro každou aktualizaci z kamery
-        if has_new_symbols:
-            # Detekce prvního tahu hráče pro určení symbolů
-            if self.move_counter == 0:
-                # Zjistíme, kolik symbolů každého typu je na desce
-                x_count = sum(row.count(game_logic.PLAYER_X) for row in board)
-                o_count = sum(row.count(game_logic.PLAYER_O) for row in board)
-
-                self.logger.info(f"První detekce: X={x_count}, O={o_count}")
-
-                # Debug - zkontrolovat hodnoty
-                self.logger.info(f"DEBUG: x_count={x_count}, o_count={o_count}, x_count < o_count = {x_count < o_count}, o_count < x_count = {o_count < x_count}")
-
-                # FIXED: Ruka hraje symbol, kterého je méně!
-                if x_count < o_count:
-                    # Méně X než O → ruka hraje X, hráč hraje O
-                    self.human_player = game_logic.PLAYER_O
-                    self.ai_player = game_logic.PLAYER_X
-                    self.arm_player_symbol = game_logic.PLAYER_X
-                    self.logger.info(f"První detekovaný tah: méně X ({x_count}) než O ({o_count}) → hráč hraje O, ruka bude kreslit X")
-                elif o_count < x_count:
-                    # Méně O než X → ruka hraje O, hráč hraje X
-                    self.human_player = game_logic.PLAYER_X
-                    self.ai_player = game_logic.PLAYER_O
-                    self.arm_player_symbol = game_logic.PLAYER_O
-                    self.logger.info(f"První detekovaný tah: méně O ({o_count}) než X ({x_count}) → hráč hraje X, ruka bude kreslit O")
-                else:
-                    # Stejný počet symbolů nebo žádný symbol
-                    if x_count == 0 and o_count == 0:
-                        # Prázdná deska - čekáme na první tah
-                        self.logger.info("Prázdná deska, čekám na první tah hráče")
-                        return
+                    if xy_transformed_homogeneous[2,0] != 0:
+                        arm_x = xy_transformed_homogeneous[0,0] / xy_transformed_homogeneous[2,0]
+                        arm_y = xy_transformed_homogeneous[1,0] / xy_transformed_homogeneous[2,0]
+                        self.logger.info(f"Transformované UV {uv_center} na XY ({arm_x:.1f}, {arm_y:.1f}) pro buňku ({row},{col})")
+                        return arm_x, arm_y
                     else:
-                        # Stejný počet symbolů - použijeme výchozí (X začíná, takže hráč je asi X)
-                        self.logger.warning(f"Stejný počet symbolů X={x_count}, O={o_count}, používám výchozí")
-                        self.human_player = game_logic.PLAYER_X
-                        self.ai_player = game_logic.PLAYER_O
-                        self.arm_player_symbol = game_logic.PLAYER_O
+                        raise RuntimeError("Division by zero in UV->XY transformation")
 
-                # Inkrementujeme počítadlo tahů
-                self.move_counter = 1
-
-                # CRITICAL: DO NOT update board here!
-                # Board updates should ONLY come from update_board_from_detection
-                # This prevents GUI from showing moves not yet detected by YOLO
-
-                # Logování aktuálního stavu herní desky
-                self.logger.info("=== Detekovaný stav herní desky ===")
-                for r in range(3):
-                    row_str = ""
-                    for c in range(3):
-                        cell = board[r][c]
-                        if cell == game_logic.EMPTY:
-                            row_str += "[ ]"
-                        else:
-                            row_str += f"[{cell}]"
-                    self.logger.info(row_str)
-                self.logger.info("======================================")
-
-                # Zjistíme, zda jsou k dispozici platné tahy
-                valid_moves = []
-                for r in range(3):
-                    for c in range(3):
-                        if board[r][c] == game_logic.EMPTY:
-                            valid_moves.append((r, c))
-
-                if valid_moves:
-                        # Určíme, kdo je na tahu podle počtu symbolů
-                    total_symbols = x_count + o_count
-                    if total_symbols % 2 == 0:
-                        # Sudý počet symbolů → hráč je na tahu
-                        self.current_turn = self.human_player
-                        self.logger.info(f"Sudý počet symbolů ({total_symbols}) → hráč je na tahu")
-                        self.update_status(self.tr("your_turn"))
-                    else:
-                        # Lichý počet symbolů → ruka je na tahu
-                        self.current_turn = self.ai_player
-                        self.logger.info(f"Lichý počet symbolů ({total_symbols}) → ruka je na tahu")
-                        # Update status to show it's arm's turn
-                        self.update_status(self.tr("arm_turn"))
-                        self.logger.info(f"Starting AI move immediately after first detection, valid moves: {valid_moves}")
-                        self.make_ai_move()
-                else:
-                    self.logger.warning(f"No valid moves available for AI, waiting for next detection")
-                    # Nastavíme příznak, že čekáme na další detekci
-                    self.waiting_for_valid_moves = True
-                return
-
-            # Kontrola konce hry
-            self.check_game_end()
-
-            # Pokud hra neskončila a je tah AI, provedeme ho
-            if not self.game_over and self.current_turn == self.ai_player:
-                self.make_ai_move()
-            # Pokud hra neskončila a je tah hráče, přesuneme ruku do neutrální pozice
-            elif not self.game_over and self.current_turn == self.human_player:
-                # Přesun ruky do neutrální pozice, když čekáme na tah hráče
-                self.move_to_neutral_position()
-
-    def make_arm_move_with_symbol(self, symbol):
-        """Unified method for making arm moves with a specific symbol"""
-        import time
-
-        self.logger.info(f"🤖 ===== MAKE_ARM_MOVE_WITH_SYMBOL STARTED =====")
-        self.logger.info(f"🤖 symbol={symbol}")
-        self.logger.info(f"🤖 current_turn={self.current_turn}")
-        self.logger.info(f"🤖 ai_player={self.ai_player}")
-        self.logger.info(f"🤖 human_player={self.human_player}")
-        self.logger.info(f"🤖 waiting_for_detection={self.waiting_for_detection}")
-        self.logger.info(f"🤖 game_over={self.game_over}")
-        self.logger.info(f"🤖 arm_move_in_progress={self.arm_move_in_progress}")
-        self.logger.info(f"🤖 arm_move_scheduled={self.arm_move_scheduled}")
-
-        # Check if game is over
-        if self.game_over:
-            self.logger.warning("🤖 Game is over, cannot make move")
-            return False
-
-        # Check if arm is busy or scheduled
-        if self.arm_move_in_progress or self.arm_move_scheduled:
-            self.logger.warning(f"🤖 ARM BUSY: in_progress={self.arm_move_in_progress}, scheduled={self.arm_move_scheduled}")
-
-            # Check if we're stuck - if waiting_for_detection is True but we're not actually waiting
-            if self.waiting_for_detection and hasattr(self, 'detection_wait_time'):
-                if self.detection_wait_time > self.max_detection_wait_time:
-                    self.logger.error("🚨 ARM STUCK - resetting all flags!")
-                    self.reset_arm_flags()
-                    return False
-
-            return False
-
-        # Check for duplicate calls and enforce minimum time between moves
-        if not hasattr(self, 'last_arm_move_time'):
-            self.last_arm_move_time = 0
-
-        current_time = time.time()
-        min_time_between_moves = 5.0  # Increased to 5 seconds to ensure proper detection
-
-        if current_time - self.last_arm_move_time < min_time_between_moves:
-            remaining_time = min_time_between_moves - (current_time - self.last_arm_move_time)
-            self.logger.info(f"🤖 Too soon for next arm move. Please wait {remaining_time:.1f} more seconds.")
-            return False
-
-        # Get the latest detected board from camera
-        detected_board = None
-        if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
-            detected_board = self.camera_thread.last_board_state
-            # Convert 1D to 2D if needed
-            detected_board = self._convert_board_1d_to_2d(detected_board)
-
-        if not detected_board:
-            self.logger.error("🤖 No detected board available")
-            return False
-
-        # Count symbols to ensure it's arm's turn
-        x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
-        o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-        total_symbols = x_count + o_count
-
-        self.logger.info(f"🤖 Board state before arm move: X={x_count}, O={o_count}, total={total_symbols}")
-
-        # Check if it's really arm's turn based on symbol count
-        # Arm should only play when there's an odd number of symbols (after human plays)
-        if total_symbols % 2 == 0:
-            self.logger.warning(f"🤖 Not arm's turn! Even number of symbols ({total_symbols}). Waiting for human move.")
-            return False
-
-        # Check grid validity
-        valid_grid = False
-        if hasattr(self, 'camera_thread') and self.camera_thread:
-            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                    game_state = self.camera_thread.detection_thread.detector.game_state
-                    if game_state and hasattr(game_state, 'is_physical_grid_valid'):
-                        valid_grid = game_state.is_physical_grid_valid()
-
-        if not valid_grid:
-            self.logger.warning("🤖 Cannot make arm move - grid is not valid!")
-            self.update_status("Umístěte hrací plochu do záběru kamery")
-            return False
-
-        # Set flags to prevent duplicate moves ONLY after all checks pass
-        self.arm_move_in_progress = True
-        self.arm_move_scheduled = True
-        self.last_arm_move_time = current_time
-
-        # Kontrola, zda je robotická ruka připojena
-        arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected
-        arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected
-
-        self.logger.info(f"🤖 arm_thread_available={arm_thread_available}, arm_controller_available={arm_controller_available}")
-
-        if not (arm_thread_available or arm_controller_available):
-            self.logger.warning("🚫 Robotická ruka není připojena")
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-            return False
-
-        # Získání tahu od AI strategie
-        self.logger.info(f"🤖 Získávám tah od AI strategie pro symbol {symbol}")
-        move = self.strategy_selector.get_move(detected_board, symbol)
-        if not move:
-            self.logger.warning(f"🚫 Žádný platný tah pro symbol {symbol}")
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-            return False
-
-        row, col = move
-        self.logger.info(f"🎯 AI vybrala tah: ({row}, {col}) pro symbol {symbol}")
-
-        # Nakreslíme symbol
-        self.logger.info(f"🤖 Volám draw_ai_symbol({row}, {col}, {symbol})")
-        if self.draw_ai_symbol(row, col, symbol):
-            # Začneme čekat na detekci symbolu
-            self.waiting_for_detection = True
-            self.detection_wait_time = 0
-            self.ai_move_retry_count = 0
-            self.expected_symbol = symbol
-            self.ai_move_row = row
-            self.ai_move_col = col
-
-            self.logger.info(f"✅ Ruka úspěšně nakreslila {symbol} na ({row}, {col}), čekám na detekci")
-            self.logger.info(f"📍 Uložené souřadnice pro detekci: ai_move_row={self.ai_move_row}, ai_move_col={self.ai_move_col}")
-
-            # Clear busy flags after successful draw - we're now waiting for detection
-            self.arm_move_in_progress = False
-            self.arm_move_scheduled = False
-            self.logger.info("🤖 Arm move flags cleared, now waiting for detection")
-
-            # Don't schedule cleanup here - let check_detection_timeout handle it
-            # The flags will be cleared when move is detected or timeout occurs
-            return True
-        else:
-            self.logger.error(f"❌ Nepodařilo se nakreslit {symbol} na ({row}, {col})")
-            # Reset flags immediately on failure
-            self.arm_move_in_progress = False
-            self.arm_move_scheduled = False
-            self.waiting_for_detection = False
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-            return False
-
-    def make_ai_move(self):
-        """Make AI move"""
-        # V testech přeskočíme provedení tahu AI
-        if not hasattr(self, 'strategy_selector') or not self.strategy_selector:
-            return
-
-        # Kontrola validity mřížky před AI tahem
-        valid_grid = False
-        if hasattr(self, 'camera_thread') and self.camera_thread:
-            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                    game_state = self.camera_thread.detection_thread.detector.game_state
-                    if game_state and hasattr(game_state, 'is_physical_grid_valid'):
-                        valid_grid = game_state.is_physical_grid_valid()
-
-        if not valid_grid:
-            self.logger.warning("AI tah přeskočen - mřížka není validní!")
-            self.update_status("Umístěte hrací plochu do záběru kamery")
-            return
-
-        # Kontrola, zda je na řadě AI
-        if hasattr(self, 'current_turn') and self.current_turn != self.ai_player:
-            self.logger.warning(f"Ignoruji tah AI, protože není na řadě AI (current_turn={self.current_turn})")
-            return
-
-        # Ignore duplicate calls to make_ai_move that happen close together
-        if not hasattr(self, 'last_ai_move_time'):
-            self.last_ai_move_time = 0
-        current_time = time.time()
-        if current_time - self.last_ai_move_time < 2.0:
-            self.logger.info(f"Ignoring duplicate AI move within 2 seconds, last move at {self.last_ai_move_time:.1f}, current time {current_time:.1f}")
-            return
-        self.last_ai_move_time = current_time
-
-        # Ensure the status is set to AI's turn and lock status changes
-        self._status_lock = True
-        self.update_status(self.tr("ai_turn"))
-
-        # Make sure AI player symbol is valid
-        if not self.ai_player or self.ai_player == game_logic.EMPTY:
-            self.ai_player = game_logic.PLAYER_O  # Default to O for AI
-            self.logger.warning(f"Invalid AI player symbol, using default: {self.ai_player}")
-
-        self.logger.info(f"🤖 make_ai_move: current_turn={self.current_turn}, ai_player={self.ai_player}, human_player={self.human_player}")
-
-        # Get the latest detected board from camera
-        detected_board = None
-        if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
-            detected_board = self.camera_thread.last_board_state
-            # Convert 1D to 2D if needed
-            detected_board = self._convert_board_1d_to_2d(detected_board)
-
-        if not detected_board:
-            self.logger.error("No detected board available for AI move")
-            return
-
-        # Logování stavu herní desky před výběrem tahu
-        self.logger.info("=== Detekovaný stav herní desky před výběrem tahu AI ===")
-        for r in range(3):
-            row_str = ""
-            for c in range(3):
-                cell = detected_board[r][c]
-                if cell == game_logic.EMPTY:
-                    row_str += "[ ]"
-                else:
-                    row_str += f"[{cell}]"
-            self.logger.info(row_str)
-        self.logger.info("==========================================")
-
-        # Logování dostupných tahů před získáním tahu AI
-        valid_moves = []
-        for r in range(3):
-            for c in range(3):
-                if detected_board[r][c] == game_logic.EMPTY:
-                    valid_moves.append((r, c))
-
-        self.logger.info(f"Dostupné tahy před výběrem: {valid_moves}")
-
-        # Kontrola, zda jsou k dispozici platné tahy
-        if not valid_moves:
-            self.logger.error("Žádné platné tahy nejsou k dispozici!")
-            return
-
-        # Získání tahu AI
-        self.logger.info(f"Získávám tah AI pro hráče {self.ai_player}...")
-        move = self.strategy_selector.get_move(detected_board, self.ai_player)
-        if not move:
-            self.logger.warning("No valid move found for AI")
-            self.logger.warning(f"Dostupné tahy: {valid_moves}")
-
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("")
-
-            # Pokud nejsou žádné platné tahy, ale herní deska není plná,
-            # zkusíme vybrat náhodný prázdný tah
-            if valid_moves:
-                self.logger.info("Vybírám náhodný tah z dostupných prázdných polí")
-                import random
-                move = random.choice(valid_moves)
-                self.logger.info(f"Vybrán náhodný tah: {move}")
+                except Exception as e:
+                    raise RuntimeError(f"Error in UV->XY transformation for ({row},{col}): {e}")
             else:
+                raise RuntimeError("Missing transformation matrix in calibration data")
+        else:
+            raise RuntimeError("Missing calibration data")
+
+
+    def check_game_end(self):
+        if self.game_over: return True # Již vyhodnoceno
+
+        # Kontrola výherce na základě aktuálního stavu GUI desky
+        # Mělo by se ideálně kontrolovat na základě `camera_thread.last_board_state` pro přesnost,
+        # ale pro GUI reakci může být `self.board_widget.board` dostačující, pokud je synchronizovaná.
+
+        board_to_check = self.board_widget.board # Použijeme GUI desku pro konzistenci s tím, co vidí uživatel
+        if hasattr(self, 'camera_thread') and self.camera_thread.last_board_state:
+            # Pokud máme čerstvá data z kamery, preferujeme je
+            board_from_cam = self._convert_board_1d_to_2d(self.camera_thread.last_board_state)
+            if board_from_cam: board_to_check = board_from_cam
+
+        self.winner = game_logic.check_winner(board_to_check)
+
+        if self.winner:
+            self.game_over = True
+            self.logger.info(f"KONEC HRY! Vítěz: {self.winner}. Počet tahů: {self.move_counter}")
+
+            # Resetovat příznaky ruky, protože hra skončila
+            self.arm_move_in_progress = False
+            self.waiting_for_detection = False
+
+            if hasattr(self, '_celebration_triggered'): del self._celebration_triggered
+            self.show_game_end_notification() # Zobrazí výsledek
+
+            if self.winner != game_logic.TIE:
+                self.board_widget.winning_line = game_logic.get_winning_line(board_to_check)
+                self.board_widget.update()
+                # Případná oslava ruky, pokud AI vyhrála
+                if self.winner == self.ai_player:
+                    arm_available, _ = self._check_arm_availability()
+                    if arm_available:
+                        self.logger.info("AI (ruka) vyhrála! Plánuji kreslení výherní čáry.")
+                        QTimer.singleShot(1500, self.draw_winning_line) # Malé zpoždění pro efekt
+
+            if self.winner == game_logic.TIE: self.update_status("draw")
+            else: self.update_status("win") # Text se upraví v show_game_end_notification a update_status
+
+            self.move_to_neutral_position() # Po konci hry do neutrálu
+            return True
+
+        # Kontrola, zda je deska plná (remíza, pokud ještě nebyl vítěz)
+        if self.move_counter >= 9 and not self.winner : # Všechna políčka zaplněna
+            self.game_over = True
+            self.winner = game_logic.TIE # Explicitně nastavit remízu
+            self.logger.info(f"KONEC HRY! Remíza. Počet tahů: {self.move_counter}")
+            self.arm_move_in_progress = False
+            self.waiting_for_detection = False
+            if hasattr(self, '_celebration_triggered'): del self._celebration_triggered
+            self.show_game_end_notification()
+            self.update_status("draw")
+            self.move_to_neutral_position()
+            return True
+
+        return False
+
+    def show_game_end_notification(self):
+        if hasattr(self, '_celebration_triggered'): return # Již zobrazeno
+        self._celebration_triggered = True
+
+        notification_widget = QWidget(self)
+        notification_widget.setObjectName("game_end_notification")
+        # ... (zbytek kódu pro styl a obsah notifikace zůstává stejný)
+        notification_widget.setStyleSheet("""
+            #game_end_notification {
+                background-color: rgba(45, 45, 48, 0.95); /* Tmavší s průhledností */
+                border-radius: 15px;
+                border: 2px solid #0078D7; /* Modrý okraj */
+            }
+        """)
+        layout = QVBoxLayout(notification_widget)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        icon_text, message_text, color = "", "", ""
+        if self.winner == game_logic.TIE:
+            icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40f"
+        elif self.winner == self.human_player:
+            icon_text, message_text, color = "🏆", self.tr("win"), "#2ecc71"
+        elif self.winner == self.ai_player:
+            icon_text, message_text, color = "🤖", f"{self.tr('ai_turn')} {self.tr('win')}", "#3498db" # Použijeme AI barvu
+        else: # Hra skončila, ale není jasný výherce (nemělo by nastat)
+            icon_text, message_text, color = "🏁", self.tr("game_over"), "#95a5a6"
+
+        icon_label = QLabel(icon_text)
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setStyleSheet(f"font-size: 60px; color: {color};")
+        layout.addWidget(icon_label)
+
+        message_label = QLabel(message_text.upper())
+        message_label.setAlignment(Qt.AlignCenter)
+        message_label.setStyleSheet(f"font-size: 28px; font-weight: bold; color: {color};")
+        layout.addWidget(message_label)
+
+        instruction_label = QLabel(self.tr("Pro novou hru vymažte hrací plochu nebo stiskněte Reset."))
+        instruction_label.setAlignment(Qt.AlignCenter)
+        instruction_label.setWordWrap(True)
+        instruction_label.setStyleSheet("font-size: 12px; color: #bdc3c7; margin-top: 10px;") # Světle šedá
+        layout.addWidget(instruction_label)
+
+        notification_widget.setFixedSize(350, 220)
+        notification_widget.move(
+            (self.width() - notification_widget.width()) // 2,
+            (self.height() - notification_widget.height()) // 2
+        )
+
+        opacity_effect = QGraphicsOpacityEffect(notification_widget)
+        notification_widget.setGraphicsEffect(opacity_effect)
+
+        notification_widget.show()
+        notification_widget.raise_()
+
+        anim = QPropertyAnimation(opacity_effect, b"opacity")
+        anim.setDuration(500)
+        anim.setStartValue(0)
+        anim.setEndValue(1)
+        anim.start(QPropertyAnimation.DeleteWhenStopped) # Automaticky smaže animaci
+
+        # Uložení reference na widget, aby nebyl smazán GC, a timer pro jeho skrytí
+        self._active_notification = notification_widget
+        QTimer.singleShot(4000, lambda: self._active_notification.hide() if hasattr(self, '_active_notification') and self._active_notification else None)
+
+
+    def draw_winning_line(self):
+        self.logger.info("Pokus o kreslení výherní čáry.")
+        if not self.board_widget.winning_line or len(self.board_widget.winning_line) != 3:
+            raise RuntimeError("Cannot draw winning line: missing or invalid data")
+
+        arm_available, _ = self._check_arm_availability()
+        if not arm_available:
+            raise RuntimeError("Cannot draw winning line: robotic arm is not connected")
+
+        start_pos_rc = self.board_widget.winning_line[0] # (row, col)
+        end_pos_rc = self.board_widget.winning_line[2]   # (row, col)
+
+        start_xy = self.get_cell_coordinates_from_yolo(start_pos_rc[0], start_pos_rc[1])
+        end_xy = self.get_cell_coordinates_from_yolo(end_pos_rc[0], end_pos_rc[1])
+
+        # Note: get_cell_coordinates_from_yolo now raises exceptions instead of returning None
+
+        start_x, start_y = start_xy
+        end_x, end_y = end_xy
+
+        draw_z = self.calibration_data.get("draw_z", DEFAULT_DRAW_Z) if hasattr(self, 'calibration_data') else DEFAULT_DRAW_Z
+        safe_z = self.calibration_data.get("safe_z", DEFAULT_SAFE_Z) if hasattr(self, 'calibration_data') else DEFAULT_SAFE_Z
+
+        self.logger.info(f"Kreslím výherní čáru z ({start_x:.1f},{start_y:.1f}) do ({end_x:.1f},{end_y:.1f})")
+        self.update_status(self.tr("Kreslím výherní čáru..."), is_key=False)
+
+        # Sekvence pohybů
+        # 1. Přesun nad start_xy v safe_z
+        if not self._unified_arm_command('go_to_position', x=start_x, y=start_y, z=safe_z, speed=MAX_SPEED, wait=True):
+            raise RuntimeError("Failed to move arm to start position")
+        # 2. Spuštění na draw_z
+        if not self._unified_arm_command('go_to_position', x=start_x, y=start_y, z=draw_z, speed=DRAWING_SPEED, wait=True):
+            raise RuntimeError("Failed to lower arm to drawing position")
+        # 3. Přesun na end_xy v draw_z (kreslení)
+        if not self._unified_arm_command('go_to_position', x=end_x, y=end_y, z=draw_z, speed=DRAWING_SPEED, wait=True):
+            raise RuntimeError("Failed to draw winning line")
+        # 4. Zvednutí na safe_z
+        if not self._unified_arm_command('go_to_position', x=end_x, y=end_y, z=safe_z, speed=MAX_SPEED, wait=True):
+            raise RuntimeError("Failed to lift arm after drawing")
+
+        self.logger.info("Výherní čára úspěšně nakreslena.")
+        self.update_status(self.tr("Výherní čára nakreslena!"), is_key=False)
+        QTimer.singleShot(1000, self.move_to_neutral_position) # Po chvíli do neutrálu
+        return True
+
+
+    def show_debug_window(self):
+        if not self.debug_window:
+            self.debug_window = DebugWindow(config=self.config, parent=self)
+            # Připojení signálů pro debug okno
+            if hasattr(self.camera_thread, 'fps_updated'): # FPS se nyní posílá přímo z camera_thread
+                self.camera_thread.fps_updated.connect(self.debug_window.update_fps)
+            # Pro aktualizaci desky v debug okně můžeme použít game_state_updated z camera_thread
+            # nebo posílat data přímo z update_camera_view
+            # self.camera_thread.game_state_updated.connect(lambda board_state: self.debug_window.update_board_state(self._convert_board_1d_to_2d(board_state)))
+            # Přepínání kamery se řeší interně v DebugWindow, které volá self.handle_camera_changed
+            if hasattr(self.debug_window, 'camera_changed_signal'): # Pokud DebugWindow emituje signál
+                 self.debug_window.camera_changed_signal.connect(self.handle_camera_changed)
+
+        self.debug_window.show()
+        self.debug_window.activateWindow()
+
+
+    def handle_camera_changed(self, camera_index):
+        self.logger.info(f"Požadavek na změnu kamery na index: {camera_index}")
+        if hasattr(self, 'camera_thread') and self.camera_thread:
+            if self.camera_thread.camera_index == camera_index and self.camera_thread.isRunning():
+                self.logger.info(f"Kamera {camera_index} je již aktivní.")
                 return
 
-        # Provedení tahu AI
-        row, col = move
-        self.logger.info(f"AI hraje tah na pozici ({row}, {col}) se symbolem {self.ai_player}")
-        # NEAKTUALIZUJEME BOARD AUTOMATICKY - čekáme na YOLO detekci!
-        # self.board_widget.board[row][col] = self.ai_player
-        # self.board_widget.update()
+            self.logger.info("Zastavuji stávající vlákno kamery...")
+            self.camera_thread.stop() # Metoda stop by měla čistě ukončit vlákno
+            self.camera_thread.wait(2000) # Počkat na doběhnutí
+            if self.camera_thread.isRunning():
+                self.logger.warning("Nepodařilo se čistě zastavit vlákno kamery, terminuji.")
+                self.camera_thread.terminate() # Tvrdé ukončení, pokud stop selže
+                self.camera_thread.wait(500)
 
-        # Increment move counter
-        self.move_counter += 1
 
-        # Kontrola konce hry
-        self.check_game_end()
+        self.logger.info(f"Vytvářím nové vlákno kamery s indexem {camera_index}.")
+        self.camera_thread = CameraThread(camera_index=camera_index)
+        self.camera_thread.frame_ready.connect(self.update_camera_view)
+        self.camera_thread.game_state_updated.connect(self.handle_detected_game_state)
+        self.camera_thread.fps_updated.connect(self.update_fps_display)
+        self.camera_thread.start()
+        self.logger.info(f"Nové vlákno kamery pro index {camera_index} spuštěno.")
 
-        # Pokud hra neskončila, předáme tah hráči
-        if not self.game_over:
-            self.current_turn = self.human_player
-
-            # Aktualizujeme hlavní stavovou zprávu
-            self.update_status(self.tr("your_turn"))
-            self.main_status_panel.setStyleSheet("""
-                background-color: #9b59b6;
-                border-radius: 10px;
-                border: 2px solid #8e44ad;
-            """)
-
-            # Pro zpětnou kompatibilitu
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("")
-
-    def make_arm_move(self, symbol):
-        """Make a move using the robotic arm with the player's symbol"""
-        # DEPRECATED: Use make_arm_move_with_symbol instead
-        # This method is kept for backward compatibility
-        return self.make_arm_move_with_symbol(symbol)
-
-    def check_detection_timeout(self, row, col, symbol=None):
-        """Check if the arm move was detected and handle timeout if needed"""
-        # If we're still waiting for detection after the timeout
-        if self.waiting_for_detection:
-            self.logger.warning(f"Detection timeout for arm move at ({row}, {col})")
-
-            # ✅ CRITICAL FIX: Complete flag reset and turn management
-            self.waiting_for_detection = False
-            self.arm_move_in_progress = False
-            self.arm_move_scheduled = False
-            self._move_in_progress = False  # Legacy flag
-            self.ai_move_row = None
-            self.ai_move_col = None
-            self.detection_wait_time = 0
-            self.last_arm_move_time = 0  # Reset cooldown timer
-
-            # Reset legacy scheduled flag if it exists
-            if hasattr(self, '_arm_move_scheduled'):
-                delattr(self, '_arm_move_scheduled')
-
-            self.logger.info(f"🤖 All flags reset after detection timeout")
-
-            # ✅ CRITICAL FIX: Use centralized turn management
-            self._determine_correct_turn()
-
-            self.logger.info(f"🔄 Detection timeout handled - all flags reset, next turn: {self.current_turn}")
-
-    def reset_arm_flags(self):
-        """🤖 EMERGENCY: Reset all arm-related flags to recover from stuck states"""
-        self.logger.warning("🚨 EMERGENCY ARM FLAG RESET - clearing all stuck states")
-
-        # Reset all arm-related flags
-        self.waiting_for_detection = False
-        self.arm_move_in_progress = False
-        self.arm_move_scheduled = False
-        self._move_in_progress = False
-        self.ai_move_row = None
-        self.ai_move_col = None
-        self.detection_wait_time = 0
-        self.last_arm_move_time = 0
-
-        # Reset legacy flags
-        if hasattr(self, '_arm_move_scheduled'):
-            delattr(self, '_arm_move_scheduled')
-
-        # Use centralized turn management
-        self._determine_correct_turn()
-        self.logger.warning("🚨 EMERGENCY RESET COMPLETE - arm should be able to move again")
-
-    def _determine_correct_turn(self):
-        """🔧 CENTRALIZED TURN MANAGEMENT: Determine whose turn it should be based on board state"""
-        if self.turn_lock:
-            self.logger.debug("🔒 Turn determination locked - skipping")
-            return
-
-        # Get current board state
-        detected_board = None
-        if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
-            detected_board = self.camera_thread.last_board_state
-            # Convert 1D to 2D if needed
-            detected_board = self._convert_board_1d_to_2d(detected_board)
-
-        if not detected_board:
-            # Fallback to human player if no board state available
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-            return
-
-        # Count symbols
-        x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
-        o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-        total_symbols = x_count + o_count
-
-        # Validate game state
-        if not self._validate_game_state(detected_board):
-            self.logger.warning("⚠️ Invalid game state - defaulting to human turn")
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-            return
-
-        # Determine player symbols based on symbol counts
-        if x_count < o_count:
-            # Fewer X than O → human plays O, arm plays X
-            self.human_player = game_logic.PLAYER_O
-            self.ai_player = game_logic.PLAYER_X
-        elif o_count < x_count:
-            # Fewer O than X → human plays X, arm plays O
-            self.human_player = game_logic.PLAYER_X
-            self.ai_player = game_logic.PLAYER_O
-        else:
-            # Equal count → use default assignment
-            self.human_player = game_logic.PLAYER_X
-            self.ai_player = game_logic.PLAYER_O
-
-        # Determine whose turn it is based on symbol count
-        # Even number of symbols (0,2,4,6,8) → human's turn (X goes first)
-        # Odd number of symbols (1,3,5,7,9) → arm's turn
-        if total_symbols % 2 == 0:
-            self.current_turn = self.human_player
-            self.update_status(self.tr("your_turn"))
-        else:
-            self.current_turn = self.ai_player
-            # Only update to arm turn if arm is not busy
-            if not (self.arm_move_in_progress or self.arm_move_scheduled or self.waiting_for_detection):
-                self.update_status(self.tr("arm_turn"))
-
-        self.last_turn_change_time = time.time()
-        self.logger.info(f"🔧 Turn determined: X={x_count}, O={o_count}, total={total_symbols}, "
-                        f"human={self.human_player}, ai={self.ai_player}, current_turn={self.current_turn}")
 
     def init_ui(self):
-        """Initialize the user interface"""
-        # V testech přeskočíme inicializaci UI
-        try:
-            # Nastavíme mock atributy pro testy
-            if not hasattr(self, 'board_widget'):
-                self.board_widget = MagicMock()
-            if not hasattr(self, 'status_label'):
-                self.status_label = MagicMock()
-            if not hasattr(self, 'difficulty_slider'):
-                self.difficulty_slider = MagicMock()
-            if not hasattr(self, 'difficulty_value_label'):
-                self.difficulty_value_label = MagicMock()
-            if not hasattr(self, 'reset_button'):
-                self.reset_button = MagicMock()
-            if not hasattr(self, 'debug_button'):
-                self.debug_button = MagicMock()
-            if not hasattr(self, 'language_button'):
-                self.language_button = MagicMock()
-            if not hasattr(self, 'difficulty_label'):
-                self.difficulty_label = MagicMock()
-
-            # Vytvoření centrálního widgetu
-            if hasattr(self, 'setCentralWidget') and callable(self.setCentralWidget):
-                central_widget = QWidget()
-                self.setCentralWidget(central_widget)
-            else:
-                return
-        except Exception as e:
-            print(f"Chyba při inicializaci UI: {e}")
-            return
-
-        # Nastavení moderního tmavého vzhledu
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #2D2D30;
-                color: #E0E0E0;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-            QPushButton {
-                background-color: #0078D7;
-                color: white;
-                border: none;
-                padding: 8px 15px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #1084E3;
-            }
-            QPushButton:pressed {
-                background-color: #0067B8;
-            }
-            QLabel {
-                color: #E0E0E0;
-            }
-            QSlider::groove:horizontal {
-                border: 1px solid #999999;
-                height: 8px;
-                background: #3D3D3D;
-                margin: 2px 0;
-                border-radius: 4px;
-            }
-            QSlider::handle:horizontal {
-                background: #0078D7;
-                border: 1px solid #0078D7;
-                width: 18px;
-                margin: -6px 0;
-                border-radius: 9px;
-            }
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        # Stylesheet (zkráceno pro přehlednost, předpokládáme původní)
+        self.setStyleSheet(""" /* ... Váš původní stylesheet ... */
+            QWidget { background-color: #2D2D30; color: #E0E0E0; font-family: 'Segoe UI', Arial, sans-serif; }
+            QPushButton { background-color: #0078D7; color: white; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; }
+            QPushButton:hover { background-color: #1084E3; } QPushButton:pressed { background-color: #0067B8; }
+            QLabel { color: #E0E0E0; } QSlider::groove:horizontal { border: 1px solid #999999; height: 8px; background: #3D3D3D; margin: 2px 0; border-radius: 4px; }
+            QSlider::handle:horizontal { background: #0078D7; border: 1px solid #0078D7; width: 18px; margin: -6px 0; border-radius: 9px; }
         """)
 
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(20, 20, 20, 20)  # Přidání okrajů
-        main_layout.setSpacing(15)  # Větší mezery mezi prvky
+        main_layout.setContentsMargins(20,20,20,20); main_layout.setSpacing(15)
 
-        # Panel se stavovou zprávou - velký a výrazný
         self.main_status_panel = QWidget()
-        self.main_status_panel.setStyleSheet("""
-            background-color: #3498db;
-            border-radius: 10px;
-            border: 2px solid #2980b9;
-        """)
+        # Styl se nastavuje dynamicky v update_status přes _get_status_style
         status_layout = QVBoxLayout(self.main_status_panel)
-
-        # Velká stavová zpráva pro uživatele
-        self.main_status_message = QLabel("ZAČNĚTE HRU")
-        self.main_status_message.setStyleSheet("""
-            color: #FFFFFF;
-            font-size: 32px;
-            font-weight: bold;
-            padding: 15px;
-        """)
+        self.main_status_message = QLabel("START") # Výchozí zpráva
+        self.main_status_message.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold; padding: 12px;")
         self.main_status_message.setAlignment(Qt.AlignCenter)
         status_layout.addWidget(self.main_status_message)
-
         main_layout.addWidget(self.main_status_panel)
 
-        # Game board - vycentrovaná a zvětšená
         board_container = QWidget()
         board_container.setStyleSheet("background-color: #333740; border-radius: 10px; padding: 10px;")
         board_layout = QHBoxLayout(board_container)
-
-        # Přidání pružných spacerů pro vycentrování
         board_layout.addStretch(1)
-
-        self.board_widget = TicTacToeBoard()
+        self.board_widget = TicTacToeBoard() # Předpokládá, že TicTacToeBoard je správně importován
         self.board_widget.cell_clicked.connect(self.handle_cell_clicked)
-        self.board_widget.setMinimumSize(450, 450)  # Zvětšení herní desky
+        self.board_widget.setMinimumSize(400, 400) # Mírně menší pro testování
         board_layout.addWidget(self.board_widget)
-
-        # Přidání pružných spacerů pro vycentrování
         board_layout.addStretch(1)
+        main_layout.addWidget(board_container, 1) # Board zabere většinu místa
 
-        main_layout.addWidget(board_container, 1)
-
-        # Kamerový náhled je pouze v debug okně, tady jen vytvoříme instanci
-        self.camera_view = CameraView()  # Skryté, bude viditelné pouze v debug okně
-
-        # Controls panel - moderní design s panelem
+        # --- Ovládací panel ---
         controls_panel = QWidget()
         controls_panel.setStyleSheet("background-color: #333740; border-radius: 10px; padding: 15px;")
         controls_layout = QVBoxLayout(controls_panel)
 
-        # Title for controls section
-        controls_title = QLabel("Ovládání hry")
-        controls_title.setAlignment(Qt.AlignCenter)
-        controls_title.setStyleSheet("font-weight: bold; font-size: 16px; margin-bottom: 10px;")
-        controls_layout.addWidget(controls_title)
-
-        # Difficulty controls in a horizontal layout
+        # Obtížnost
         difficulty_container = QWidget()
         difficulty_layout = QHBoxLayout(difficulty_container)
-        difficulty_layout.setContentsMargins(0, 0, 0, 0)
-
         self.difficulty_label = QLabel(self.tr("difficulty"))
-        self.difficulty_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-
         self.difficulty_slider = QSlider(Qt.Horizontal)
-        self.difficulty_slider.setMinimum(0)
-        self.difficulty_slider.setMaximum(10)
-        self.difficulty_slider.setValue(DEFAULT_DIFFICULTY)
-        self.difficulty_slider.setTickPosition(QSlider.TicksBelow)
-        self.difficulty_slider.setTickInterval(1)
-        self.difficulty_slider.setStyleSheet("""
-            QSlider::groove:horizontal {
-                height: 8px;
-                background: #3d4351;
-                border-radius: 4px;
-            }
-            QSlider::handle:horizontal {
-                background: #3498db;
-                border: 2px solid #2980b9;
-                width: 16px;
-                height: 16px;
-                margin: -4px 0;
-                border-radius: 8px;
-            }
-            QSlider::groove:horizontal {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                                          stop: 0 #2ecc71, stop: 1 #e74c3c);
-                height: 8px;
-                border-radius: 4px;
-            }
-            /* Zajistí, že sub-page (aktivní část) je průhledná a vidí se základní gradient */
-            QSlider::sub-page:horizontal {
-                background: transparent;
-                border-radius: 4px;
-            }
-        """)
+        self.difficulty_slider.setRange(0,10); self.difficulty_slider.setValue(DEFAULT_DIFFICULTY)
         self.difficulty_slider.valueChanged.connect(self.handle_difficulty_changed)
-
         self.difficulty_value_label = QLabel(f"{DEFAULT_DIFFICULTY}")
-        self.difficulty_value_label.setStyleSheet("font-weight: bold; min-width: 20px;")
-
         difficulty_layout.addWidget(self.difficulty_label)
-        difficulty_layout.addWidget(self.difficulty_slider, 1)  # Přidání stretche pro slider
+        difficulty_layout.addWidget(self.difficulty_slider,1)
         difficulty_layout.addWidget(self.difficulty_value_label)
-
         controls_layout.addWidget(difficulty_container)
 
-        # Button row in a horizontal layout
+        # Tlačítka
         button_container = QWidget()
         button_layout = QHBoxLayout(button_container)
-        button_layout.setContentsMargins(0, 10, 0, 0)
+        self.reset_button = QPushButton(self.tr("new_game"))
+        self.reset_button.clicked.connect(self.handle_reset_button_click)
+        self.reset_button.setStyleSheet("background-color: #27ae60; /* ... další styly ... */")
 
-        # Hlavní panel tlačítek
-        main_button_container = QWidget()
-        main_button_layout = QHBoxLayout(main_button_container)
-        main_button_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Reset button with icon
-        self.reset_button = QPushButton("🔄 " + self.tr("new_game"))
-        self.reset_button.clicked.connect(self.reset_game)
-        self.reset_button.setMinimumHeight(40)  # Vyšší tlačítka
-        self.reset_button.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                border-radius: 5px;
-                color: white;
-                font-weight: bold;
-                padding: 5px 15px;
-            }
-            QPushButton:hover {
-                background-color: #2ecc71;
-            }
-            QPushButton:pressed {
-                background-color: #219653;
-            }
-        """)
-
-        # Přidáme tlačítko do hlavního layout
-        main_button_layout.addWidget(self.reset_button)
-
-        # Pravá část s Debug a Language tlačítky
-        right_button_container = QWidget()
-        right_button_layout = QHBoxLayout(right_button_container)
-        right_button_layout.setContentsMargins(0, 0, 0, 0)
-        right_button_layout.setSpacing(5)
-
-        # Language button
         self.language_button = QPushButton("🇨🇿")
-        self.language_button.setToolTip(self.tr("language"))
         self.language_button.clicked.connect(self.change_language)
-        self.language_button.setFixedSize(40, 40)
-        self.language_button.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                border-radius: 20px;
-                color: white;
-                font-weight: bold;
-                font-size: 16px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
+        self.language_button.setFixedSize(40,40)
 
-        # Debug button with wrench icon
-        self.debug_button = QPushButton("⚙️")  # Unicode znak pro ozubené kolo - nejbližší náhrada za francouzský klíč
-        self.debug_button.setToolTip(self.tr("debug"))
-        self.debug_button.clicked.connect(self.show_debug_window)
-        self.debug_button.setFixedSize(40, 40)
-        self.debug_button.setStyleSheet("""
-            QPushButton {
-                background-color: #e67e22;
-                border-radius: 20px;
-                color: white;
-                font-weight: bold;
-                font-size: 18px;
-            }
-            QPushButton:hover {
-                background-color: #d35400;
-            }
-        """)
+        self.debug_button = QPushButton(self.tr("debug")) # Nebo ikona ⚙️
+        self.debug_button.clicked.connect(self.handle_debug_button_click)
+        self.debug_button.setFixedSize(40,40)
 
-        # Track checkbox
-        self.track_checkbox = QCheckBox("Track")
-        self.track_checkbox.setToolTip(self.tr("Sledování hrací plochy"))
+        self.track_checkbox = QCheckBox(self.tr("tracking")) # Text místo "Track"
         self.track_checkbox.stateChanged.connect(self.handle_track_checkbox_changed)
-        self.track_checkbox.setStyleSheet("""
-            QCheckBox {
-                color: white;
-                font-weight: bold;
-                padding: 5px;
-            }
-            QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
-                border-radius: 10px;
-                border: 2px solid #3498db;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #3498db;
-            }
-        """)
 
-        right_button_layout.addWidget(self.language_button)
-        right_button_layout.addWidget(self.debug_button)
-        right_button_layout.addWidget(self.track_checkbox)
-
-        # Přidáme oba kontejnery do hlavního layout tlačítek
-        button_layout.addWidget(main_button_container, 3)  # 75% šířky pro reset tlačítko
-        button_layout.addStretch(1)  # Vloží mezeru mezi tlačítka
-        button_layout.addWidget(right_button_container)  # 25% pro pravá tlačítka
-
+        button_layout.addWidget(self.reset_button)
+        button_layout.addStretch(1)
+        button_layout.addWidget(self.track_checkbox)
+        button_layout.addWidget(self.language_button)
+        button_layout.addWidget(self.debug_button)
         controls_layout.addWidget(button_container)
-
         main_layout.addWidget(controls_panel)
 
-        # Vytvoříme status_label, ale bez zobrazení v GUI (zachování kompatibility se starým kódem)
+        # Starý status_label (skrytý, pro případnou zpětnou kompatibilitu s některými funkcemi)
         self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: transparent;")
-        self.status_label.setVisible(False)  # Skryjeme label kompletně
+        self.status_label.setVisible(False)
+        # main_layout.addWidget(self.status_label) # Ne přidávat do layoutu, pokud je skrytý
+
+        self.reset_status_panel_style()  # Nastavit výchozí styl panelu
+
+
 
     def init_game_components(self):
-        """Initialize game components (arm controller, etc.)"""
-        try:
-            # Načtení kalibračního souboru
-            self.calibration_data = self.load_calibration()
+        self.calibration_data = self.load_calibration()
+        draw_z = self.calibration_data.get("draw_z", DEFAULT_DRAW_Z)
+        safe_z = self.calibration_data.get("safe_z", DEFAULT_SAFE_Z)
 
-            # Získání hodnot z kalibrace nebo použití hodnot z konfigurace
-            draw_z = self.calibration_data.get("draw_z", self.config.arm_controller.draw_z)
-            safe_z = self.calibration_data.get("safe_z", self.config.arm_controller.safe_z)
+        arm_port = self.config.arm_controller.port if hasattr(self.config, 'arm_controller') else None
+        if not arm_port:
+            self.logger.warning("Port pro ArmThread není konfigurován.")
 
-            # Načtení nebo nastavení neutrálního stavu
-            self.neutral_position = self.load_neutral_position()
+        self.arm_thread = ArmThread(port=arm_port) # Může selhat, pokud port není None a nevalidní
+        self.arm_thread.start() # Spustit vlákno pro zpracování příkazů
 
-            # Vytvoření vlákna pro ovládání robotické ruky
-            self.arm_thread = ArmThread(port=self.config.arm_controller.port)
-            self.arm_thread.start()
+        # Připojení k ruce
+        if self.arm_thread.connect(): # connect() by mělo vracet True/False
+            self.logger.info("Robotická ruka úspěšně připojena přes ArmThread.")
+            self.move_to_neutral_position()
+        else:
+            self.logger.error("Nepodařilo se připojit k robotické ruce přes ArmThread.")
+            # Zde by se mohlo zobrazit varování uživateli
 
-            # Vytvoření arm_controller pro zpětnou kompatibilitu
-            self.arm_controller = ArmController(
-                port=self.config.arm_controller.port,
-                draw_z=draw_z,
-                safe_z=safe_z,
-                speed=MAX_SPEED  # Nastavení maximální rychlosti
-            )
+        self.arm_controller = ArmController(port=arm_port, draw_z=draw_z, safe_z=safe_z, speed=MAX_SPEED)
+        self.arm_controller.connected = self.arm_thread.connected
 
-            # Připojení k robotické ruce
-            if self.arm_thread.connect():
-                # Přesun do neutrálního stavu po připojení
-                self.move_to_neutral_position()
-                self.arm_controller.connected = True
-            else:
-                print("Nepodařilo se připojit k robotické ruce")
-                self.arm_controller.connected = False
-
-        except Exception as e:
-            print(f"Chyba při inicializaci: {str(e)}")
 
     def load_calibration(self):
-        """Načte kalibrační data ze souboru a vypočítá transformační matici"""
-        try:
-            if not os.path.exists(CALIBRATION_FILE):
-                print(
-                    f"Kalibrační soubor {CALIBRATION_FILE} nenalezen, používám výchozí hodnoty")
-                return {}
+        if not os.path.exists(CALIBRATION_FILE):
+            raise FileNotFoundError(f"Required calibration file not found: {CALIBRATION_FILE}")
 
-            with open(CALIBRATION_FILE, 'r') as f:
-                data = json.load(f)
-            print(f"Kalibrace načtena z {CALIBRATION_FILE}")
-
-            # 1. Výpočet transformační matice UV -> XY
-            if "calibration_points_raw" not in data:
-                print("'calibration_points_raw' nenalezeno v kalibračním souboru")
-                return data
-
-            raw_points = data["calibration_points_raw"]
-            if not isinstance(raw_points, list) or len(raw_points) < 4:
-                print(
-                    f"'calibration_points_raw' musí být seznam s alespoň 4 body. Nalezeno {len(raw_points)}.")
-                return data
-
-            print(
-                f"Nalezeno {len(raw_points)} kalibračních bodů. Počítám transformaci UV->XY.")
-            points_uv = []
-            points_xy = []
-            valid_points_count = 0
-
-            try:
-                for p_idx, p in enumerate(raw_points):
-                    if ('target_uv' in p and len(p['target_uv']) == 2 and
-                            'robot_xyz' in p and len(p['robot_xyz']) >= 2):
-                        points_uv.append(p['target_uv'])
-                        # Potřebujeme jen XY
-                        points_xy.append(p['robot_xyz'][:2])
-                        valid_points_count += 1
-                    else:
-                        print(
-                            f"Přeskakuji neplatný/neúplný bod na indexu {p_idx}")
-
-                if valid_points_count < 4:
-                    print(
-                        f"Nedostatek platných bodů ({valid_points_count} < 4) pro výpočet transformace UV->XY.")
-                    return data
-
-                np_points_uv = np.array(points_uv, dtype=np.float32)
-                np_points_xy = np.array(points_xy, dtype=np.float32)
-
-                uv_to_xy_matrix, mask = cv2.findHomography(
-                    np_points_uv, np_points_xy, method=cv2.RANSAC,
-                    ransacReprojThreshold=10.0
-                )
-
-                if uv_to_xy_matrix is None:
-                    print("Nepodařilo se vypočítat transformační matici UV->XY")
-                    return data
-
-                data["uv_to_xy_matrix"] = uv_to_xy_matrix.tolist()
-                num_inliers = np.sum(mask) if mask is not None else 0
-                print(
-                    f"Transformační matice UV->XY úspěšně vypočítána s {num_inliers}/{valid_points_count} inliery.")
-
-                if num_inliers < 4:
-                    print("Varování: Nízký počet inlierů (<4) pro transformaci UV->XY.")
-
-            except Exception as e:
-                print(f"Chyba při zpracování kalibračních bodů: {e}")
-                import traceback
-                traceback.print_exc()
-                return data
-
-            # 2. Zpracování draw_z vs touch_z
-            if "draw_z" not in data and "touch_z" in data:
-                data["draw_z"] = data["touch_z"]
-                print("Klíč 'draw_z' nenalezen, používám hodnotu 'touch_z'.")
-
-            # 3. Zpracování symbol_size_mm
-            if "symbol_size_mm" not in data:
-                data["symbol_size_mm"] = DEFAULT_SYMBOL_SIZE_MM
-                print(
-                    f"Klíč 'symbol_size_mm' nenalezen, používám výchozí hodnotu: {DEFAULT_SYMBOL_SIZE_MM}mm")
-
-            # 4. Definice pracovního prostoru ruky
-            if "arm_workspace" not in data:
-                data["arm_workspace"] = {
-                    "min_x": 150,
-                    "max_x": 250,
-                    "min_y": -50,
-                    "max_y": 50
-                }
-                print("Klíč 'arm_workspace' nenalezen, používám výchozí hodnoty.")
-
-            print("Kalibrace úspěšně načtena a zpracována.")
-            return data
-
-        except FileNotFoundError:
-            print(f"Kalibrační soubor '{CALIBRATION_FILE}' nenalezen.")
-            return {}
-        except json.JSONDecodeError:
-            print(f"Chyba při zpracování '{CALIBRATION_FILE}'. Neplatný JSON?")
-            return {}
-        except Exception as e:
-            print(f"Neočekávaná chyba při načítání kalibrace: {e}")
-            import traceback
-            traceback.print_exc()
-            return {}
-
-    def load_calibration_data(self):
-        """Načte kalibrační data ze souboru"""
-        try:
-            if not os.path.exists(CALIBRATION_FILE):
-                print(f"Kalibrační soubor {CALIBRATION_FILE} nenalezen")
-                return False
-
-            with open(CALIBRATION_FILE, 'r') as f:
-                self.calibration_data = json.load(f)
-
-            # Převod matice na numpy array, pokud existuje
-            if "calibration_matrix" in self.calibration_data:
-                self.calibration_matrix = np.array(self.calibration_data["calibration_matrix"])
-            else:
-                self.calibration_matrix = None
-
-            # Načtení neutrální pozice
-            if "neutral_position" in self.calibration_data:
-                self.neutral_position = self.calibration_data["neutral_position"]
-
-            # Načtení pracovního prostoru ruky
-            if "arm_workspace" in self.calibration_data:
-                self.arm_workspace = self.calibration_data["arm_workspace"]
-
-            return True
-        except Exception as e:
-            print(f"Chyba při načítání kalibračních dat: {e}")
-            return False
-
-    def save_calibration_data(self):
-        """Uloží kalibrační data do souboru"""
-        try:
-            if not hasattr(self, 'calibration_data') or not self.calibration_data:
-                return False
-
-            with open(CALIBRATION_FILE, 'w') as f:
-                json.dump(self.calibration_data, f, indent=4)
-
-            return True
-        except Exception as e:
-            print(f"Chyba při ukládání kalibračních dat: {e}")
-            return False
-
-    def get_cell_coordinates(self, row, col):
-        """Získá souřadnice buňky pro robotickou ruku"""
-        # Kontrola, zda máme kameru a detektor
-        if not hasattr(self, 'camera_thread') or not self.camera_thread:
-            return None
-
-        if not hasattr(self, 'camera_thread') or not hasattr(self.camera_thread, 'detection_thread') or not self.camera_thread.detection_thread:
-            return None
-
-        # Pokud máme game_state jako atribut, použijeme ho (pro testy)
-        if hasattr(self, 'game_state'):
-            game_state = self.game_state
-        else:
-            # Získání stavu hry z detection_thread
-            game_state = self.camera_thread.detection_thread.game_state
-
-        if not game_state or not game_state.is_valid():
-            return None
-
-        # Získání souřadnic středu buňky v pixelech
-        try:
-            cell_center_uv = game_state.get_cell_center_uv(row, col)
-        except Exception:
-            return None
-
-        if not cell_center_uv:
-            return None
-
-        # Pokud máme kalibrační matici, použijeme ji pro transformaci
-        if hasattr(self, 'calibration_matrix') and self.calibration_matrix is not None:
-            try:
-                # Příprava bodu pro transformaci (homogenní souřadnice)
-                uv_point = np.array([cell_center_uv[0], cell_center_uv[1], 1.0])
-
-                # Aplikace transformace
-                xy_point = np.dot(self.calibration_matrix, uv_point)
-
-                # Vrácení transformovaných souřadnic
-                return (xy_point[0], xy_point[1])
-            except Exception as e:
-                print(f"Chyba při transformaci souřadnic: {e}")
-                return None
-
-        # Pokud nemáme kalibrační matici, ale máme definovaný pracovní prostor,
-        # použijeme zjednodušenou transformaci
-        elif hasattr(self, 'arm_workspace') and self.arm_workspace:
-            # Výpočet středu pracovního prostoru
-            center_x = (self.arm_workspace["min_x"] + self.arm_workspace["max_x"]) / 2
-            center_y = (self.arm_workspace["min_y"] + self.arm_workspace["max_y"]) / 2
-
-            # Vrácení středu pracovního prostoru
-            return (center_x, center_y)
-
-        # Pokud nemáme ani kalibrační matici, ani pracovní prostor,
-        # vrátíme výchozí souřadnice
-        else:
-            return (200, 0)  # Výchozí souřadnice
-
-    def load_neutral_position(self):
-        """Načte nebo nastaví neutrální pozici ruky"""
-        try:
-            # Nejprve zkusíme načíst neutrální pozici z kalibračního souboru
-            if hasattr(
-                    self,
-                    'calibration_data') and self.calibration_data and "neutral_position" in self.calibration_data:
-                neutral_pos = self.calibration_data["neutral_position"]
-                print(
-                    f"Neutrální pozice načtena z kalibračního souboru: {neutral_pos}")
-                return neutral_pos
-            else:
-                # Výchozí neutrální pozice
-                neutral_pos = {
-                    "x": NEUTRAL_X,
-                    "y": NEUTRAL_Y,
-                    "z": NEUTRAL_Z
-                }
-                print(
-                    f"Neutrální pozice nenalezena v kalibračním souboru, používám výchozí: {neutral_pos}")
-                return neutral_pos
-        except Exception as e:
-            print(f"Chyba při načítání neutrální pozice: {e}")
-            return {"x": NEUTRAL_X, "y": NEUTRAL_Y, "z": NEUTRAL_Z}
+        with open(CALIBRATION_FILE, 'r') as f:
+            data = json.load(f)
+        self.logger.info(f"Kalibrace úspěšně načtena z {CALIBRATION_FILE}.")
+        return data
 
     def move_to_neutral_position(self):
-        """Přesune ruku do neutrální pozice"""
-        # V testech přeskočíme přesun ruky, pokud nemáme neutral_position
-        try:
-            if not hasattr(self, 'neutral_position'):
-                self.neutral_position = {
-                    "x": NEUTRAL_X,
-                    "y": NEUTRAL_Y,
-                    "z": NEUTRAL_Z
-                }
+        neutral_pos_cfg = self.calibration_data.get("neutral_position", {}) if hasattr(self, 'calibration_data') else {}
+        x = neutral_pos_cfg.get("x", NEUTRAL_X)
+        y = neutral_pos_cfg.get("y", NEUTRAL_Y)
+        z = neutral_pos_cfg.get("z", NEUTRAL_Z)
 
-            x = self.neutral_position.get("x", NEUTRAL_X)
-            y = self.neutral_position.get("y", NEUTRAL_Y)
-            z = self.neutral_position.get("z", NEUTRAL_Z)
-        except Exception as e:
-            print(f"Chyba při získávání neutrální pozice: {e}")
-            x = NEUTRAL_X
-            y = NEUTRAL_Y
-            z = NEUTRAL_Z
+        self.logger.info(f"Přesouvám ruku do neutrální pozice ({x}, {y}, {z})")
+        # self.update_status(self.tr("move_to_neutral"), is_key=False) # Může být příliš časté
+        success = self._unified_arm_command('go_to_position', x=x, y=y, z=z, speed=MAX_SPEED, wait=False) # wait=False pro rychlejší UI
 
-        # Kontrola, zda již existuje status_label
-        if hasattr(self, 'status_label'):
-            self.status_label.setText(
-                f"Přesouvám ruku do neutrální pozice ({x}, {y}, {z})...")
-            # Přidáme vizuální styl pro lepší viditelnost
-            self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #3498db;")
+        if success:
+            self.logger.info("Ruka úspěšně odeslána do neutrální pozice.")
+            # self.update_status(self.tr("move_success"), is_key=False)
+            # QTimer.singleShot(2000, self.reset_status_panel_style)
         else:
-            print(f"Přesouvám ruku do neutrální pozice ({x}, {y}, {z})...")
-
-        # Use unified arm interface
-        success = self._unified_arm_command('move_to_neutral', x=x, y=y, z=z, wait=True)
-
-        if hasattr(self, 'status_label'):
-            if success:
-                self.status_label.setText("Ruka v neutrální pozici")
-                # Po 1 sekundě skryjeme zprávu
-                QTimer.singleShot(1000, lambda: self.status_label.setText(""))
-                # Vrátíme původní styl
-                QTimer.singleShot(1000, lambda: self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #e0e0e0;"))
-            else:
-                self.status_label.setText("Nepodařilo se přesunout ruku do neutrální pozice")
-                self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #e74c3c;")
-
+            self.logger.warning("Nepodařilo se odeslat příkaz pro přesun do neutrální pozice.")
+            # self.update_status(self.tr("move_failed"), is_key=False)
         return success
-
-    def draw_winning_line(self):
-        """🎨 Nakreslí výherní čáru přes tři symboly v řadě"""
-        self.logger.info("🎨 ===== DRAW_WINNING_LINE SPUŠTĚNO =====")
-
-        if not hasattr(self, 'board_widget') or not self.board_widget.winning_line:
-            self.logger.warning("❌ No winning line available to draw")
-            return False
-
-        # Kontrola, zda je robotická ruka připojena
-        arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected
-        arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected
-
-        if not (arm_thread_available or arm_controller_available):
-            self.logger.warning("❌ Robotic arm not connected - cannot draw winning line")
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("Robotická ruka není připojena!")
-            return False
-
-        # Získání souřadnic výherní čáry
-        winning_line = self.board_widget.winning_line
-        if len(winning_line) != 3:
-            self.logger.warning(f"❌ Invalid winning line length: {len(winning_line)}")
-            return False
-
-        self.logger.info(f"🎯 Drawing winning line through: {winning_line}")
-
-        # Získání souřadnic prvního a posledního bodu výherní čáry
-        start_row, start_col = winning_line[0]
-        end_row, end_col = winning_line[2]
-
-        # Získání souřadnic pro robotickou ruku
-        start_coords = self.get_cell_coordinates_from_yolo(start_row, start_col)
-        end_coords = self.get_cell_coordinates_from_yolo(end_row, end_col)
-
-        if start_coords is None or end_coords is None:
-            self.logger.warning("❌ Cannot draw winning line: cell coordinates not available from YOLO")
-            # Try fallback method
-            start_coords = self.get_cell_coordinates(start_row, start_col)
-            end_coords = self.get_cell_coordinates(end_row, end_col)
-
-            if start_coords is None or end_coords is None:
-                self.logger.warning("❌ Cannot draw winning line: fallback coordinates also not available")
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("Nelze získat souřadnice pro výherní čáru")
-                return False
-
-        start_x, start_y = start_coords
-        end_x, end_y = end_coords
-
-        if start_x is None or start_y is None or end_x is None or end_y is None:
-            self.logger.warning(f"❌ Invalid coordinates: start=({start_x}, {start_y}), end=({end_x}, {end_y})")
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("Neplatné souřadnice pro výherní čáru")
-            return False
-
-        # Nastavení výšky pro kreslení
-        draw_z = DEFAULT_DRAW_Z
-        safe_z = DEFAULT_SAFE_Z
-
-        self.logger.info(f"🎨 Drawing celebration line from ({start_x:.1f}, {start_y:.1f}) to ({end_x:.1f}, {end_y:.1f})")
-
-        if hasattr(self, 'status_label') and self.status_label:
-            self.status_label.setText(
-                f"🎉 Kreslím výherní čáru z ({start_x:.1f}, {start_y:.1f}) do ({end_x:.1f}, {end_y:.1f})")
-
-        success = False
-
-        try:
-            # Použití arm_thread, pokud je k dispozici
-            if arm_thread_available:
-                self.logger.info("🤖 Using arm_thread for celebration line")
-
-                # Přesun na začátek čáry
-                self.logger.info(f"📍 Moving to start position: ({start_x:.1f}, {start_y:.1f}, {safe_z})")
-                self.arm_thread.go_to_position(
-                    x=start_x, y=start_y, z=safe_z, speed=MAX_SPEED, wait=True)
-
-                self.logger.info(f"📍 Lowering to draw height: {draw_z}")
-                self.arm_thread.go_to_position(
-                    x=start_x, y=start_y, z=draw_z, speed=DRAWING_SPEED, wait=True)
-
-                # Kreslení čáry
-                self.logger.info(f"✏️ Drawing line to end position: ({end_x:.1f}, {end_y:.1f})")
-                self.arm_thread.go_to_position(
-                    x=end_x, y=end_y, z=draw_z, speed=DRAWING_SPEED, wait=True)
-
-                # Zvednutí pera
-                self.logger.info(f"⬆️ Lifting to safe height: {safe_z}")
-                self.arm_thread.go_to_position(
-                    z=safe_z, speed=MAX_SPEED, wait=True)
-
-                success = True
-                self.logger.info("✅ Celebration line drawn successfully with arm_thread!")
-
-            # Záložní použití arm_controller
-            elif arm_controller_available:
-                self.logger.info("🤖 Using arm_controller for celebration line")
-
-                # Přesun na začátek čáry
-                self.logger.info(f"📍 Moving to start position: ({start_x:.1f}, {start_y:.1f}, {safe_z})")
-                self.arm_controller.go_to_position(
-                    x=start_x, y=start_y, z=safe_z, speed=MAX_SPEED, wait=True)
-
-                self.logger.info(f"📍 Lowering to draw height: {draw_z}")
-                self.arm_controller.go_to_position(
-                    x=start_x, y=start_y, z=draw_z, speed=DRAWING_SPEED, wait=True)
-
-                # Kreslení čáry
-                self.logger.info(f"✏️ Drawing line to end position: ({end_x:.1f}, {end_y:.1f})")
-                self.arm_controller.go_to_position(
-                    x=end_x, y=end_y, z=draw_z, speed=DRAWING_SPEED, wait=True)
-
-                # Zvednutí pera
-                self.logger.info(f"⬆️ Lifting to safe height: {safe_z}")
-                self.arm_controller.go_to_position(
-                    z=safe_z, speed=MAX_SPEED, wait=True)
-
-                success = True
-                self.logger.info("✅ Celebration line drawn successfully with arm_controller!")
-
-        except Exception as e:
-            self.logger.error(f"❌ Error drawing celebration line: {e}")
-            success = False
-
-        # Přesun do neutrální pozice
-        self.logger.info("🏠 Moving to neutral position after celebration")
-        self.move_to_neutral_position()
-
-        if success:
-            self.logger.info("🎉 WIN CELEBRATION COMPLETE!")
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("🏆 Výherní čára nakreslena!")
-            return True
-        else:
-            self.logger.error("❌ Failed to draw celebration line")
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText("❌ Chyba při kreslení výherní čáry")
-            return False
-
-
-
-
-
-    def handle_detected_game_state(self, detected_board):
-        """Handle game state detected from camera"""
-        if not detected_board:
-            return
-
-        # CRITICAL: If game is over, do not process any more moves
-        if self.game_over:
-            self.logger.debug("🛑 Game is over - ignoring board detection updates")
-            return
-
-        # Logování aktuálního stavu pro debugging
-        self.logger.debug(f"Detekovaný stav hry: {detected_board}")
-        self.logger.debug(f"Aktuální stav: turn={self.current_turn}, waiting_for_detection={getattr(self, 'waiting_for_detection', False)}, game_over={self.game_over}")
-
-        # Convert 1D list to 2D board if necessary
-        detected_board = self._convert_board_1d_to_2d(detected_board)
-
-        # 🏆 REAL-TIME WIN DETECTION: Check for wins in every frame
-        self._check_real_time_win_detection(detected_board)
-
-        # Kontrola, zda je deska prázdná (začátek nové hry)
-        is_empty_board = True
-        for r in range(3):
-            for c in range(3):
-                if detected_board[r][c] != game_logic.EMPTY:
-                    is_empty_board = False
-                    break
-            if not is_empty_board:
-                break
-
-        # Pokud je detekována prázdná deska, resetujeme hru
-        if is_empty_board:
-            # Resetujeme hru pouze pokud aktuální stav není prázdný
-            # (abychom předešli zbytečnému resetování)
-            current_is_empty = True
-            for r in range(3):
-                for c in range(3):
-                    if self.board_widget.board[r][c] != game_logic.EMPTY:
-                        current_is_empty = False
-                        break
-                if not current_is_empty:
-                    break
-
-            # OPRAVA: Resetujeme hru pokud je prázdná deska detekována a buď:
-            # 1. Aktuální stav není prázdný (normální případ)
-            # 2. Máme výherní čáru (potřebujeme ji vymazat)
-            # 3. Hra je ukončená (potřebujeme začít novou)
-            should_reset = (not current_is_empty or
-                          (hasattr(self, 'board_widget') and self.board_widget and self.board_widget.winning_line) or
-                          (hasattr(self, 'game_over') and self.game_over))
-
-            if should_reset:
-                self.logger.info("🆕 Prázdná hrací plocha detekována - resetuji hru a čistím výherní čáru")
-
-                # OPRAVA 1: Vyčistit výherní čáru před resetem hry
-                if hasattr(self, 'board_widget') and self.board_widget:
-                    self.board_widget.winning_line = None
-                    self.board_widget.update()
-                    self.logger.info("✅ Výherní čára vymazána")
-
-                # OPRAVA 2: Reset všech arm flags pro novou hru
-                self.reset_arm_flags()
-                self.logger.info("✅ Všechny arm flags resetovány pro novou hru")
-
-                self.reset_game()
-                self.status_label.setText("")
-            return
-
-        # Pokud hra ještě nezačala, zkontrolujeme, zda je na desce nějaký
-        # symbol
-        if self.human_player is None:
-            # Hledáme první symbol na desce
-            for r in range(3):
-                for c in range(3):
-                    if detected_board[r][c] != game_logic.EMPTY:
-                        # První symbol určuje hráče
-                        self.human_player = detected_board[r][c]
-
-                        # Make sure we have a valid detected symbol
-                        if not self.human_player or self.human_player == game_logic.EMPTY:
-                            self.human_player = game_logic.PLAYER_X
-                            self.logger.warning(f"Failed to detect valid symbol, using default X")
-
-                        # Count symbols to determine which one arm should play
-                        x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
-                        o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-                        total_symbols = x_count + o_count
-
-                        # OPRAVA: Pokud je sudý počet symbolů, čekáme na tah hráče
-                        # Lichý počet symbolů = ruka hraje (po tahu hráče)
-                        if total_symbols % 2 == 0:
-                            self.logger.info(f"Symbol count: X={x_count}, O={o_count}, total={total_symbols} (sudý) → čekáme na tah hráče")
-                            # Určíme, kdo je hráč a kdo je AI podle toho, kterého symbolu je méně
-                            if x_count < o_count:
-                                self.human_player = game_logic.PLAYER_X
-                                self.ai_player = game_logic.PLAYER_O
-                            elif o_count < x_count:
-                                self.human_player = game_logic.PLAYER_O
-                                self.ai_player = game_logic.PLAYER_X
-                            else:
-                                # Stejný počet - výchozí nastavení
-                                self.human_player = game_logic.PLAYER_X
-                                self.ai_player = game_logic.PLAYER_O
-
-                            self.current_turn = self.human_player
-                            self.update_status(self.tr("your_turn"))
-                            return
-
-                        # Arm plays the symbol with fewer pieces
-                        if x_count < o_count:
-                            self.ai_player = game_logic.PLAYER_X
-                        elif o_count < x_count:
-                            self.ai_player = game_logic.PLAYER_O
-                        else:
-                            # Equal count - use opposite of human player as fallback
-                            self.ai_player = game_logic.PLAYER_O if self.human_player == game_logic.PLAYER_X else game_logic.PLAYER_X
-
-                        self.logger.info(f"Symbol count: X={x_count}, O={o_count} → AI plays {self.ai_player}")
-                        self.current_turn = self.ai_player
-
-                        # Inicializuj počítadlo tahů (první tah hráče)
-                        self.move_counter = 1
-
-                        # Zapamatuj si symbol hráče pro tahy ruky
-                        self.arm_player_symbol = self.human_player
-                        # Set a default symbol if detection failed to identify it
-                        if not self.arm_player_symbol:
-                            self.arm_player_symbol = game_logic.PLAYER_X  # Fallback to X
-                            self.logger.warning(f"Failed to detect player symbol, using fallback: {self.arm_player_symbol}")
-                        else:
-                            self.logger.info(f"První detekovaný tah: hráč je {self.arm_player_symbol}")
-
-                        # Store the last move time to force a move if detection keeps happening without action
-                        if not hasattr(self, 'last_move_time'):
-                            self.last_move_time = 0
-                        current_time = time.time()
-
-                        # OPRAVA: Pouze při lichém počtu symbolů spustíme tah ruky
-                        # Lichý počet znamená, že hráč právě hrál a teď je na tahu ruka
-                        self.update_status(self.tr("arm_turn"))
-                        self.main_status_panel.setStyleSheet("""
-                            background-color: #9b59b6;
-                            border-radius: 10px;
-                            border: 2px solid #8e44ad;
-                        """)
-
-                        # Pro zpětnou kompatibilitu
-                        if hasattr(self, 'status_label') and self.status_label:
-                            self.status_label.setText("")
-
-                        # Set a flag to indicate we're waiting for AI/arm to move
-                        # This will prevent status flickering during continuous detection
-                        self._status_lock = True
-
-                        # Ensure we don't execute duplicate moves too quickly
-                        if current_time - self.last_move_time > 3.0:
-                            self.last_move_time = current_time
-
-                            # Make the ARM move immediately for better reliability
-                            self.logger.info(f"Starting ARM move immediately after first detection with symbol {self.ai_player}")
-                            self.make_arm_move_with_symbol(self.ai_player)
-
-                        return
-
-        # Pokud je hra v průběhu a je tah hráče, kontrolujeme změny na desce
-        elif self.current_turn == self.human_player:
-            self.logger.info(f"🎮 Checking for human move. Current turn: {self.current_turn}, Human: {self.human_player}")
-
-            # Debug: Log both boards
-            self.logger.debug(f"Widget board: {self.board_widget.board}")
-            self.logger.debug(f"Detected board: {detected_board}")
-
-            # Porovnáme aktuální stav desky s detekovaným stavem
-            diff = game_logic.get_board_diff(
-                self.board_widget.board, detected_board)
-
-            self.logger.info(f"🔍 Board diff: {diff}")
-            # Pokud je přesně jedna změna a je to symbol hráče, aktualizujeme
-            # stav
-            if len(diff) == 1:
-                r, c, symbol = diff[0]
-                self.logger.info(f"🎯 Single change detected at ({r},{c}): {symbol}")
-                if symbol == self.human_player:
-                    # ✅ CRITICAL FIX: ONLY update board with YOLO detections
-                    # Never artificially place symbols - only show what YOLO actually sees
-                    self.board_widget.board = [
-                        row[:] for row in detected_board]  # Deep copy of YOLO-detected board
-                    self.board_widget.update()
-
-                    self.logger.info(f"📋 PLAYER MOVE DETECTED - BOARD UPDATED FROM YOLO: {detected_board}")
-
-                    # Increment move counter
-                    self.move_counter += 1
-                    self.logger.info(f"Detekován tah hráče, počítadlo tahů: {self.move_counter}")
-
-                    # Kontrola konce hry
-                    self.check_game_end()
-
-                    # Pokud hra neskončila, předáme tah AI nebo ruce
-                    if not self.game_over:
-                        # Kontrola, zda máme všech 16 grid points detekovaných
-                        valid_grid = False
-                        if hasattr(self, 'camera_thread') and self.camera_thread:
-                            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                                if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                                    game_state = self.camera_thread.detection_thread.detector.game_state
-                                    if game_state and hasattr(game_state, 'is_physical_grid_valid'):
-                                        valid_grid = game_state.is_physical_grid_valid()
-
-                        # FIXED LOGIC: Arm plays ONLY when there is an odd number of total symbols (1, 3, 5, 7, 9)
-                        x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
-                        o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-                        total_symbols = x_count + o_count
-
-                        self.logger.info(f"🔍 TURN ANALYSIS: X={x_count}, O={o_count}, total={total_symbols}, valid_grid={valid_grid}")
-
-                        if not valid_grid:
-                            self.logger.debug("AI turn skipped - grid is not valid (missing grid points)")
-                            return
-
-                        # Check if we're waiting for detection after arm move or if arm is busy
-                        if self.waiting_for_detection or self.arm_move_in_progress or self.arm_move_scheduled or (hasattr(self, '_arm_move_scheduled') and self._arm_move_scheduled):
-                            self.logger.info(f"🕐 Arm busy state: waiting_for_detection={self.waiting_for_detection}, "
-                                            f"arm_move_in_progress={self.arm_move_in_progress}, "
-                                            f"arm_move_scheduled={self.arm_move_scheduled}, "
-                                            f"_arm_move_scheduled={getattr(self, '_arm_move_scheduled', False)}")
-
-                            # Check if we've been waiting too long (stuck state)
-                            if hasattr(self, 'last_arm_busy_log_time'):
-                                if time.time() - self.last_arm_busy_log_time > 5.0:
-                                    self.logger.warning("⚠️ Arm has been busy for too long, might be stuck!")
-                                    # Reset flags if stuck
-                                    self.reset_arm_flags()
-                            else:
-                                self.last_arm_busy_log_time = time.time()
-                            return
-
-                        # FIXED: Check if arm should play based on symbol count
-                        # Arm plays when there's an odd number of symbols (after human plays)
-                        if total_symbols % 2 == 0:
-                            self.logger.info(f"🚫 ARM DOES NOT PLAY - symbol count is even ({total_symbols}), waiting for player move")
-                            # Set turn to human player
-                            self.current_turn = self.human_player
-                            self.update_status(self.tr("your_turn"))
-                            # Also update label with clear instruction
-                            if hasattr(self, 'status_label') and self.status_label:
-                                self.status_label.setText(f"Váš tah - počet symbolů: {total_symbols} (sudý)")
-                            return
-
-                        # ARM PLAYS when there is an odd number of symbols (human just played)
-                        self.logger.info(f"🤖 ARM'S TURN - symbol count is odd ({total_symbols})")
-
-                        # FIXED: Determine arm symbol based on which appears less frequently
-                        if x_count < o_count:
-                            # Fewer X than O → arm plays X
-                            arm_symbol = game_logic.PLAYER_X
-                            self.logger.info(f"✅ Arm plays X (X={x_count} < O={o_count})")
-                        elif o_count < x_count:
-                            # Fewer O than X → arm plays O
-                            arm_symbol = game_logic.PLAYER_O
-                            self.logger.info(f"✅ Arm plays O (O={o_count} < X={x_count})")
-                        else:
-                            # Equal count → arm plays X (default, since X goes first)
-                            arm_symbol = game_logic.PLAYER_X
-                            self.logger.info(f"✅ Arm plays X (X={x_count} = O={o_count}, default to X)")
-
-                        # VALIDATION: Check if the game state is valid (proper turn order)
-                        if not self._validate_game_state(detected_board):
-                            self.logger.warning("⚠️ Invalid game state detected - skipping arm move")
-                            return
-
-                        # Nastavíme AI symbol pro strategii
-                        self.ai_player = arm_symbol
-                        self.current_turn = self.ai_player
-
-                        self.logger.info(f"🎯 PŘIPRAVUJI TAH RUKY: symbol={arm_symbol}, current_turn={self.current_turn}")
-
-                        # Store the last move time to force a move if detection keeps happening without action
-                        if not hasattr(self, 'last_move_time'):
-                            self.last_move_time = 0
-                        current_time = time.time()
-
-                        if hasattr(self, 'status_label') and self.status_label:
-                            self.status_label.setText("")
-
-                        # Nastavíme čas posledního tahu
-                        self.last_move_time = current_time
-
-                        # Aktualizujeme hlavní stavovou zprávu pro tah ruky
-                        self.update_status(self.tr("arm_turn"))
-                        self.main_status_panel.setStyleSheet("""
-                            background-color: #9b59b6;
-                            border-radius: 10px;
-                            border: 2px solid #8e44ad;
-                        """)
-
-                        # Pro zpětnou kompatibilitu
-                        if hasattr(self, 'status_label') and self.status_label:
-                            self.status_label.setText("")
-
-                        # ✅ CRITICAL FIX: Use centralized turn management instead of timer-based scheduling
-                        # Check if arm move is already in progress (but not scheduled - that can get stuck)
-                        if self.arm_move_in_progress or self.waiting_for_detection:
-                            self.logger.info(f"🤖 Arm is busy: in_progress={self.arm_move_in_progress}, waiting_for_detection={self.waiting_for_detection}")
-                            return
-
-                        # ✅ CRITICAL FIX: Execute arm move immediately instead of using timer
-                        # This prevents the scheduling flag from getting stuck
-                        self.logger.info(f"🤖 EXECUTING ARM MOVE IMMEDIATELY with symbol {arm_symbol}")
-
-                        # Use centralized turn management to lock turns during arm move
-                        self.turn_lock = True
-
-                        # Execute the arm move directly
-                        success = self.make_arm_move_with_symbol(arm_symbol)
-
-                        # Release turn lock after move attempt
-                        self.turn_lock = False
-
-                        if not success:
-                            # If arm move failed, determine correct turn
-                            self._determine_correct_turn()
-
-        # CRITICAL: If game is over, check for new game
-        elif self.game_over:
-            # Check if board is empty (new game started)
-            is_empty = all(cell == game_logic.EMPTY for row in detected_board for cell in row)
-
-            if is_empty:
-                self.logger.info("🆕 Empty board detected after game over - starting new game!")
-                # Reset the game
-                self.reset_game()
-                # Update status for new game
-                self.update_status(self.tr("new_game_detected"))
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("Nová hra! Začněte umístěním symbolu.")
-                return
-            else:
-                self.logger.debug("🛑 Game is over - ignoring all board updates")
-                return
-
-        # Pokud je hra resetována, ale na desce jsou symboly,
-        # aktualizujeme GUI podle detekovaného stavu
-        elif self.current_turn is None:
-            # Zjistíme, kolik symbolů X a O je na desce
-            x_count = sum(row.count(game_logic.PLAYER_X)
-                          for row in detected_board)
-            o_count = sum(row.count(game_logic.PLAYER_O)
-                          for row in detected_board)
-
-            # Pokud je na desce alespoň jeden symbol, aktualizujeme GUI
-            if x_count > 0 or o_count > 0:
-                # Určíme symboly podle toho, kterého je méně (ruka hraje ten vzácnější)
-                if x_count < o_count:
-                    # Méně X → ruka hraje X, hráč hraje O
-                    self.human_player = game_logic.PLAYER_O
-                    self.ai_player = game_logic.PLAYER_X
-                    self.logger.info(f"Reset detection: X={x_count} < O={o_count} → arm plays X")
-                elif o_count < x_count:
-                    # Méně O → ruka hraje O, hráč hraje X
-                    self.human_player = game_logic.PLAYER_X
-                    self.ai_player = game_logic.PLAYER_O
-                    self.logger.info(f"Reset detection: O={o_count} < X={x_count} → arm plays O")
-                else:
-                    # Stejný počet - určíme podle toho, kdo je na tahu
-                    if (x_count + o_count) % 2 == 0:
-                        # Sudý počet symbolů → X je na tahu
-                        self.current_turn = game_logic.PLAYER_X
-                        self.human_player = game_logic.PLAYER_X
-                        self.ai_player = game_logic.PLAYER_O
-                    else:
-                        # Lichý počet symbolů → O je na tahu
-                        self.current_turn = game_logic.PLAYER_O
-                        self.human_player = game_logic.PLAYER_O
-                        self.ai_player = game_logic.PLAYER_X
-                    self.logger.info(f"Reset detection: X={x_count} = O={o_count} → using turn order")
-
-                # Nastavíme, kdo je na tahu podle počtu symbolů
-                total_symbols = x_count + o_count
-                if total_symbols % 2 == 0:
-                    # Sudý počet → hráč je na tahu
-                    self.current_turn = self.human_player
-                else:
-                    # Lichý počet → ruka (AI) je na tahu
-                    self.current_turn = self.ai_player
-
-                # ✅ CRITICAL FIX: ONLY update board with actual YOLO detections
-                # Never artificially place symbols - only show what YOLO actually sees
-                self.board_widget.board = [
-                    row[:] for row in detected_board]  # Deep copy of YOLO-detected board
-                self.board_widget.update()
-
-                self.logger.info(f"📋 BOARD UPDATED FROM YOLO DETECTION ONLY: {detected_board}")
-
-                # Kontrola konce hry
-                self.check_game_end()
-
-                if not self.game_over:
-                    # Aktualizujeme hlavní stavovou zprávu
-                    self.update_status("AI PŘEMÝŠLÍ...")
-                    self.main_status_panel.setStyleSheet("""
-                        background-color: #3498db;
-                        border-radius: 10px;
-                        border: 2px solid #2980b9;
-                    """)
-
-                    # Pro zpětnou kompatibilitu
-                    if hasattr(self, 'status_label') and self.status_label:
-                        self.status_label.setText("")
-
-                    # Spustíme tah ruky pokud je na tahu AI, s výrazným zpožděním pro stabilnější UI
-                    if self.current_turn == self.ai_player:
-                        self.logger.info(f"🤖 Spouštím tah ruky se symbolem {self.ai_player} po reset detekci")
-                        QTimer.singleShot(1000, lambda: self.make_arm_move_with_symbol(self.ai_player))
-
-        # 🤖 CRITICAL FIX: RE-ENABLE UNIFIED ARM MOVE LOGIC for subsequent moves
-        # This is essential for arm moves after the first one
-        self.logger.info(f"🔍 UNIFIED ARM MOVE LOGIC: Checking if arm should play...")
-        self.logger.info(f"🔍 detected_board exists: {detected_board is not None}")
-        self.logger.info(f"🔍 game_over: {self.game_over}")
-
-        if detected_board and not self.game_over:
-            should_play, arm_symbol = self._should_arm_play_now(detected_board)
-
-            self.logger.info(f"🔍 _should_arm_play_now result: should_play={should_play}, arm_symbol={arm_symbol}")
-
-            if should_play and arm_symbol:
-                self.logger.info(f"🤖 UNIFIED LOGIC: Arm should play {arm_symbol}")
-
-                # Check if arm is already busy
-                if self.arm_move_in_progress or self.arm_move_scheduled or self.waiting_for_detection:
-                    self.logger.info(f"🤖 Arm busy - skipping move: in_progress={self.arm_move_in_progress}, scheduled={self.arm_move_scheduled}, waiting={self.waiting_for_detection}")
-                    return
-
-                # Execute arm move immediately
-                self.logger.info(f"🤖 UNIFIED LOGIC: Executing arm move with {arm_symbol}")
-                self.turn_lock = True
-                success = self.make_arm_move_with_symbol(arm_symbol)
-                self.turn_lock = False
-
-                if not success:
-                    self.logger.warning(f"🤖 Arm move failed - determining correct turn")
-                    self._determine_correct_turn()
-            else:
-                self.logger.info(f"🔍 UNIFIED LOGIC: Arm should NOT play (should_play={should_play}, arm_symbol={arm_symbol})")
-        else:
-            self.logger.info(f"🔍 UNIFIED LOGIC: Skipping arm logic - detected_board={detected_board is not None}, game_over={self.game_over}")
-
-    def update_game_state(self):
-        """Periodic update for game state and AI moves"""
-        # Zkontrolujeme, zda máme aktivní varování o špatně viditelné mřížce
-        if hasattr(self, 'grid_warning_active') and self.grid_warning_active:
-            # Pokud máme aktivní varování, přerušíme aktualizaci stavů hry
-            return
-
-        # Kontrola, zda je robotická ruka připojena
-        arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected
-        arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected
-
-        # Park the arm when it's human's turn or game is over
-        if (self.game_over or self.current_turn == self.human_player or self.current_turn is None) and \
-           (arm_thread_available or arm_controller_available):
-            # We could park the arm here, but it's not necessary to do it on every update
-            # We'll only park when explicitly requested or when closing the app
-            pass
-
-        # Pokud čekáme na detekci nakresleného symbolu
-        if self.waiting_for_detection:
-            self.logger.debug(f"⏳ WAITING_FOR_DETECTION=True, ai_move_row={getattr(self, 'ai_move_row', None)}, ai_move_col={getattr(self, 'ai_move_col', None)}, expected_symbol={getattr(self, 'expected_symbol', None)}")
-            # Zvýšíme čas čekání
-            self.detection_wait_time += 0.1  # Předpokládáme, že timer se volá každých 100ms
-
-            # Kontrola, zda byl symbol detekován
-            if hasattr(self, 'camera_thread') and self.camera_thread.last_board_state:
-                detected_board = self.camera_thread.last_board_state
-
-                # Převedeme 1D list na 2D board pokud je potřeba
-                detected_board_2d = self._convert_board_1d_to_2d(detected_board)
-
-                # Kontrola, zda byl symbol detekován na správné pozici
-                if (0 <= self.ai_move_row < 3 and 0 <= self.ai_move_col < 3):
-                    expected_symbol = getattr(self, 'expected_symbol', self.ai_player)
-                    detected_symbol = detected_board_2d[self.ai_move_row][self.ai_move_col]
-
-                    self.logger.info(f"🔍 Kontrola detekce: pozice ({self.ai_move_row},{self.ai_move_col}), "
-                                   f"očekávaný symbol: {expected_symbol}, detekovaný: {detected_symbol}")
-
-                    # Debug: vypsat celou desku
-                    self.logger.debug("🎮 Aktuální detekovaná deska:")
-                    for r in range(3):
-                        row_str = ""
-                        for c in range(3):
-                            cell = detected_board_2d[r][c]
-                            if cell == game_logic.EMPTY:
-                                row_str += "[ ]"
-                            else:
-                                row_str += f"[{cell}]"
-                        self.logger.debug(f"  {row_str}")
-
-                    if detected_symbol == expected_symbol and detected_symbol != game_logic.EMPTY:
-                        # Symbol byl detekován, můžeme pokračovat
-                        self.logger.info(f"✅ Symbol {expected_symbol} úspěšně detekován na pozici ({self.ai_move_row},{self.ai_move_col})")
-                        self.waiting_for_detection = False
-                        self.detection_wait_time = 0
-                        self.ai_move_retry_count = 0
-                        self._move_in_progress = False  # Reset move flag
-                        # Clear all arm move flags
-                        self.arm_move_in_progress = False
-                        self.arm_move_scheduled = False
-                        # Clear the scheduled flag
-                        if hasattr(self, '_arm_move_scheduled'):
-                            delattr(self, '_arm_move_scheduled')
-                        # Also clear any move-related state
-                        self.ai_move_row = None
-                        self.ai_move_col = None
-                        self.expected_symbol = None
-                        self.detection_wait_time = 0
-                        self.ai_move_retry_count = 0
-                        self.logger.info(f"🤖 All arm move flags and state cleared after successful detection")
-
-                        # ✅ CRITICAL: DO NOT update board directly here - ONLY YOLO detection updates board
-                        # The detection system will handle board updates through proper channels
-                        self.logger.info("✅ Symbol detection confirmed - board will be updated by YOLO detection only")
-
-                        # Update the board widget to show the detected state
-                        self.board_widget.board = [row[:] for row in detected_board_2d]
-                        self.board_widget.update()
-
-                        # Kontrola konce hry
-                        self.check_game_end()
-
-                        if not self.game_over:
-                            # After arm move is detected, we need to check whose turn it should be
-                            # based on the total number of symbols on the board
-                            x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board_2d)
-                            o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board_2d)
-                            total_symbols = x_count + o_count
-
-                            self.logger.info(f"🔄 After arm move detection: X={x_count}, O={o_count}, total={total_symbols}")
-
-                            # OPRAVA: Po tahu ruky je vždy na tahu hráč
-                            # Ruka hraje pouze když je lichý počet symbolů (po tahu hráče)
-                            # Po tahu ruky je sudý počet symbolů, takže je na tahu hráč
-                            self.current_turn = self.human_player
-                            self.logger.info(f"🎯 After arm move: turn passed to human player ({self.human_player})")
-
-                            # Update status for human turn
-                            self.update_status(self.tr("your_turn"))
-                            if hasattr(self, 'status_label') and self.status_label:
-                                self.status_label.setText(f"Váš tah ({self.human_player})")
-
-                            # Don't force board update - let the natural detection flow handle it
-                            self.logger.info("✅ Arm move detected successfully. Waiting for human player's move.")
-
-                        return
-                    else:
-                        self.logger.debug(f"❌ Symbol {expected_symbol} ještě nebyl detekován na pozici ({self.ai_move_row},{self.ai_move_col}). "
-                                        f"Detekovaný symbol: {detected_symbol}")
-                else:
-                    self.logger.warning(f"⚠️ Neplatná pozice pro kontrolu detekce: ({self.ai_move_row},{self.ai_move_col})")
-
-            # Pokud vypršel čas čekání a symbol nebyl detekován
-            if self.detection_wait_time >= self.max_detection_wait_time:
-                self.logger.warning(f"⏰ Detection timeout! Waited {self.detection_wait_time}s for symbol {getattr(self, 'expected_symbol', '?')} at ({getattr(self, 'ai_move_row', '?')},{getattr(self, 'ai_move_col', '?')})")
-                self.detection_wait_time = 0
-                self.waiting_for_detection = False
-
-                # Clear all arm move flags
-                self.arm_move_in_progress = False
-                self.arm_move_scheduled = False
-                if hasattr(self, '_arm_move_scheduled'):
-                    delattr(self, '_arm_move_scheduled')
-
-                # Pokud jsme nepřekročili maximální počet pokusů, zkusíme
-                # nakreslit symbol znovu
-                if self.ai_move_retry_count < self.max_retry_count:
-                    self.ai_move_retry_count += 1
-                    self.status_label.setText(
-                        f"⚠️ Symbol nebyl detekován, zkouším znovu (pokus {self.ai_move_retry_count}/{self.max_retry_count})...")
-                    self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #FFA500;")
-
-                    # Kontrola, zda je robotická ruka připojena
-                    arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected
-                    arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected
-
-                    # Zkusíme nakreslit symbol znovu
-                    if arm_thread_available or arm_controller_available:
-                        if self.draw_ai_symbol(
-                                self.ai_move_row, self.ai_move_col, self.ai_player):
-                            # Začneme znovu čekat na detekci
-                            self.waiting_for_detection = True
-                        else:
-                            # Pokud kreslení selhalo, vzdáme to
-                            self.status_label.setText(
-                                "❌ Chyba při kreslení, vzdávám to.")
-                            self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #FF5555;")
-                            self.current_turn = self.human_player
-                else:
-                    # Pokud jsme vyčerpali všechny pokusy, vzdáme to
-                    self.status_label.setText(
-                        "⚠️ Symbol se nepodařilo nakreslit po několika pokusech. Pokračujeme dál.")
-                    self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #FFA500;")
-                    self.current_turn = self.human_player
-                    self.update_status(self.tr("your_turn"))
-
-                    # Reset all move-related variables
-                    self.ai_move_row = None
-                    self.ai_move_col = None
-                    self.expected_symbol = None
-                    self.ai_move_retry_count = 0
-
-            # Pokud stále čekáme, nepokračujeme dál
-            return
-
-        # DUPLICITNÍ LOGIKA ODSTRANĚNA - tahy ruky se nyní provádějí pouze v update_board_from_detection()
-        # Tato sekce byla nahrazena novou logikou v update_board_from_detection()
-        pass
-
-    def draw_ai_symbol(self, row, col, symbol=None):
-        """Make the robot arm draw the AI's symbol"""
-        # Kontrola, zda je robotická ruka připojena
-        arm_thread_available = hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected
-        arm_controller_available = hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected
-
-        if not (arm_thread_available or arm_controller_available):
-            self.status_label.setText("")
-            print(f"Robot by nyní nakreslil {symbol or self.ai_player} na pozici ({row}, {col})")
-            return False
-
-        # Zkontrolujeme, zda máme platnou mřížku před provedením tahu
-        valid_grid = False
-
-        # Získáme poslední detekovaný stav z kamery
-        if hasattr(self, 'camera_thread') and self.camera_thread:
-            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                    game_state = self.camera_thread.detection_thread.detector.game_state
-                    if game_state and hasattr(game_state, 'is_physical_grid_valid'):
-                        valid_grid = game_state.is_physical_grid_valid()
-
-        if not valid_grid:
-            self.logger.warning("Nelze nakreslit symbol - mřížka není validní!")
-            self.update_status("Umístěte hrací plochu do záběru kamery")
-            self.set_status_style_safe("error", """
-                background-color: #e74c3c;
-                border-radius: 10px;
-                border: 2px solid #c0392b;
-            """)
-            return False
-
-        # Pokud není zadán symbol, použijeme symbol AI
-        if symbol is None:
-            symbol = self.ai_player
-
-        # Logování pro debugging
-        self.logger.info(f"draw_ai_symbol: Kreslím symbol {symbol} na pozici ({row}, {col})")
-
-        # Získání souřadnic z YOLO detekcí
-        target_x, target_y = self.get_cell_coordinates_from_yolo(row, col)
-
-        if target_x is None or target_y is None:
-            # Pokud nemáme souřadnice z YOLO, použijeme výchozí hodnoty
-            # Hardcoded coordinates for the 3x3 grid
-            # These values should be calibrated for your specific setup
-            grid_center_x = 200  # Center X coordinate of the grid in mm
-            grid_center_y = 0    # Center Y coordinate of the grid in mm
-            cell_size = 50       # Size of each cell in mm
-
-            # Calculate target coordinates based on row and column
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-
-            self.status_label.setText(
-                f"Kreslím {symbol} na pozici ({row}, {col}) s výchozími souřadnicemi...")
-        else:
-            self.status_label.setText(
-                f"Kreslím {symbol} na pozici ({row}, {col}) se souřadnicemi z YOLO...")
-
-        # Draw the appropriate symbol using unified interface
-        if symbol == game_logic.PLAYER_O:
-            self.logger.info(f"Kreslím O na ({target_x}, {target_y})")
-            success = self._unified_arm_command('draw_symbol',
-                symbol=symbol, x=target_x, y=target_y, speed=DRAWING_SPEED)
-        else:
-            self.logger.info(f"Kreslím X na ({target_x}, {target_y})")
-            success = self._unified_arm_command('draw_symbol',
-                symbol=symbol, x=target_x, y=target_y, speed=DRAWING_SPEED)
-
-        if success:
-            self.status_label.setText(
-                f"Symbol {symbol} nakreslen na souřadnicích ({target_x:.1f}, {target_y:.1f}).")
-            # Přesun do neutrálního stavu po nakreslení symbolu
-            self.move_to_neutral_position()
-
-            # Wait 2 seconds after moving to neutral position to allow camera detection
-            self.logger.info("⏱️ Waiting 2 seconds for camera to detect the new symbol...")
-            import time
-            time.sleep(2.0)
-
-            return True
-        else:
-            self.status_label.setText("")
-            return False
-
-    def get_cell_coordinates_from_yolo(self, row, col):
-        """Získá souřadnice buňky z YOLO detekcí a aplikuje kalibraci"""
-        # Nejprve zkusíme použít přímé mapování z kalibračních dat
-        if hasattr(self, 'calibration_data') and self.calibration_data and "grid_positions" in self.calibration_data:
-            grid_positions = self.calibration_data["grid_positions"]
-            cell_key = f"{row}_{col}"
-            if cell_key in grid_positions:
-                target_x = grid_positions[cell_key]["x"]
-                target_y = grid_positions[cell_key]["y"]
-                self.logger.info(f"Používám kalibrované souřadnice pro buňku ({row}, {col}): ({target_x}, {target_y})")
-                return target_x, target_y
-
-        # Pokud nemáme přímé mapování, zkusíme získat souřadnice z kamery
-        if not hasattr(self, 'camera_thread') or not self.camera_thread:
-            # Pokud nemáme kameru, použijeme výchozí souřadnice
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            self.logger.warning(f"Kamera není k dispozici, používám výchozí souřadnice: ({target_x}, {target_y})")
-            return target_x, target_y
-
-        # Získáme poslední detekovaný stav z kamery - debug kontroly
-        if not hasattr(self.camera_thread, 'detection_thread'):
-            self.logger.warning(f"camera_thread nemá detection_thread, používám výchozí souřadnice")
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            return target_x, target_y
-
-        if not self.camera_thread.detection_thread:
-            self.logger.warning(f"detection_thread je None, používám výchozí souřadnice")
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            return target_x, target_y
-
-        if not hasattr(self.camera_thread.detection_thread, 'detector'):
-            self.logger.warning(f"detection_thread nemá detector, používám výchozí souřadnice")
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            return target_x, target_y
-
-        if not self.camera_thread.detection_thread.detector:
-            self.logger.warning(f"detector je None, používám výchozí souřadnice")
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            return target_x, target_y
-
-        # Získáme objekt GameState z detektoru
-        game_state = None
-        if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-            if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                game_state = self.camera_thread.detection_thread.detector.game_state
-
-        if not game_state or not game_state.is_valid():
-            # Pokud nemáme platný stav hry, použijeme výchozí souřadnice
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            self.logger.warning(f"Stav hry není platný, používám výchozí souřadnice: ({target_x}, {target_y})")
-            return target_x, target_y
-
-        # Získáme souřadnice středu buňky v pixelech
-        cell_center_uv = game_state.get_cell_center_uv(row, col)
-
-        if cell_center_uv is None or len(cell_center_uv) == 0:
-            self.logger.warning(f"Nepodařilo se získat souřadnice středu buňky ({row}, {col})")
-            # Pokud nemáme souřadnice buňky, použijeme výchozí souřadnice
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            self.logger.warning(f"Používám výchozí souřadnice: ({target_x}, {target_y})")
-            return target_x, target_y
-
-        self.logger.info(f"Získány souřadnice buňky ({row}, {col}) v pixelech: ({cell_center_uv[0]:.1f}, {cell_center_uv[1]:.1f})")
-
-        # Použijeme kalibrační data pro převod z UV (pixely) na XY (milimetry)
-        if hasattr(self, 'calibration_data') and self.calibration_data:
-            # Kontrola, zda máme transformační matici
-            if "uv_to_xy_matrix" in self.calibration_data:
-                try:
-                    # Převedeme souřadnice pomocí homografie
-                    uv_to_xy_matrix = np.array(
-                        self.calibration_data["uv_to_xy_matrix"])
-
-                    # Příprava bodu pro transformaci (potřebujeme homogenní
-                    # souřadnice)
-                    uv_point = np.array(
-                        [[cell_center_uv[0], cell_center_uv[1], 1.0]], dtype=np.float32).T
-
-                    # Aplikace transformace
-                    xy_point = np.matmul(uv_to_xy_matrix, uv_point)
-
-                    # Normalizace homogenních souřadnic
-                    if xy_point[2, 0] != 0:
-                        arm_x = xy_point[0, 0] / xy_point[2, 0]
-                        arm_y = xy_point[1, 0] / xy_point[2, 0]
-
-                        self.logger.info(
-                            f"Transformované souřadnice: UV({cell_center_uv[0]:.1f}, {cell_center_uv[1]:.1f}) -> XY({arm_x:.1f}, {arm_y:.1f})")
-                        return arm_x, arm_y
-                except Exception as e:
-                    self.logger.error(f"Chyba při transformaci souřadnic: {e}")
-
-        # Pokud nemáme kalibrační data nebo transformace selhala, použijeme
-        # zjednodušenou metodu
-        self.logger.info("Používám zjednodušenou transformaci souřadnic (bez kalibrace)")
-
-        # Získáme rozměry snímku z kamery
-        frame_width = self.camera_thread.detection_thread.detector.frame_width
-        frame_height = self.camera_thread.detection_thread.detector.frame_height
-
-        if not frame_width or not frame_height:
-            self.logger.warning("Neznámé rozměry snímku z kamery")
-            # Pokud nemáme rozměry snímku, použijeme výchozí souřadnice
-            grid_center_x = 200
-            grid_center_y = 0
-            cell_size = 50
-            target_x = grid_center_x + (col - 1) * cell_size
-            target_y = grid_center_y + (row - 1) * cell_size
-            self.logger.warning(f"Používám výchozí souřadnice: ({target_x}, {target_y})")
-            return target_x, target_y
-
-        # Převedeme souřadnice z pixelů na normalizované souřadnice (0-1)
-        norm_u = cell_center_uv[0] / frame_width
-        norm_v = cell_center_uv[1] / frame_height
-
-        # Pracovní prostor robotické ruky - přesnější hodnoty z kalibrace
-        arm_min_x = 150
-        arm_max_x = 250
-        arm_min_y = -50
-        arm_max_y = 50
-
-        # Pokud máme kalibrační data, použijeme je
-        if hasattr(self, 'calibration_data') and self.calibration_data:
-            if "arm_workspace" in self.calibration_data:
-                workspace = self.calibration_data["arm_workspace"]
-                arm_min_x = workspace.get("min_x", arm_min_x)
-                arm_max_x = workspace.get("max_x", arm_max_x)
-                arm_min_y = workspace.get("min_y", arm_min_y)
-                arm_max_y = workspace.get("max_y", arm_max_y)
-                self.logger.info(f"Použity kalibrační hodnoty pro pracovní prostor: X({arm_min_x}-{arm_max_x}), Y({arm_min_y}-{arm_max_y})")
-            else:
-                self.logger.warning("Chybí kalibrační data pro pracovní prostor, používám výchozí hodnoty")
-
-        # Převedeme normalizované souřadnice na souřadnice robotické ruky
-        # Invertujeme osu Y, protože v obraze je osa Y směrem dolů, ale v
-        # robotické ruce je směrem nahoru
-        # Použití správného mapování z kalibračních dat
-        arm_x = arm_min_x + norm_u * (arm_max_x - arm_min_x)
-        arm_y = arm_min_y + (1 - norm_v) * (arm_max_y - arm_min_y)
-
-        self.logger.info(f"Vypočtené souřadnice pro ruku: ({arm_x:.1f}, {arm_y:.1f})")
-        return arm_x, arm_y
-
-    def process_game_state(self):
-        """Process the current game state and make AI moves if needed"""
-        # If game is over, do nothing
-        if self.game_over:
-            return
-
-        # Check for game end
-        # For tests, use the mocked check_winner method
-        if hasattr(self.game_state, 'check_winner') and callable(self.game_state.check_winner):
-            winner = self.game_state.check_winner()
-        else:
-            winner = game_logic.check_winner(self.game_state.board)
-
-        if winner:
-            self.game_over = True
-            self.winner = winner
-
-            # Update board
-            winning_line = None
-            if winner != game_logic.TIE:
-                # For tests, use the mocked get_winning_line method
-                if hasattr(self.game_state, 'get_winning_line') and callable(self.game_state.get_winning_line):
-                    winning_line = self.game_state.get_winning_line()
-                else:
-                    winning_line = game_logic.get_winning_line(self.game_state.board)
-
-            # Update board widget
-            # Use self.board for tests and self.board_widget for actual app
-            board_widget = getattr(self, 'board', None) or getattr(self, 'board_widget', None)
-            if board_widget:
-                board_widget.update_board(self.game_state.board, winning_line)
-
-            # Update status
-            if winner == game_logic.TIE:
-                self.status_label.setText("")
-            elif winner == game_logic.PLAYER_X:
-                self.status_label.setText("")
-            elif winner == game_logic.PLAYER_O:
-                self.status_label.setText("")
-            return
-
-        # If no current turn, set it to X (first move)
-        if self.current_turn is None:
-            self.current_turn = game_logic.PLAYER_X
-            self.status_label.setText("")
-            # Use self.board for tests and self.board_widget for actual app
-            board_widget = getattr(self, 'board', None) or getattr(self, 'board_widget', None)
-            if board_widget:
-                board_widget.update_board(self.game_state.board, None)
-            return
-
-        # If it's human's turn, update status and wait for input
-        if self.current_turn == self.human_player:
-            self.status_label.setText(f"Váš tah ({self.human_player})")
-            # Use self.board for tests and self.board_widget for actual app
-            board_widget = getattr(self, 'board', None) or getattr(self, 'board_widget', None)
-            if board_widget:
-                board_widget.update_board(self.game_state.board, None)
-            return
-
-        # If it's AI's turn, make a move
-        if self.current_turn == self.ai_player:
-            # Get AI move
-            move = self.strategy_selector.get_move(self.game_state.board, self.ai_player)
-            if move:
-                row, col = move
-                # Get coordinates for the move
-                coords = self.get_cell_coordinates(row, col)
-                if coords:
-                    # Draw the symbol
-                    if self.draw_ai_symbol(row, col, self.ai_player):
-                        # Wait for detection
-                        self.current_turn = None
-                        self.status_label.setText("")
-                    else:
-                        self.status_label.setText("")
-                else:
-                    self.status_label.setText("")
-            else:
-                self.status_label.setText("")
-
-    def handle_detection_timeout(self):
-        """Handle timeout for detection of AI moves"""
-        # If not waiting for detection, do nothing
-        if self.current_turn is not None:
-            return
-
-        # Check if timeout has occurred
-        current_time = time.time()
-        if current_time - self.last_detection_time < self.detection_timeout:
-            return
-
-        # Increment retry counter
-        self.detection_timeout_counter += 1
-
-        # Update status
-        self.status_label.setText(f"Čekám na detekci tahu... (pokus {self.detection_timeout_counter}/{self.max_detection_retries})")
-
-        # If max retries reached, give up and let human play
-        if self.detection_timeout_counter >= self.max_detection_retries:
-            self.update_game_state(detection_timeout=True)
-
-    def update_game_state(self, detection_timeout=False):
-        """Update game state after detection or timeout"""
-        # Reset detection timeout counter
-        self.detection_timeout_counter = 0
-
-        # If detection timeout occurred, let human play
-        if detection_timeout:
-            self.current_turn = self.human_player
-            self.status_label.setText(f"Detekce tahu selhala. Váš tah ({self.human_player})")
-            return
-
-        # Check for game end
-        winner = game_logic.check_winner(self.game_state.board)
-        if winner:
-            self.game_over = True
-            self.winner = winner
-
-            # Update status
-            if winner == game_logic.TIE:
-                self.status_label.setText("")
-            elif winner == self.human_player:
-                self.status_label.setText("")
-            else:
-                self.status_label.setText("")
-            return
-
-        # Switch turns based on the move counter
-        if self.current_turn == self.human_player:
-            # Determine if it's AI or Arm turn
-            is_arm_turn = hasattr(self, 'move_counter') and self.move_counter % 2 == 0
-
-            # Update turn status
-            self.current_turn = self.ai_player
-
-            if is_arm_turn and hasattr(self, 'arm_player_symbol') and self.arm_player_symbol:
-                # Arm's turn - use player's symbol with AI strategy
-                # Only update status if not already set to prevent flickering
-                if not hasattr(self, '_last_status') or self._last_status != "arm_turn":
-                    self.update_status(self.tr("arm_turn"))
-                    self._last_status = "arm_turn"
-
-                # Pro zpětnou kompatibilitu
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("")
-
-                # Schedule arm move with a longer delay to ensure UI stability
-                # CRITICAL: Use ai_player symbol (the one with fewer pieces)
-                # But only if game is not over!
-                if not self.game_over:
-                    arm_symbol = self.ai_player
-                    self.logger.info(f"Scheduling arm move after celebration with symbol {arm_symbol}")
-                    QTimer.singleShot(1000, lambda: self.make_arm_move(arm_symbol) if not self.game_over else None)
-                else:
-                    self.logger.info("🛑 Game is over - not scheduling arm move")
-            else:
-                # AI's turn - use AI symbol
-                # Only update status if not already set to prevent flickering
-                if not hasattr(self, '_last_status') or self._last_status != "ai_turn":
-                    self.update_status(self.tr("ai_turn"))
-                    self._last_status = "ai_turn"
-
-                # Pro zpětnou kompatibilitu
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("")
-        else:
-            # Human's turn
-            self.current_turn = self.human_player
-            # Only update status if not already set to prevent flickering
-            if not hasattr(self, '_last_status') or self._last_status != "your_turn":
-                self.update_status(self.tr("your_turn"))
-                self._last_status = "your_turn"
-
-            # Pro zpětnou kompatibilitu
-            if hasattr(self, 'status_label') and self.status_label:
-                self.status_label.setText(f"Váš tah ({self.human_player})")
-
-    def check_game_end(self):
-        """Check if the game has ended (win or draw)"""
-        # Skip if game is already over or celebration already triggered
-        if self.game_over or hasattr(self, '_celebration_triggered'):
-            return
-
-        # Get the latest detected board from camera for checking winner
-        detected_board = None
-        if hasattr(self, 'camera_thread') and self.camera_thread and hasattr(self.camera_thread, 'last_board_state'):
-            detected_board = self.camera_thread.last_board_state
-            # Convert 1D to 2D if needed
-            detected_board = self._convert_board_1d_to_2d(detected_board)
-
-        # If no detected board, use the widget board as fallback
-        if not detected_board:
-            detected_board = self.board_widget.board
-
-        self.winner = game_logic.check_winner(detected_board)
-
-        if self.winner:
-            self.game_over = True
-
-            # Set flag to prevent multiple celebrations
-            self._celebration_triggered = True
-
-            # Reset all arm flags when game ends
-            self.reset_arm_flags()
-            self.logger.info("🏁 Game ended - all arm flags reset")
-
-            # Stop any pending arm moves immediately
-            if hasattr(self, 'arm_thread') and self.arm_thread:
-                self.arm_thread.stop_current_move()
-                self.logger.info("🛑 Stopped any pending arm moves")
-
-            # Vytvoření animovaného oznámení o konci hry
-            self.show_game_end_notification()
-
-            if self.winner == game_logic.TIE:
-                # Aktualizujeme hlavní stavovou zprávu
-                self.update_status("REMÍZA!")
-                self.main_status_panel.setStyleSheet("""
-                    background-color: #f1c40f;
-                    border-radius: 10px;
-                    border: 2px solid #f39c12;
-                """)
-
-                # Pro zpětnou kompatibilitu
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("")
-                    self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #FFCC00;")
-
-            elif self.winner == self.human_player:
-                # Aktualizujeme hlavní stavovou zprávu
-                self.update_status("VYHRÁLI JSTE!")
-                self.main_status_panel.setStyleSheet("""
-                    background-color: #2ecc71;
-                    border-radius: 10px;
-                    border: 2px solid #27ae60;
-                """)
-
-                # Pro zpětnou kompatibilitu
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("")
-                    self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #55FF55;")
-                # Získání výherní čáry pro vykreslení
-                self.board_widget.winning_line = game_logic.get_winning_line(
-                    self.board_widget.board)
-                self.board_widget.update()
-            else:
-                # Aktualizujeme hlavní stavovou zprávu
-                self.update_status("AI VYHRÁLA!")
-                self.main_status_panel.setStyleSheet("""
-                    background-color: #3498db;
-                    border-radius: 10px;
-                    border: 2px solid #2980b9;
-                """)
-
-                # Pro zpětnou kompatibilitu
-                if hasattr(self, 'status_label') and self.status_label:
-                    self.status_label.setText("")
-                    self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #55AAFF;")
-
-                # Získání výherní čáry pro vykreslení
-                self.board_widget.winning_line = game_logic.get_winning_line(
-                    self.board_widget.board)
-                self.board_widget.update()
-
-                # WIN CELEBRATION: If the robotic arm wins, draw a celebration line through the winning symbols
-                self.logger.info(f"🏆 ARM WINS! Winner: {self.winner}, AI Player: {self.ai_player}")
-
-                # Check if the arm was the one playing (current AI player) and won
-                arm_thread_available, _ = self._check_arm_availability()
-                if (hasattr(self, 'ai_player') and self.winner == self.ai_player and arm_thread_available):
-
-                    self.logger.info("🎉 ARM WIN CELEBRATION - Drawing winning line!")
-
-                    # Update status to show celebration
-                    self.update_status("🏆 RUKA VYHRÁLA! 🎉")
-
-                    # Schedule the winning line drawing after a short delay for dramatic effect
-                    QTimer.singleShot(1000, self.draw_winning_line)
-                else:
-                    # Regular AI win (not arm), still draw the line but without special celebration
-                    self.draw_winning_line()
-
-    def show_game_end_notification(self):
-        """Zobrazí animované oznámení o konci hry"""
-        # Vytvoření widgetu pro oznámení
-        notification = QWidget(self)
-        notification.setObjectName("game_end_notification")
-        notification.setStyleSheet("""
-            #game_end_notification {
-                background-color: rgba(0, 0, 0, 0.8);
-                border-radius: 15px;
-                border: 2px solid white;
-            }
-        """)
-
-        # Layout pro oznámení
-        layout = QVBoxLayout(notification)
-
-        # Ikona podle výsledku hry
-        if self.winner == game_logic.TIE:
-            icon_text = "🤝"
-            message = "REMÍZA!"
-            color = "#f1c40f"  # Žlutá
-        elif self.winner == self.human_player:
-            icon_text = "🏆"
-            message = "VYHRÁLI JSTE!"
-            color = "#2ecc71"  # Zelená
-        else:
-            # Check if it was the robotic arm that won
-            arm_thread_available, _ = self._check_arm_availability()
-            arm_won = (hasattr(self, 'ai_player') and self.winner == self.ai_player and arm_thread_available)
-            if arm_won:
-                icon_text = "🤖"
-                message = "RUKA VYHRÁLA!"
-                color = "#9b59b6"  # Fialová pro ruku
-            else:
-                icon_text = "🤖"
-                message = "AI VYHRÁLA!"
-                color = "#3498db"  # Modrá pro AI
-
-        # Ikona
-        icon = QLabel(icon_text)
-        icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet(f"""
-            font-size: 72px;
-            color: {color};
-            margin: 10px;
-        """)
-        layout.addWidget(icon)
-
-        # Text oznámení
-        text = QLabel(message)
-        text.setAlignment(Qt.AlignCenter)
-        text.setStyleSheet(f"""
-            font-size: 36px;
-            font-weight: bold;
-            color: {color};
-            margin: 10px;
-        """)
-        layout.addWidget(text)
-
-        # Instrukce pro novou hru
-        instruction_text = QLabel("Pro novou hru vymažte hrací plochu")
-        instruction_text.setAlignment(Qt.AlignCenter)
-        instruction_text.setStyleSheet(f"""
-            font-size: 14px;
-            color: {color};
-            margin: 10px;
-            font-style: italic;
-        """)
-        layout.addWidget(instruction_text)
-
-        # Nastavení velikosti a pozice
-        notification.setFixedSize(300, 250)
-        notification.move(
-            (self.width() - notification.width()) // 2,
-            (self.height() - notification.height()) // 2
-        )
-
-        # Animace pro zobrazení
-        self.notification_opacity = QGraphicsOpacityEffect(notification)
-        self.notification_opacity.setOpacity(0)
-        notification.setGraphicsEffect(self.notification_opacity)
-
-        # Zobrazení widgetu
-        notification.show()
-        notification.raise_()
-
-        # Animace fade-in
-        self.notification_animation = QPropertyAnimation(self.notification_opacity, b"opacity")
-        self.notification_animation.setDuration(500)
-        self.notification_animation.setStartValue(0)
-        self.notification_animation.setEndValue(1)
-        self.notification_animation.start()
-
-        # Automatické skrytí po 5 sekundách
-        QTimer.singleShot(5000, notification.hide)
-
-
-
-    def show_debug_window(self):
-        """Show the debug window"""
-        if not hasattr(self, 'debug_window') or self.debug_window is None:
-            # Vytvoříme debug okno, pokud neexistuje
-            self.debug_window = DebugWindow(config=self.config, parent=self)
-
-            # Připojíme signály jen při prvním vytvoření
-            if hasattr(self, 'camera_thread') and self.camera_thread:
-                self.camera_thread.fps_updated.connect(self.debug_window.update_fps)
-                self.camera_thread.game_state_updated.connect(
-                    lambda board: self.debug_window.update_board_state(board))
-                # Nastav výchozí kameru v debug window
-                if hasattr(self.debug_window, 'camera_combo'):
-                    self.debug_window.camera_combo.setCurrentIndex(0)
-
-        # Zobrazení debug okna
-        self.debug_window.show()
-
-    def handle_camera_changed(self, camera_index):
-        """Handle camera selection change from debug window"""
-        try:
-            self.logger.info(f"Přepínám na kameru {camera_index}")
-
-            # Validate camera index (only use 0 or 1)
-            if camera_index < 0 or camera_index > 1:
-                camera_index = 0
-                if hasattr(self, 'status_label'):
-                    self.status_label.setText(f"Kamera {camera_index} není dostupná, používám kameru 0")
-                self.logger.info(f"Neplatný index kamery, používám kameru 0")
-
-            # Bezpečné zastavení a uvolnění stávajícího vlákna kamery
-            if hasattr(self, 'camera_thread') and self.camera_thread:
-                self.logger.info("Zastavuji stávající vlákno kamery...")
-
-                # Nejprve odpojíme všechny signály, aby nedocházelo k volání callbacků během uvolňování
-                try:
-                    if hasattr(self.camera_thread, 'frame_ready'):
-                        self.camera_thread.frame_ready.disconnect()
-                    if hasattr(self.camera_thread, 'game_state_updated'):
-                        self.camera_thread.game_state_updated.disconnect()
-                    if hasattr(self.camera_thread, 'fps_updated'):
-                        self.camera_thread.fps_updated.disconnect()
-                except Exception as e:
-                    self.logger.warning(f"Chyba při odpojování signálů: {e}")
-
-                # Zastavíme vlákno a počkáme na jeho ukončení
-                try:
-                    # Nastavíme running na False, aby vlákno vědělo, že má skončit
-                    self.camera_thread.running = False
-
-                    # Explicitně zavoláme cleanup pro uvolnění zdrojů
-                    if hasattr(self.camera_thread, 'cleanup'):
-                        self.logger.info("Uvolňuji zdroje kamery...")
-                        self.camera_thread.cleanup()
-
-                    # Počkáme na ukončení vlákna s timeoutem
-                    if self.camera_thread.isRunning():
-                        self.logger.info("Čekám na ukončení vlákna...")
-                        self.camera_thread.wait(2000)  # Počkáme až 2 sekundy
-
-                        # Pokud vlákno stále běží, zkusíme ho ukončit znovu
-                        if self.camera_thread.isRunning():
-                            self.logger.warning("Vlákno stále běží, zkouším ukončit znovu...")
-                            self.camera_thread.terminate()  # Poslední možnost - násilné ukončení
-                            self.camera_thread.wait(1000)  # Počkáme ještě 1 sekundu
-                except Exception as e:
-                    self.logger.error(f"Chyba při zastavování camera_thread: {e}")
-
-                # Explicitně nastavíme na None, aby GC mohl uvolnit zdroje
-                self.camera_thread = None
-
-                # Krátká pauza pro jistotu, že všechny zdroje byly uvolněny
-                QThread.msleep(100)
-
-            self.logger.info(f"Vytvářím nové vlákno kamery s indexem {camera_index}...")
-
-            # Create new camera thread with selected camera
-            self.camera_thread = CameraThread(camera_index=camera_index)
-
-            # Připojení signálů
-            self.camera_thread.frame_ready.connect(self.update_camera_view)
-            self.camera_thread.game_state_updated.connect(self.handle_detected_game_state)
-            if hasattr(self.camera_thread, 'fps_updated'):
-                self.camera_thread.fps_updated.connect(self.update_fps_display)
-
-            # Start new camera thread
-            self.logger.info("Spouštím nové vlákno kamery...")
-            self.camera_thread.start()
-
-            if hasattr(self, 'status_label'):
-                self.status_label.setText(f"Kamera {camera_index} aktivována")
-
-            self.logger.info(f"Kamera {camera_index} úspěšně aktivována")
-
-        except Exception as e:
-            self.logger.error(f"Chyba při přepínání kamery: {e}")
-            if hasattr(self, 'status_label'):
-                self.status_label.setText(f"Chyba při přepínání kamery: {e}")
 
 
     def closeEvent(self, event):
-        """Clean up resources when closing the application"""
-        # V testech přeskočíme pohyb ruky
-        try:
-            if hasattr(self, 'status_label') and hasattr(self.status_label, 'setText'):
-                # Nejprve přesuneme ruku do neutrálního stavu
-                self.status_label.setText("")
-                if hasattr(self, 'move_to_neutral_position') and callable(self.move_to_neutral_position):
-                    self.move_to_neutral_position()
-                QApplication.processEvents()
+        self.logger.info("Zavírám aplikaci...")
+        if hasattr(self, 'tracking_timer'): self.tracking_timer.stop()
+        if hasattr(self, 'update_timer'): self.update_timer.stop()
 
-                # Pak parkujeme ruku using unified interface
-                self.status_label.setText("")
-                self._unified_arm_command('park', x=PARK_X, y=PARK_Y, wait=True)
-                # Give it a moment to complete the parking
-                QApplication.processEvents()
-        except Exception as e:
-            print(f"Chyba při parkování ruky: {e}")
-
-        # Stop camera thread
         if hasattr(self, 'camera_thread') and self.camera_thread:
+            self.logger.info("Zastavuji vlákno kamery...")
             self.camera_thread.stop()
+            self.camera_thread.wait(1000)
 
-        # Stop arm thread
         if hasattr(self, 'arm_thread') and self.arm_thread:
-            if hasattr(self.arm_thread, 'disconnect') and callable(self.arm_thread.disconnect):
-                self.arm_thread.disconnect()
-            self.arm_thread.stop()
+            self.logger.info("Parkuji a odpojuji ruku...")
+            self.park_arm() # Počká na dokončení
+            self.arm_thread.disconnect()
+            self.arm_thread.stop() # Pokud má ArmThread vlastní stop metodu
+            self.arm_thread.wait(500)
 
-        # Disconnect arm controller (záložní)
-        if hasattr(self, 'arm_controller') and self.arm_controller:
-            if hasattr(self.arm_controller, 'disconnect') and callable(self.arm_controller.disconnect):
-                self.arm_controller.disconnect()
 
-        # Close debug window
         if hasattr(self, 'debug_window') and self.debug_window:
             self.debug_window.close()
 
+        self.logger.info("Aplikace ukončena.")
         event.accept()
-
-    def _validate_game_state(self, board):
-        """Validate that the game state follows proper tic-tac-toe rules.
-
-        Args:
-            board: 2D list representing the current board state
-
-        Returns:
-            bool: True if the game state is valid, False otherwise
-        """
-        # Count X and O symbols
-        x_count = sum(row.count(game_logic.PLAYER_X) for row in board)
-        o_count = sum(row.count(game_logic.PLAYER_O) for row in board)
-
-        # RULE 1: X always goes first, so X count should be equal to O count or one more
-        # Valid states: X=O (even total, O's turn) or X=O+1 (odd total, X's turn)
-        if abs(x_count - o_count) > 1:
-            self.logger.warning(f"❌ Invalid game state: X={x_count}, O={o_count} (difference > 1)")
-            return False
-
-        # RULE 2: X should never have fewer symbols than O (since X goes first)
-        if x_count < o_count:
-            self.logger.warning(f"❌ Invalid game state: X={x_count} < O={o_count} (X should go first)")
-            return False
-
-        # RULE 3: Check if there's already a winner but game continues
-        winner = game_logic.check_winner(board)
-        if winner and winner != game_logic.TIE:
-            # If there's a winner, the game should have stopped
-            # But we allow this for detection purposes
-            self.logger.info(f"ℹ️ Game has winner {winner} but continuing for detection")
-
-        self.logger.info(f"✅ Valid game state: X={x_count}, O={o_count}")
-        return True
-
-    def _check_real_time_win_detection(self, detected_board):
-        """🏆 Real-time win detection in every camera frame"""
-        if not detected_board or self.game_over:
-            return
-
-        # Check for winner using game logic
-        winner = game_logic.check_winner(detected_board)
-
-        if winner and winner != game_logic.TIE and not self.game_over:
-            self.logger.info(f"🏆 REAL-TIME WIN DETECTED: {winner} wins!")
-
-            # Set game over state immediately to prevent multiple celebrations
-            self.game_over = True
-            self.winner = winner
-
-            # Set flag to prevent multiple celebrations
-            if not hasattr(self, '_celebration_triggered'):
-                self._celebration_triggered = True
-
-                # Get winning line for celebration
-                winning_line = game_logic.get_winning_line(detected_board)
-                if winning_line:
-                    self.board_widget.winning_line = winning_line
-                    self.board_widget.update()
-
-                # Update board to detected state
-                self.board_widget.board = [row[:] for row in detected_board]
-                self.board_widget.update()
-
-                # Determine who won and trigger appropriate celebration
-                self._trigger_win_celebration(winner, winning_line)
-
-        elif winner == game_logic.TIE and not self.game_over:
-            self.logger.info("🤝 REAL-TIME DRAW DETECTED!")
-
-            # Set game over state immediately to prevent multiple celebrations
-            self.game_over = True
-            self.winner = winner
-
-            # Set flag to prevent multiple celebrations
-            if not hasattr(self, '_celebration_triggered'):
-                self._celebration_triggered = True
-
-                # Update board
-                self.board_widget.board = [row[:] for row in detected_board]
-                self.board_widget.update()
-
-                # Show draw notification
-                self._trigger_draw_celebration()
-
-    def _trigger_win_celebration(self, winner, winning_line):
-        """🎉 Trigger appropriate win celebration based on who won"""
-        # Determine if the robotic arm won
-        arm_thread_available, _ = self._check_arm_availability()
-        arm_won = (hasattr(self, 'ai_player') and winner == self.ai_player and arm_thread_available)
-
-        if arm_won:
-            # 🤖 ROBOTIC ARM WIN CELEBRATION
-            self.logger.info("🎉 ROBOTIC ARM WIN CELEBRATION!")
-
-            # Update status with special arm win message
-            self.update_status("🏆 RUKA VYHRÁLA! 🎉")
-            self.main_status_panel.setStyleSheet("""
-                background-color: #9b59b6;
-                border-radius: 10px;
-                border: 2px solid #8e44ad;
-                animation: pulse 1s infinite;
-            """)
-
-            # Show animated notification
-            self.show_game_end_notification()
-
-            # Draw celebration line immediately (no delay)
-            if winning_line:
-                self.logger.info("🎨 Drawing celebration line through winning symbols!")
-                QTimer.singleShot(100, self.draw_winning_line)  # Very short delay for dramatic effect
-
-            # Park arm after celebration
-            QTimer.singleShot(3000, self._park_arm_after_win)
-
-        else:
-            # 👤 HUMAN PLAYER WIN CELEBRATION
-            self.logger.info("🎉 HUMAN PLAYER WIN CELEBRATION!")
-
-            # Update status with human win message
-            self.update_status("🏆 VYHRÁLI JSTE! 🎉")
-            self.main_status_panel.setStyleSheet("""
-                background-color: #2ecc71;
-                border-radius: 10px;
-                border: 2px solid #27ae60;
-                animation: pulse 1s infinite;
-            """)
-
-            # Show animated notification
-            self.show_game_end_notification()
-
-            # No physical line drawing for human wins (they can't control the arm)
-            self.logger.info("ℹ️ Human win - no physical line drawing")
-
-    def _trigger_draw_celebration(self):
-        """🤝 Trigger draw celebration"""
-        self.logger.info("🤝 DRAW CELEBRATION!")
-
-        # Update status with draw message
-        self.update_status("🤝 REMÍZA!")
-        self.main_status_panel.setStyleSheet("""
-            background-color: #f1c40f;
-            border-radius: 10px;
-            border: 2px solid #f39c12;
-        """)
-
-        # Show animated notification
-        self.show_game_end_notification()
-
-    def _park_arm_after_win(self):
-        """Park the robotic arm after a win"""
-        try:
-            self.logger.info("🅿️ Parking arm after win celebration")
-            # Move to neutral position from calibration using unified interface
-            if hasattr(self, 'calibration_data') and self.calibration_data:
-                neutral_x = self.calibration_data.get('neutral_x', 200)
-                neutral_y = self.calibration_data.get('neutral_y', 0)
-                self._unified_arm_command('go_to_position',
-                                        x=neutral_x, y=neutral_y, wait=False)
-            else:
-                # Default neutral position
-                self._unified_arm_command('go_to_position',
-                                        x=200, y=0, wait=False)
-        except Exception as e:
-            self.logger.error(f"Error parking arm after win: {e}")
-
-    def _should_arm_play_now(self, detected_board):
-        """🤖 UNIFIED ARM LOGIC: Determine if arm should play right now"""
-        import time
-
-        self.logger.info(f"🔍 CHECKING IF ARM SHOULD PLAY NOW...")
-
-        # Basic checks
-        if not detected_board:
-            self.logger.info(f"❌ No detected board - arm cannot play")
-            return False, None
-
-        if self.game_over:
-            self.logger.info(f"❌ Game is over - arm cannot play")
-            return False, None
-
-        # ✅ CRITICAL FIX: Only check if arm is physically moving or scheduled
-        if self.arm_move_in_progress:
-            self.logger.info(f"❌ Arm move in progress - arm cannot play")
-            return False, None
-
-        if self.arm_move_scheduled:
-            self.logger.info(f"❌ Arm move scheduled - arm cannot play")
-            return False, None
-
-        # ✅ CRITICAL FIX: Reduced cooldown and better logic
-        current_time = time.time()
-        if current_time - self.last_arm_move_time < 3.0:  # Increased back to 3.0 seconds for safety
-            remaining = 3.0 - (current_time - self.last_arm_move_time)
-            self.logger.info(f"❌ Arm move cooldown active: {remaining:.1f}s remaining")
-            return False, None
-
-        # Check if waiting for detection
-        if self.waiting_for_detection:
-            self.logger.info(f"❌ Still waiting for detection of previous move")
-            return False, None
-
-        # Check grid validity
-        valid_grid = False
-        if hasattr(self, 'camera_thread') and self.camera_thread:
-            if hasattr(self.camera_thread, 'detection_thread') and self.camera_thread.detection_thread:
-                if hasattr(self.camera_thread.detection_thread, 'detector') and self.camera_thread.detection_thread.detector:
-                    game_state = self.camera_thread.detection_thread.detector.game_state
-                    if game_state and hasattr(game_state, 'is_physical_grid_valid'):
-                        valid_grid = game_state.is_physical_grid_valid()
-
-        if not valid_grid:
-            self.logger.info(f"❌ Grid not valid - arm cannot play")
-            return False, None
-
-        # Analyze symbol counts
-        x_count = sum(row.count(game_logic.PLAYER_X) for row in detected_board)
-        o_count = sum(row.count(game_logic.PLAYER_O) for row in detected_board)
-        total_symbols = x_count + o_count
-
-        self.logger.info(f"🔍 BOARD ANALYSIS: X={x_count}, O={o_count}, total={total_symbols}")
-
-        # Arm should play when there's an odd number of symbols (1,3,5,7,9)
-        if total_symbols % 2 != 1:
-            self.logger.info(f"❌ Even symbol count ({total_symbols}) - arm should not play")
-            return False, None
-
-        # Determine which symbol arm should play (less frequent one)
-        if x_count < o_count:
-            arm_symbol = game_logic.PLAYER_X
-        elif o_count < x_count:
-            arm_symbol = game_logic.PLAYER_O
-        else:
-            arm_symbol = game_logic.PLAYER_X  # Default to X if equal
-
-        self.logger.info(f"✅ ARM SHOULD PLAY: {arm_symbol} (X={x_count}, O={o_count}, total={total_symbols})")
-        return True, arm_symbol
-
-    def _execute_arm_move(self, arm_symbol):
-        """🤖 UNIFIED ARM EXECUTION: Execute arm move with proper state management"""
-        # DEPRECATED: This is now just a wrapper
-        # All logic moved to make_arm_move_with_symbol
-        return self.make_arm_move_with_symbol(arm_symbol)
 
 
 if __name__ == "__main__":
+    # Základní konfigurace loggeru, pokud není nastavena jinde
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'  # noqa: E501
+        )
+
     app = QApplication(sys.argv)
-    window = TicTacToeApp()
+    # Můžete předat vlastní AppConfig() instanci, pokud je potřeba
+    # default_config = AppConfig()
+    window = TicTacToeApp(config=None)  # Použije AppConfig() interně
     window.show()
     sys.exit(app.exec_())

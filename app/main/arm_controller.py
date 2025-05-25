@@ -18,93 +18,7 @@ if os.path.exists(uarm_sdk_path):
 else:
     print(f"uArm SDK path not found: {uarm_sdk_path}")
 
-try:
-    from uarm.wrapper import SwiftAPI
-    UARM_AVAILABLE = True
-    print("Successfully imported uArm SDK")
-except ImportError as e:
-    print("ERROR: Failed to import uArm SDK:", e)
-    print("Make sure the uArm-Python-SDK path is correctly set")
-    UARM_AVAILABLE = False
-
-# Create mock classes for SwiftAPI when real arm is not available
-
-
-class MockSwiftAPI:
-    def __init__(self, *_args, **_kwargs):  # pylint: disable=unused-argument
-        print("Initializing Mock SwiftAPI")
-        self._position = [200, 0, 150]  # Initial position
-        self._is_moving = False
-        self._servo_angles = [90, 90, 90, 90]  # Initial servo angles
-        self._pump_on = False
-
-    def waiting_ready(self, timeout=None):
-        print(f"Mock SwiftAPI: waiting_ready(timeout={timeout})")
-        return True
-
-    def connect(self, *_args, **_kwargs):  # pylint: disable=unused-argument
-        print("Mock SwiftAPI: connect")
-        return True
-
-    # pylint: disable=unused-argument
-    def set_position(self, x=None, y=None, z=None, speed=None, wait=False,
-                     timeout=None, cmd=None, relative=False):
-        # Unused parameters: timeout, cmd, relative
-        print(
-            f"Mock SwiftAPI: set_position(x={x}, y={y}, z={z}, "
-            f"speed={speed}, wait={wait})")
-        # Update the stored position
-        if x is not None:
-            self._position[0] = x
-        if y is not None:
-            self._position[1] = y
-        if z is not None:
-            self._position[2] = z
-        return True
-
-    def set_servo_angle(self, servo_id, angle, speed=None, wait=False):
-        print(
-            f"Mock SwiftAPI: set_servo_angle({servo_id}, {angle}, "
-            f"speed={speed}, wait={wait})")
-        if 0 <= servo_id < 4:
-            self._servo_angles[servo_id] = angle
-        return True
-
-    def set_wrist(self, angle, wait=False):
-        print(f"Mock SwiftAPI: set_wrist({angle}, wait={wait})")
-        # Wrist is typically servo 3
-        self._servo_angles[3] = angle
-        return True
-
-    def set_pump(self, on, wait=False):
-        print(f"Mock SwiftAPI: set_pump({'on' if on else 'off'}, wait={wait})")
-        self._pump_on = on
-        return True
-
-    def get_position(self, wait=True, timeout=None):
-        print(f"Mock SwiftAPI: get_position(wait={wait}, timeout={timeout})")
-        # Return a copy to avoid reference issues
-        return self._position.copy()
-
-    def get_servo_angle(self, servo_id=None):
-        print(f"Mock SwiftAPI: get_servo_angle({servo_id})")
-        if servo_id is None:
-            return self._servo_angles.copy()
-        if 0 <= servo_id < 4:
-            return self._servo_angles[servo_id]
-        return 0
-
-    def get_is_moving(self):
-        print("Mock SwiftAPI: get_is_moving")
-        return self._is_moving
-
-    def set_speed_factor(self, factor):
-        print(f"Mock SwiftAPI: set_speed_factor({factor})")
-        return True
-
-    def disconnect(self):
-        print("Mock SwiftAPI: disconnect")
-        return True
+from uarm.wrapper import SwiftAPI
 
 
 # --- Constants (Local Definitions) --- #
@@ -151,55 +65,30 @@ class ArmController:
             self.logger.info("Arm already connected.")
             return True
 
-        # First try to connect to the real arm
-        try:
-            # Always try to connect to the real arm first
-            self.logger.info(
-                "Connecting to uArm on port: %s",
-                self.port or 'Autodetect')
-            try:
-                self.swift = SwiftAPI(port=self.port)
-                self.logger.info("Waiting for arm connection...")
-                self.swift.waiting_ready(timeout=10)
-                self.connected = True
-                self.logger.info("uArm connected successfully.")
+        self.logger.info(
+            "Connecting to uArm on port: %s",
+            self.port or 'Autodetect')
 
-                # Nastavení speed_factor pro překonání limitu firmware
-                self.swift.set_speed_factor(MAX_SPEED_FACTOR)
-                self.logger.info("Speed factor set to %s", MAX_SPEED_FACTOR)
+        self.swift = SwiftAPI(port=self.port)
+        self.logger.info("Waiting for arm connection...")
+        self.swift.waiting_ready(timeout=10)
+        self.connected = True
+        self.logger.info("uArm connected successfully.")
 
-                pos = self.get_position(cached=False)
-                if pos:
-                    self.logger.info(
-                        "Initial pos: X=%.1f, Y=%.1f, Z=%.1f",
-                        pos[0], pos[1], pos[2])
-                    self.go_to_position(z=self.safe_z, wait=True)
-                else:
-                    self.logger.warning("Could not get initial position.")
-                self.swift.set_wrist(90, wait=True)
-                return True
-            except Exception as real_arm_error:
-                # If connecting to real arm fails, try to use the mock
-                # implementation
-                self.logger.warning(
-                    "Failed to connect to real uArm: %s", real_arm_error)
-                self.logger.warning("Falling back to mock implementation.")
-                self.swift = MockSwiftAPI()
-                self.connected = True
-                self.logger.info("Mock uArm connected successfully.")
-                pos = self.get_position(cached=False)
-                if pos:
-                    self.logger.info(
-                        "Initial mock pos: X=%.1f, Y=%.1f, Z=%.1f",
-                        pos[0], pos[1], pos[2])
-                return True
-        except Exception as exc:  # pylint: disable=broad-except
-            self.logger.error(
-                "Failed to connect to any arm implementation: %s", exc)
-            self.logger.debug(traceback.format_exc())
-            self.connected = False
-            self.swift = None
-            return False
+        # Nastavení speed_factor pro překonání limitu firmware
+        self.swift.set_speed_factor(MAX_SPEED_FACTOR)
+        self.logger.info("Speed factor set to %s", MAX_SPEED_FACTOR)
+
+        pos = self.get_position(cached=False)
+        if not pos:
+            raise RuntimeError("Could not get initial position from arm")
+
+        self.logger.info(
+            "Initial pos: X=%.1f, Y=%.1f, Z=%.1f",
+            pos[0], pos[1], pos[2])
+        self.go_to_position(z=self.safe_z, wait=True)
+        self.swift.set_wrist(90, wait=True)
+        return True
 
     def disconnect(self):
         """Disconnects from the uArm."""
