@@ -72,7 +72,7 @@ class UIEventHandlers(QObject):
             elif value == 1:
                 self.logger.info("Difficulty 1: AI will mostly use random strategy")
             else:
-                self.logger.info(f"Difficulty {value}: AI will use optimal strategy {new_p*100:.0f}% of the time")
+                self.logger.info("Difficulty %d: AI will use optimal strategy %.0f%% of the time", value, new_p*100)
 
     def change_language(self):
         """Handle language change button click."""

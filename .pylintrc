@@ -6,55 +6,6 @@ extension-pkg-whitelist=cv2
 # Use multiple processes to speed up Pylint
 jobs=1
 
-[MESSAGES CONTROL]
-# Disable only necessary false positives for OpenCV and PyQt5
-disable=no-member,
-        no-name-in-module,
-        logging-too-many-args,
-        too-many-lines,
-        too-many-locals,
-        broad-exception-caught,
-        unused-argument,
-        unused-variable,
-        invalid-name,
-        line-too-long,
-        superfluous-parens,
-        catching-non-exception,
-        too-many-function-args,
-        duplicate-except,
-        no-else-return,
-        consider-using-f-string,
-        too-many-return-statements,
-        global-variable-not-assigned,
-        too-many-branches,
-        too-many-statements,
-        too-many-nested-blocks,
-        global-statement,
-        consider-using-in,
-        unspecified-encoding,
-        logging-not-lazy,
-        too-many-instance-attributes,
-        too-many-arguments,
-        too-many-public-methods,
-        too-few-public-methods,
-        unsubscriptable-object,
-        wrong-import-order,
-        wrong-import-position,
-        import-error,
-        ungrouped-imports,
-        consider-iterating-dictionary,
-        consider-using-enumerate,
-        unused-import,
-        unnecessary-pass,
-        protected-access,
-        import-outside-toplevel,
-        consider-using-with,
-        raise-missing-from,
-        unnecessary-lambda,
-        redefined-outer-name,
-        attribute-defined-outside-init,
-        access-member-before-definition
-
 [FORMAT]
 # Maximum number of characters on a single line (PEP 8 recommends 79, but 100 is more practical)
 max-line-length=100

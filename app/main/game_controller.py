@@ -201,14 +201,14 @@ class GameController(QObject):
 
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""
-        self.logger.debug(f"Checking if arm should play. InProgress: {self.arm_move_in_progress}, "
-                         f"Cooldown: {time.time() - self.last_arm_move_time < self.arm_move_cooldown}")
+        self.logger.debug("Checking if arm should play. InProgress: %s, Cooldown: %s",
+                         self.arm_move_in_progress,
+                         time.time() - self.last_arm_move_time < self.arm_move_cooldown)
 
         if self.game_over or self.arm_move_in_progress or (time.time() - self.last_arm_move_time < self.arm_move_cooldown):
             return False, None
 
         # Check grid validity (simplified for now)
-        # TODO: Implement proper grid validation
 
         # Count symbols to determine turn
         x_count, o_count, total_count = self._get_board_symbol_counts(current_board_state)
@@ -318,7 +318,7 @@ class GameController(QObject):
         if game_logic_winner:
             # Get symbol count for logging and winner determination
             x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
-            self.logger.info("Symbol count at game end: X={x_count}, O={o_count}, Total={total_count}")
+            self.logger.info("Symbol count at game end: X=%d, O=%d, Total=%d", x_count, o_count, total_count)
 
             # For TIE, keep it as is
             if game_logic_winner == game_logic.TIE:

@@ -373,7 +373,7 @@ class GameState:
             grid_points: np.ndarray,
             class_id_to_player: Dict[int, str]
     ) -> List[Tuple[int, int]]:
-        ""
+        """
         Robustní aktualizace herní desky pomocí homografie.
 
         Používá robustní homografii pro přesné mapování symbolů na buňky,
@@ -568,7 +568,7 @@ class GameState:
 
     def set_error(self, message: str) -> None:
         """
-        Set an error message. Prepends 'FATAL:' if it's a game-ending error.
+        Set an error message. Prepends FATAL: if it is a game-ending error.
         Avoids overwriting a FATAL error with a non-FATAL one.
         """
         if self.error_message and \
@@ -815,10 +815,10 @@ class GameState:
         if (all(self._board_state[r][c] != EMPTY for r in range(3)
                 for c in range(3)) and self.winner is None):
             self.winner = "Draw"
-            self.logger.info("Game is a Draw.)
+            self.logger.info("Game is a Draw.")
 
     def get_latest_derived_cell_polygons(self) -> Optional[List[np.ndarray]]:
-        ""
+        """
         Returns the latest computed cell polygons based on transformed
         grid points.
         These are suitable for drawing the grid cells.
@@ -940,11 +940,11 @@ class GameState:
                 )
 
                 # DEBUG: Log all cell centers for coordinate debugging
-                self.logger.info("🗺️ CELL CENTERS DEBUG:)
+                self.logger.info("🗺️ CELL CENTERS DEBUG:")
                 for i, center in enumerate(self._cell_centers_uv_transformed):
                     row, col = i // 3, i % 3
                     self.logger.info(
-                          Cell (%d,%d): UV=(%.1f, %.1f)",
+                        "Cell (%d,%d): UV=(%.1f, %.1f)",
                         row, col, center[0], center[1]
                     )
 
@@ -972,6 +972,3 @@ class GameState:
                 "%s - %s", type(e).__name__, e, exc_info=True
             )
             return False
-
-
-

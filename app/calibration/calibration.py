@@ -415,7 +415,7 @@ def on_press(key):
                     "y": current_target_pos['y'],
                     "z": current_target_pos['z']
                 }
-                print("Neutrální pozice nastavena: X=%f, Y=%f, Z=%" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
+                print("Neutrální pozice nastavena: X=%f, Y=%f, Z=%f" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
 
                 # Přejdeme na výpočet transformace
                 current_stage = "calculating"
@@ -487,7 +487,7 @@ def save_calibration_data(transform_matrix: Optional[np.ndarray]):
     # Přidáme neutrální pozici, pokud byla nastavena
     if neutral_position:
         data_to_save["neutral_position"] = neutral_position
-        print("Neutrální pozice uložena: X=%f, Y=%f, Z=%" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
+        print("Neutrální pozice uložena: X=%f, Y=%f, Z=%f" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
     else:
         print("VAROVÁNÍ: Neutrální pozice nebyla nastavena!")
 
@@ -628,8 +628,8 @@ def calibration_main():
             # Omezení Z (např.)
             target_z = max(0, min(250, target_z))
 
-            print("-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1" % (target_x, target_y, target_z))
-            print("   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
+            print("-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1f" % (target_x, target_y, target_z))
+            print("   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
 
             # Pošleme příkaz k pohybu s explicitní rychlostí a wait=True pro okamžitou odezvu
             move_ok = controller.go_to_position(x=target_x, y=target_y,
@@ -726,7 +726,7 @@ def calibration_main():
 
         # Zobrazení poslední SKUTEČNĚ POTVRZENÉ XYZ pozice (pokud existuje)
         if last_confirmed_pos_arm:
-            pos_text = ("Potvrzena pozice: X=%f Y=%f Z=%" % (last_confirmed_pos_arm[0], last_confirmed_pos_arm[1], last_confirmed_pos_arm[2]))
+            pos_text = ("Potvrzena pozice: X=%f Y=%f Z=%f" % (last_confirmed_pos_arm[0], last_confirmed_pos_arm[1], last_confirmed_pos_arm[2]))
             # Černý obrys textu
             for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                 cv2.putText(display_frame, pos_text, (10 + dx, 30 + dy),
@@ -739,7 +739,7 @@ def calibration_main():
 
         # Zobrazení AKTUÁLNÍ CÍLOVÉ XYZ pozice
         if current_target_pos:
-            target_pos_text = "Aktualni cil: X=%f Y=%f Z=%" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z'])
+            target_pos_text = "Aktualni cil: X=%f Y=%f Z=%f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z'])
             # Černý obrys textu
             for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                 cv2.putText(display_frame, target_pos_text, (10 + dx, 70 + dy),
