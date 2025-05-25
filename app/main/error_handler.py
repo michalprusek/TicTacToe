@@ -46,7 +46,9 @@ class ErrorHandler:
                     ErrorHandler.log_error(logger, operation_name, e, log_traceback)
                     return default_return
             return wrapper
-        return decorator    @staticmethod
+        return decorator
+    
+    @staticmethod
     def camera_operation_handler(logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for camera operations."""
         return ErrorHandler.safe_operation(

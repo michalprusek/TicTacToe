@@ -84,6 +84,8 @@ class ArmMovementController(QObject):
             if hasattr(self.config.arm, 'draw_z'):
                 self.draw_z = self.config.arm.draw_z
 
+        arm_connection_successful = False
+        
         try:
             # Initialize arm thread
             self.arm_thread = ArmThread(port=arm_port)
@@ -92,11 +94,11 @@ class ArmMovementController(QObject):
             # Connect to arm
             if self.arm_thread.connect():
                 self.logger.info("Robotic arm successfully connected via ArmThread.")
-                self.arm_connected.emit(True)
+                arm_connection_successful = True
                 self.move_to_neutral_position()
             else:
                 self.logger.error("Failed to connect to robotic arm via ArmThread.")
-                self.arm_connected.emit(False)
+                arm_connection_successful = False
 
             # Initialize arm controller (legacy/backup)
             self.arm_controller = ArmController(
@@ -112,7 +114,18 @@ class ArmMovementController(QObject):
 
         except Exception as e:
             self.logger.error(f"Error initializing arm components: {e}")
-            self.arm_connected.emit(False)
+            arm_connection_successful = False
+            # Initialize dummy arm controller for fallback
+            self.arm_controller = ArmController(
+                port=arm_port,
+                draw_z=self.draw_z,
+                safe_z=self.safe_z,
+                speed=MAX_SPEED
+            )
+        
+        # Store connection status - signal will be emitted from GUI after connections are made
+        self._initial_connection_status = arm_connection_successful
+        self.logger.info(f"Arm initialization complete. Connection status: {arm_connection_successful}")
 
     def is_arm_available(self):
         """Check if arm is available for use."""

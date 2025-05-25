@@ -28,7 +28,10 @@ LANG_CS = {
     "game_instructions": "Klikněte na políčko pro umístění vašeho symbolu nebo použijte fyzickou herní desku",
     "grid_incomplete_notification": "Umístěte celou hrací plochu do záběru kamery tak, aby byly viditelné všechny průsečíky mřížky.",
     "grid_incomplete_title": "⚠️ NEÚPLNÁ DETEKCE HRACÍ PLOCHY",
-    "new_game_instruction": "Pro novou hru vymažte hrací plochu nebo stiskněte Reset."
+    "new_game_instruction": "Pro novou hru vymažte hrací plochu nebo stiskněte Reset.",
+    "arm_connected": "✅ RUKA PŘIPOJENA", "arm_disconnected": "❌ RUKA ODPOJENA",
+    "arm_connection_notification": "Robotická ruka není připojena. Hra bude v režimu pouze s kamerou.",
+    "arm_disconnection_title": "⚠️ RUKA ODPOJENA"
 }
 
 LANG_EN = {
@@ -47,7 +50,10 @@ LANG_EN = {
     "game_instructions": "Click on a cell to place your symbol or use the physical game board",
     "grid_incomplete_notification": "Please position the entire game board within the camera view so all grid points are visible.",
     "grid_incomplete_title": "⚠️ INCOMPLETE GAME BOARD DETECTION",
-    "new_game_instruction": "To start a new game, clear the game board or press Reset."
+    "new_game_instruction": "To start a new game, clear the game board or press Reset.",
+    "arm_connected": "✅ ARM CONNECTED", "arm_disconnected": "❌ ARM DISCONNECTED",
+    "arm_connection_notification": "Robotic arm is not connected. Game will run in camera-only mode.",
+    "arm_disconnection_title": "⚠️ ARM DISCONNECTED"
 }
 
 
@@ -196,6 +202,7 @@ class StatusManager(QObject):
             "new_game": f"background-color: #9b59b6; {base_style}", # Purple for new game
             "error": f"background-color: #e74c3c; {base_style}",   # Red for error
             "success": f"background-color: #27ae60; {base_style}", # Green for success
+            "warning": f"background-color: #f39c12; {base_style}", # Orange for warning
         }
 
         return styles.get(style_type, styles["default"])
@@ -368,6 +375,68 @@ class StatusManager(QObject):
 
     def hide_grid_incomplete_notification(self):
         """Hide grid incomplete notification."""
+        self._hide_notification()
+
+    def show_arm_disconnected_notification(self):
+        """Show arm disconnected notification."""
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        from PyQt5.QtCore import QPropertyAnimation
+
+        # Hide any existing notification first
+        self._hide_notification()
+
+        notification_widget = QWidget(self.main_window)
+        notification_widget.setParent(self.main_window)
+        notification_widget.setObjectName("arm_disconnected_notification")
+        notification_widget.setStyleSheet("""
+            QWidget#arm_disconnected_notification {
+                background-color: rgba(243, 156, 18, 0.95);
+                border-radius: 15px;
+                border: 3px solid #e67e22;
+            }
+        """)
+
+        layout = QVBoxLayout(notification_widget)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(15)
+
+        # Warning icon
+        icon_label = QLabel("🤖❌")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setStyleSheet("font-size: 45px; color: #ffffff;")
+        layout.addWidget(icon_label)
+
+        # Title
+        title_label = QLabel(self.tr("arm_disconnection_title"))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #ffffff;")
+        layout.addWidget(title_label)
+
+        # Instruction message
+        message_label = QLabel(self.tr("arm_connection_notification"))
+        message_label.setAlignment(Qt.AlignCenter)
+        message_label.setWordWrap(True)
+        message_label.setStyleSheet("font-size: 13px; color: #ffffff; line-height: 1.4;")
+        layout.addWidget(message_label)
+
+        # Position notification at top center
+        notification_widget.resize(450, 180)
+        notification_widget.move(
+            (self.main_window.width() - notification_widget.width()) // 2,
+            50  # Position near top of screen
+        )
+
+        # Show notification directly - no animation
+        notification_widget.show()
+        notification_widget.raise_()
+        notification_widget.activateWindow()
+
+        # Store reference and auto-hide after 8 seconds for arm notification
+        self.main_window._active_notification = notification_widget
+        QTimer.singleShot(8000, lambda: self._hide_notification())
+
+    def hide_arm_disconnected_notification(self):
+        """Hide arm disconnected notification."""
         self._hide_notification()
 
     def get_current_language_code(self):

@@ -44,7 +44,12 @@ def main():
         'tests.test_frame_utils_pytest',
         'tests.test_main_constants_pytest',
         'tests.test_config_helper_pytest',
-        'tests.test_style_manager_pytest'
+        'tests.test_error_handler_comprehensive',
+        'tests.test_frame_utils_pytest',
+        'tests.test_style_manager_comprehensive',
+        'tests.test_utils_comprehensive',
+        'tests.test_game_statistics_comprehensive',
+        'tests.test_drawing_utils_comprehensive'
     ]
     
     if args.coverage:

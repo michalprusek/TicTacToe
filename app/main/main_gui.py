@@ -308,6 +308,16 @@ class TicTacToeApp(QMainWindow):
             self._handle_grid_incomplete
         )
 
+        # Connect arm connection signal to status manager
+        self.arm_controller.arm_connected.connect(
+            self._handle_arm_connection_changed
+        )
+        
+        # Force emit current arm connection status after GUI is connected
+        current_arm_status = self.arm_controller.is_arm_available()
+        self.logger.info(f"Forcing arm connection status emit: {current_arm_status}")
+        self._handle_arm_connection_changed(current_arm_status)
+
         # Connect arm controller to game controller
         self.game_controller.set_arm_controller(self.arm_controller)
         
@@ -329,6 +339,15 @@ class TicTacToeApp(QMainWindow):
         else:
             # Hide grid incomplete notification
             self.status_manager.hide_grid_incomplete_notification()
+
+    def _handle_arm_connection_changed(self, is_connected):
+        """Handle arm connection status change."""
+        if is_connected:
+            self.logger.info("Arm connected successfully")
+        else:
+            # Show arm disconnected notification - independent of main status
+            self.status_manager.show_arm_disconnected_notification()
+            self.logger.warning("Arm connection lost or failed")
 
     def _start_application(self):
         """Start the application components."""
