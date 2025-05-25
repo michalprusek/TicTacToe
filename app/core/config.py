@@ -18,8 +18,8 @@ class GameDetectorConfig:
     pose_model_path: str = "weights/best_pose.pt"
 
     # Detection thresholds
-    bbox_conf_threshold: float = 0.45
-    pose_conf_threshold: float = 0.45
+    bbox_conf_threshold: float = 0.75
+    pose_conf_threshold: float = 0.75
     keypoint_visible_threshold: float = 0.3
 
     # Grid detection parameters
@@ -38,10 +38,10 @@ class GameDetectorConfig:
     target_fps: float = 2.0  # Target frames per second for detection
     # Device to use for inference (None = auto-detect)
     device: Optional[str] = None
-    
+
     # Visualization settings
     show_game_state_on_frame: bool = True  # Show game state information on frame
-    
+
     # Ideal grid keypoints for visualization (4x4 grid in a 0-3 range)
     ideal_grid_keypoints_4x4: np.ndarray = field(default_factory=lambda: np.array([
         [x, y] for y in range(4) for x in range(4)
@@ -71,7 +71,7 @@ class ArmControllerConfig:
 class GameConfig:
     """Configuration for the game logic."""
     # Difficulty settings
-    default_difficulty: int = 5  # Default difficulty (0-10)
+    default_difficulty: int = 10  # Default difficulty (0-10)
 
     # Game parameters
     poll_interval_seconds: float = 1.0  # How often to check board state

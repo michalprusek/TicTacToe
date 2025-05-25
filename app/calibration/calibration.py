@@ -46,6 +46,8 @@ FINE_STEP_XY = 1.0
 FINE_STEP_Z = 0.5
 COARSE_STEP_XY = 5.0
 COARSE_STEP_Z = 2.0
+# Rychlost pohybu
+ARM_SPEED = 100000  # Maximální rychlost pro přesné pohyby
 # Klávesy (Prohozeno A/D a W/S)
 KEY_LEFT = 'w'           # -X
 KEY_RIGHT = 's'          # +X
@@ -371,7 +373,7 @@ def on_press(key):
                       f"Cíl_UV=%s, Cíl_XYZ=%s" % (current_target_index + 1, target_uv_tuple, confirmed_xyz))
 
                 # Získání skutečné pozice pro info
-                actual_pos_arm = controller.get_position()
+                actual_pos_arm = controller.get_position(cached=False)
                 if actual_pos_arm:
                     last_confirmed_pos_arm = actual_pos_arm
                     print(f"    (Skutečná pozice: X=%f, Y=%f, Z=%f)" % (actual_pos_arm[0], actual_pos_arm[1], actual_pos_arm[2]))
@@ -543,7 +545,7 @@ def calibration_main():
 
     # --- Inicializace ArmController ---
     logger.info("Inicializace ArmController...")
-    controller = ArmController(port=None)  # Automatická detekce portu
+    controller = ArmController(port=None, speed=ARM_SPEED, draw_z=5.0, safe_z=15.0)  # Přidány parametry jako v hlavní aplikaci
     if not controller.connect():
         logger.error("Nepodařilo se připojit k rameni. Ukončuji.")
         if cap:
@@ -552,19 +554,24 @@ def calibration_main():
         return
     logger.info("Rameno připojeno.")
 
+    # Nastavíme rychlostní faktor jako v hlavní aplikaci
+    if hasattr(controller, 'swift') and controller.swift:
+        controller.swift.set_speed_factor(2)  # Stejný faktor jako v hlavní aplikaci
+        logger.info("Speed factor set to 2")
+
     # Získáme výchozí pozici pro informaci a nastavíme current_target_pos
-    initial_pos_tuple = controller.get_position()
+    initial_pos_tuple = controller.get_position(cached=False)  # Přidán parametr cached=False
     if initial_pos_tuple:
         # Nastavíme počáteční CÍLOVOU pozici
         start_x, start_y, _ = initial_pos_tuple  # Původní Z ignorujeme
         target_z_init = 10.0  # Cílová Z výška
         logger.info(f"Přesun na počáteční výšku Z=%f..." % target_z_init)
         move_init_ok = controller.go_to_position(x=start_x, y=start_y,
-                                                 z=target_z_init, wait=True)
+                                                 z=target_z_init, speed=ARM_SPEED, wait=True)
 
         if move_init_ok:
             # Znovu získáme pozici PO přesunu na Z=10
-            actual_pos_after_init = controller.get_position()
+            actual_pos_after_init = controller.get_position(cached=False)
             if actual_pos_after_init:
                 current_target_pos = {'x': actual_pos_after_init[0],
                                       'y': actual_pos_after_init[1],
@@ -618,10 +625,13 @@ def calibration_main():
             # Omezení Z (např.)
             target_z = max(0, min(250, target_z))
 
-            print(f"-> Pohyb na CÍL: X=%f Y=%f Z=%f" % (target_x, target_y, target_z))
-            # Pošleme příkaz k pohybu, NEČEKÁME zde (wait=False)
+            print(f"-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1f" % (target_x, target_y, target_z))
+            print(f"   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
+
+            # Pošleme příkaz k pohybu s explicitní rychlostí a wait=True pro okamžitou odezvu
             move_ok = controller.go_to_position(x=target_x, y=target_y,
-                                                z=target_z, wait=False)
+                                                z=target_z, speed=ARM_SPEED, wait=True)
+            print(f"   Výsledek pohybu: {'ÚSPĚCH' if move_ok else 'SELHÁNÍ'}")
 
             if move_ok:
                 # Aktualizujeme CÍLOVOU pozici HNED
@@ -632,7 +642,7 @@ def calibration_main():
                 # Nepokoušíme se vrátit, jen logujeme
                 # Zkusíme resynchronizovat CÍL se skutečnou pozicí
                 print("   Resynchronizuji CÍL se skutečnou pozicí...")
-                actual_pos = controller.get_position()
+                actual_pos = controller.get_position(cached=False)
                 if actual_pos:
                     current_target_pos = {'x': actual_pos[0],
                                           'y': actual_pos[1],

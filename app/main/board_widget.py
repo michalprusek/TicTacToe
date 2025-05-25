@@ -2,7 +2,8 @@
 TicTacToe board widget module for the TicTacToe application.
 """
 import logging
-from PyQt5.QtWidgets import QWidget, QTimer
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QTimer
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor, QLinearGradient, QRadialGradient
 
@@ -68,11 +69,13 @@ class TicTacToeBoard(QWidget):
             2 * self.cell_size)
 
         # Draw X and O - moderní design
+        # Use display board if available, otherwise use regular board
+        display_board = getattr(self, '_display_board', self.board)
         for r in range(3):
             for c in range(3):
-                if self.board[r][c] == game_logic.PLAYER_X:
+                if display_board[r][c] == game_logic.PLAYER_X:
                     self._draw_x(painter, c, r)
-                elif self.board[r][c] == game_logic.PLAYER_O:
+                elif display_board[r][c] == game_logic.PLAYER_O:
                     self._draw_o(painter, c, r)
 
         # Draw winning line if exists
@@ -102,8 +105,8 @@ class TicTacToeBoard(QWidget):
         painter.setPen(x_pen)
 
         # Kreslení čar
-        painter.drawLine(x1, y1, x2, y2)
-        painter.drawLine(x1, y2, x2, y1)
+        painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+        painter.drawLine(int(x1), int(y2), int(x2), int(y1))
 
     def _draw_o(self, painter, col, row):
         """Draw O symbol with gradient effect"""
@@ -125,7 +128,7 @@ class TicTacToeBoard(QWidget):
         painter.setPen(o_pen)
 
         # Kreslení kruhu
-        painter.drawEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
 
     def _draw_winning_line(self, painter):
         """Draw the winning line with animation effect"""
@@ -155,7 +158,7 @@ class TicTacToeBoard(QWidget):
         painter.setPen(win_pen)
 
         # Kreslení čáry
-        painter.drawLine(start_x, start_y, end_x, end_y)
+        painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
     def mousePressEvent(self, event):
         """Handle mouse press events for cell selection"""
@@ -196,14 +199,19 @@ class TicTacToeBoard(QWidget):
         """Update the board state and redraw"""
         # Zjistíme změny mezi starým a novým stavem
         changes = []
-        if highlight_changes:
+        if highlight_changes and hasattr(self, '_display_board'):
             for r in range(3):
                 for c in range(3):
-                    if self.board[r][c] != board[r][c] and board[r][c] != game_logic.EMPTY:
+                    if self._display_board[r][c] != board[r][c] and board[r][c] != game_logic.EMPTY:
                         changes.append((r, c))
 
-        # Aktualizujeme stav
-        self.board = board
+        # Store display board separately from game state
+        self._display_board = [row[:] for row in board]  # Deep copy for display
+        
+        # CRITICAL: DO NOT update self.board here!
+        # self.board should ONLY be updated in update_board_from_detection in pyqt_gui.py
+        # This method is just for visual updates
+        
         if winning_line is not None:
             self.winning_line = winning_line
 

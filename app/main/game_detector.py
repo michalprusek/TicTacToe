@@ -90,13 +90,13 @@ class GameDetector:
 
         if self.config:
             self.max_grid_detection_retries = getattr(
-                self.config, 
-                'max_grid_detection_retries', 
+                self.config,
+                'max_grid_detection_retries',
                 3
             )
             self.grid_lost_threshold_seconds = getattr(
-                self.config, 
-                'grid_lost_threshold_seconds', 
+                self.config,
+                'grid_lost_threshold_seconds',
                 2.0
             )
             # If GameState needed to be configured with values from self.config,
@@ -116,7 +116,7 @@ class GameDetector:
         # Display settings for debug window
         self.show_detections = True  # Zobrazit detekce symbolů
         self.show_grid = True  # Zobrazit grid mřížku
-        
+
         # Configurable thresholds (can be changed via debug window)
         self.bbox_conf_threshold = BBOX_CONF_THRESHOLD
         self.pose_conf_threshold = POSE_CONF_THRESHOLD
@@ -345,7 +345,15 @@ class GameDetector:
         return True
 
     def _sort_grid_points(self, keypoints: np.ndarray) -> Optional[np.ndarray]:
-        """Sorts the 16 grid keypoints primarily by y-coordinate, then by x-coordinate."""
+        """
+        Robustní řazení 16 grid keypoints pomocí dvoustupňové homografie.
+
+        Používá robustní metodu, která:
+        1. Najde 4 vnější rohy pomocí sum/diff heuristiky nebo cv2.minAreaRect fallback
+        2. Aplikuje předběžnou homografii pro normalizaci
+        3. Seřadí všech 16 bodů podle transformovaných pozic
+        4. Vrátí seřazené původní body
+        """
         if keypoints is None:
             self.logger.warning("_sort_grid_points: Received None for keypoints.")
             return None
@@ -361,12 +369,33 @@ class GameDetector:
             self.logger.debug("Keypoints are all zeros, returning as is without sorting.")
             return keypoints
 
-        points_list = [tuple(p) for p in keypoints]
-        points_list.sort(key=lambda p: (p[1], p[0]))
-        
-        sorted_arr = np.array(points_list, dtype=np.float32)
-        self.logger.debug("Sorted grid points: %s", sorted_arr.tolist())
-        return sorted_arr
+        # Použijeme robustní funkci z game_state.py
+        from app.core.game_state import robust_sort_grid_points
+
+        try:
+            sorted_points, homography = robust_sort_grid_points(keypoints, self.logger)
+
+            if sorted_points is not None:
+                self.logger.debug("Successfully sorted grid points using robust method")
+                return sorted_points
+            else:
+                self.logger.warning("Robust sorting failed, falling back to simple sorting")
+                # Fallback na původní jednoduchou metodu
+                points_list = [tuple(p) for p in keypoints]
+                points_list.sort(key=lambda p: (p[1], p[0]))
+
+                sorted_arr = np.array(points_list, dtype=np.float32)
+                self.logger.debug("Used fallback simple sorting")
+                return sorted_arr
+
+        except Exception as e:
+            self.logger.error(f"Error in robust grid sorting: {e}, using fallback")
+            # Fallback na původní jednoduchou metodu
+            points_list = [tuple(p) for p in keypoints]
+            points_list.sort(key=lambda p: (p[1], p[0]))
+
+            sorted_arr = np.array(points_list, dtype=np.float32)
+            return sorted_arr
 
     def _derive_cell_polygons(
         self, sorted_16_grid_points: np.ndarray
@@ -379,7 +408,7 @@ class GameDetector:
             )
             return None
 
-        cell_polygons = []  
+        cell_polygons = []
         for r_cell in range(3):
             for c_cell in range(3):
                 p_tl_idx = r_cell * 4 + c_cell
@@ -404,7 +433,7 @@ class GameDetector:
                         p_tl_idx, p_tr_idx, p_bl_idx, p_br_idx
                     )
                     return None
-        
+
         if len(cell_polygons) == 9:
             self.logger.debug(
                 "_derive_cell_polygons: Successfully derived %s cell polygons.",
@@ -429,7 +458,7 @@ class GameDetector:
                                 sorted_grid_points.shape)
             return None
         if np.all(sorted_grid_points == 0):
-            self.logger.debug("_get_nearest_cell: sorted_grid_points are all zeros, " 
+            self.logger.debug("_get_nearest_cell: sorted_grid_points are all zeros, "
                               "cannot determine nearest cell.")
             return None
         x, y = point
@@ -764,7 +793,7 @@ class GameDetector:
                 )
             # Potentially other error messages could be handled here too
             return frame  # Return early, no other drawing needed
-        
+
         # --- 1. Draw raw grid points from pose estimation (pose_kpts_uv)
         if self.show_grid and pose_kpts_uv is not None:
             self.logger.debug("Drawing RAW POSE grid points.")
@@ -801,7 +830,7 @@ class GameDetector:
                     # OpenCV's polylines function expects points as int32
                     pts = polygon.reshape((-1, 1, 2)).astype(np.int32)
                     cv2.polylines(frame, [pts], isClosed=True, color=(255, 0, 255), thickness=2) # Magenta polygons
-                    
+
                     # Optional: Label the cells with their index or board state
                     if self.game_state:
                         r, c = i // 3, i % 3
@@ -831,45 +860,45 @@ class GameDetector:
                         conf = conf_val
                         class_id = class_id_val
                         label = "X" if class_id_val == 0 else "O"
-                        
+
                         # Filter by confidence threshold
                         if conf >= self.bbox_conf_threshold:
                             drawing_utils.draw_symbol_box(frame, box, conf, class_id, label)
                         continue
-                    
+
                     # Pro slovníkové objekty
                     box = det_info.get('box') # [x1, y1, x2, y2]
                     conf = det_info.get('confidence')
                     class_id = det_info.get('class_id')
                     label = det_info.get('label')
-                    
+
                     if not all([box, conf is not None]):
                         self.logger.error("Malformed symbol dict: %s. Skipping draw.", det_info)
                         continue
-                    
+
                     # Filter by confidence threshold
                     if conf < self.bbox_conf_threshold:
                         continue
-                    
+
                     # If class_id is not provided, try to infer from label
                     if class_id is None and label:
                         class_id = 0 if label.upper() == "X" else 1
-                    
+
                     # If label is not provided, try to infer from class_id
                     if label is None and class_id is not None:
                         label = "X" if class_id == 0 else "O"
-                    
+
                     # Log detailed bbox information for debugging
                     x1, y1, x2, y2 = map(int, box)
                     self.logger.debug("Symbol: %s, Class ID: %s, Confidence: %s, Bbox: [(%s,%s), (%s,%s)]",
                                       label, class_id, conf, x1, y1, x2, y2)
-                    
+
                     drawing_utils.draw_symbol_box(frame, box, conf, class_id, label)
 
                 except (ValueError, TypeError, IndexError, AttributeError) as e:
                     self.logger.error("Error drawing symbol %s: %s", det_info, e)
                     continue  # Skip to next detection
-        
+
         # --- 5. Draw FPS
         fps_text = "FPS: %s" % fps
         # Get frame dimensions for FPS text placement
@@ -886,7 +915,7 @@ class GameDetector:
                 cv2.putText(frame, line_str, (10, text_y_offset + i * 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
                 last_line_idx = i # Keep track of the last index used
-            
+
             game_winner_status = self.game_state.get_winner() # Returns 'X', 'O', 'Draw', or None
 
             # Position winner/draw text below the board state display
@@ -911,17 +940,17 @@ class GameDetector:
 
             if self.config and hasattr(self.config, 'ideal_grid_keypoints_4x4'):
                 ideal_kps_for_drawing = self.config.ideal_grid_keypoints_4x4
-            
+
             if ideal_kps_for_drawing is None:
                 self.logger.warning(
                     "_draw_detection_results: Ideal keypoints not available from config. Using generic points for homography drawing."
                 )
                 # Last resort generic points (e.g., a 4x4 grid in a 0-3 range)
                 ideal_kps_for_drawing = np.array([
-                    [x, y] for y in range(4) for x in range(4)], 
+                    [x, y] for y in range(4) for x in range(4)],
                     dtype=np.float32
                 )
-            
+
             # Define connections for the 3x3 cell grid (lines between the 4x4 points)
             # These are indices into the 16 ideal_grid_kps
             grid_lines = [
@@ -940,7 +969,7 @@ class GameDetector:
                 if projected_kps is not None:
                     projected_kps = projected_kps.reshape(-1, 2).astype(np.int32)
                     for p1_idx, p2_idx in grid_lines:
-                        if (0 <= p1_idx < len(projected_kps) and 
+                        if (0 <= p1_idx < len(projected_kps) and
                             0 <= p2_idx < len(projected_kps)):
                             pt1 = tuple(projected_kps[p1_idx])
                             pt2 = tuple(projected_kps[p2_idx])
@@ -1002,7 +1031,7 @@ class GameDetector:
                             det_info, e
                         )
                     # continue  # Skip to next detection
-        
+
         # --- 2. Detect Grid --- #
         frame_for_pose = frame.copy()
         _, raw_kpts = self._detect_grid(frame_for_pose)
@@ -1020,7 +1049,7 @@ class GameDetector:
         if grid_is_valid_and_ordered and sorted_kpts is not None:
             self.logger.debug("Sorted grid points are valid and consistent.")
             final_kpts_for_processing = sorted_kpts
-            
+
             # We still calculate homography for backwards compatibility
             # But the new GameState implementation doesn't rely on it
             current_H_ideal_to_uv, _ = self._calculate_grid_homography(
@@ -1028,12 +1057,12 @@ class GameDetector:
             if current_H_ideal_to_uv is None:
                 self.logger.debug(
                     "Homography calculation failed, but will use direct grid points mapping instead.")
-            
+
             if self.last_valid_grid_time is None: # Grid was just found
-                grid_status_changed = True 
+                grid_status_changed = True
             self.last_valid_grid_time = current_time
             self.grid_detection_retries = 0 # Reset retries on valid grid
-            
+
             # Důležité: když je mřížka vidět kompletně, vyčistíme příznaky problémů s mřížkou
             # v game_state, pokud existují
             if hasattr(self, 'game_state') and self.game_state and not self.game_state.grid_fully_visible:
@@ -1057,21 +1086,21 @@ class GameDetector:
                 if hasattr(self.game_state, 'grid_issue_type'):
                     self.logger.info("Grid is partially visible. Setting grid_issue_type attribute.")
                     setattr(self.game_state, 'grid_issue_type', 'incomplete_visibility')
-                    setattr(self.game_state, 'grid_issue_message', 
+                    setattr(self.game_state, 'grid_issue_message',
                             "Hrací plocha není celá v záběru kamery! Chybí %s bodů. Narovnejte hrací plochu a umístěte ji do středu záběru." % missing_count)
             else:
                 # Standardní hhlášení o neviditelné mřížce
                 self.logger.debug(
                     "PROCESS_FRAME: Grid is not valid/found. final_kpts_for_processing=None."
                 )
-                
+
                 # Nastavit příznak pro GUI, aby zobrazilo varování že není vidět žádná mřížka
                 if hasattr(self.game_state, 'grid_issue_type'):
                     self.logger.info("Grid is not visible. Setting grid_issue_type attribute.")
                     setattr(self.game_state, 'grid_issue_type', 'grid_not_found')
-                    setattr(self.game_state, 'grid_issue_message', 
+                    setattr(self.game_state, 'grid_issue_message',
                             "Hrací plocha není v záběru kamery! Umístěte ji do středu záběru.")
-                    
+
             if self.last_valid_grid_time is not None: # Grid was just lost
                 if (current_time - self.last_valid_grid_time) > self.grid_lost_threshold_seconds:
                     self.logger.warning(
@@ -1093,7 +1122,7 @@ class GameDetector:
                 else:
                     # Grid recently lost, keep using last known good state for a bit if configured
                     # For now, we don't persist old keypoints/homography if detector can't see it.
-                    pass 
+                    pass
             # If grid was never valid or already marked as lost, continue with None for kpts/H
 
         # --- 4. Update Game State --- #
@@ -1107,12 +1136,12 @@ class GameDetector:
             grid_status_changed # Pass grid status change flag
         )
         # Store polygons from GameState if available, otherwise use GameDetector's derived ones
-        self._detector_derived_cell_polygons = polygons_from_gs 
+        self._detector_derived_cell_polygons = polygons_from_gs
 
         # Calculate FPS for display using the FPSCalculator instance
         self.fps_calculator.tick()
         fps = self.fps_calculator.get_fps()
-        
+
         # Log performance periodically
         if current_time - self.last_log_time > self.log_interval:
             end_time_processing = time.perf_counter()
@@ -1157,12 +1186,12 @@ class GameDetector:
             class_id_to_player: Mapping from class ID to player value.
             timestamp: Current timestamp.
             grid_status_changed: True if grid was just found or lost beyond threshold.
-        
+
         Returns:
             Optional list of derived cell polygons if they were computed by GameState.
         """
         if self.game_state is None:
-            self.game_state = GameState() 
+            self.game_state = GameState()
             self.logger.info(
                 "Initialized new GameState in _update_game_state."
             )
@@ -1171,8 +1200,8 @@ class GameDetector:
                 "Grid lost, resetting game state inside _update_game_state."
             )
             self.game_state.reset_game() # Full reset if grid is lost
-        
-        # Always reset changed cells for the current detection cycle, 
+
+        # Always reset changed cells for the current detection cycle,
         # regardless of full game reset.
         self.game_state.reset_changed_cells()
 
@@ -1192,8 +1221,8 @@ class GameDetector:
             polygons = self.game_state.get_latest_derived_cell_polygons()
             if polygons is not None:
                 return polygons
-        
-        # Fallback: if GameState doesn't provide them but we have keypoints, 
+
+        # Fallback: if GameState doesn't provide them but we have keypoints,
         # GameDetector can derive them for drawing.
         # This is only for drawing, GameState handles its own internal grid representation.
         if ordered_kpts_uv is not None:
@@ -1202,7 +1231,7 @@ class GameDetector:
                 "GameDetector deriving for drawing."
             )
             return self._derive_cell_polygons(ordered_kpts_uv)
-        
+
         return None
 
     # Main loop for running detection and displaying results.

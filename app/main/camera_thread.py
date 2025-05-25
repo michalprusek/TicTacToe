@@ -117,7 +117,9 @@ class CameraThread(QThread):
         self.running = False
         if self.detection_thread:
             self.detection_thread.stop()
-            self.detection_thread.wait()
+            # DetectionThread is a threading.Thread, not QThread, so we use join() instead of wait()
+            if self.detection_thread.is_alive():
+                self.detection_thread.join(timeout=1.0)
 
         if self.cap and self.cap.isOpened():
             self.cap.release()

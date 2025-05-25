@@ -77,19 +77,34 @@ class DebugWindow(QMainWindow):
         detection_group = QGroupBox("Detekce")
         detection_layout = QVBoxLayout(detection_group)
 
-        # Confidence threshold
-        conf_layout = QHBoxLayout()
-        conf_layout.addWidget(QLabel("Práh jistoty:"))
+        # Grid confidence threshold (fixed)
+        grid_conf_layout = QHBoxLayout()
+        grid_conf_layout.addWidget(QLabel("Práh jistoty mřížky:"))
         self.conf_slider = QSlider(Qt.Horizontal)
         self.conf_slider.setMinimum(10)
         self.conf_slider.setMaximum(95)
         self.conf_slider.setValue(45)  # Default 0.45
         self.conf_slider.setTickPosition(QSlider.TicksBelow)
         self.conf_slider.setTickInterval(10)
-        conf_layout.addWidget(self.conf_slider)
+        self.conf_slider.setEnabled(False)  # Fixed for grid
+        grid_conf_layout.addWidget(self.conf_slider)
         self.conf_value_label = QLabel("0.45")
-        conf_layout.addWidget(self.conf_value_label)
-        detection_layout.addLayout(conf_layout)
+        grid_conf_layout.addWidget(self.conf_value_label)
+        detection_layout.addLayout(grid_conf_layout)
+        
+        # Symbol confidence threshold (adjustable)
+        symbol_conf_layout = QHBoxLayout()
+        symbol_conf_layout.addWidget(QLabel("Práh jistoty symbolů:"))
+        self.symbol_conf_slider = QSlider(Qt.Horizontal)
+        self.symbol_conf_slider.setMinimum(50)
+        self.symbol_conf_slider.setMaximum(95)
+        self.symbol_conf_slider.setValue(80)  # Default 0.80
+        self.symbol_conf_slider.setTickPosition(QSlider.TicksBelow)
+        self.symbol_conf_slider.setTickInterval(5)
+        symbol_conf_layout.addWidget(self.symbol_conf_slider)
+        self.symbol_conf_value_label = QLabel("0.80")
+        symbol_conf_layout.addWidget(self.symbol_conf_value_label)
+        detection_layout.addLayout(symbol_conf_layout)
 
         # Show detections checkbox
         self.show_detections_checkbox = QCheckBox("Zobrazit detekce")
@@ -130,6 +145,9 @@ class DebugWindow(QMainWindow):
 
         # Confidence threshold
         self.conf_slider.valueChanged.connect(self.handle_conf_changed)
+        
+        # Symbol confidence threshold
+        self.symbol_conf_slider.valueChanged.connect(self.handle_symbol_conf_changed)
 
         # Refresh button
         self.refresh_button.clicked.connect(self.handle_refresh_clicked)
@@ -167,6 +185,22 @@ class DebugWindow(QMainWindow):
                 elif hasattr(detection_thread, "config"):
                     detection_thread.config.bbox_conf_threshold = conf
                     detection_thread.config.pose_conf_threshold = conf
+    
+    @pyqtSlot(int)
+    def handle_symbol_conf_changed(self, value: int):
+        """Handle symbol confidence threshold change."""
+        conf = value / 100.0
+        self.symbol_conf_value_label.setText(f"{conf:.2f}")
+        self.logger.info(f"Změna prahu jistoty symbolů na {conf:.2f}")
+        
+        # Update symbol confidence in game state
+        if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
+            if hasattr(self.parent().camera_thread, "detection_thread") and self.parent().camera_thread.detection_thread:
+                detection_thread = self.parent().camera_thread.detection_thread
+                if hasattr(detection_thread, "detector") and detection_thread.detector:
+                    if hasattr(detection_thread.detector, "game_state") and detection_thread.detector.game_state:
+                        detection_thread.detector.game_state.symbol_confidence_threshold = conf
+                        self.logger.info(f"Updated symbol confidence threshold in game state to {conf:.2f}")
 
     @pyqtSlot()
     def handle_refresh_clicked(self):

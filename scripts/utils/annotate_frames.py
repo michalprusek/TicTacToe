@@ -54,8 +54,7 @@ def create_batches(input_dir: str, output_dir: str, batch_size: int):
 
     num_batches = (len(image_files) + batch_size - 1) // batch_size
     logger.info(
-        f"Found {
-            len(image_files)} imgs, creating {num_batches} batches.")
+        f"Found {len(image_files)} imgs, creating {num_batches} batches.")
 
     for i in range(num_batches):
         batch_num = i + 1
