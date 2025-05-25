@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor, QLinearGradient, QRadialGradient
 
 from app.main import game_logic
+from app.main.game_utils import setup_logger
 
 
 class TicTacToeBoard(QWidget):
@@ -31,7 +32,7 @@ class TicTacToeBoard(QWidget):
         self.highlight_timer.timeout.connect(self.update_highlight)
         self.highlight_alpha = 0  # Highlight transparency (0-255)
         self.highlight_fade_in = True  # Animation direction (fade in/out)
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
 
     def paintEvent(self, event):
         """Paint the board and symbols"""

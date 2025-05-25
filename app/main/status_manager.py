@@ -8,7 +8,8 @@ import logging
 import time
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
-from app.main.game_utils import convert_board_1d_to_2d, get_board_symbol_counts
+from app.main.game_utils import convert_board_1d_to_2d, get_board_symbol_counts, setup_logger
+from app.main.gui_factory import LabelFactory, LayoutFactory
 
 # Language dictionaries
 LANG_CS = {
@@ -61,7 +62,7 @@ class StatusManager(QObject):
         super().__init__()
 
         self.main_window = main_window
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
 
         # Language state
         self.current_language = LANG_CS

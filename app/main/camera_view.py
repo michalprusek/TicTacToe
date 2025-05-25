@@ -34,20 +34,36 @@ class CameraView(QLabel):
                     frame,
                     self.width() - 10,
                     self.height() - 10,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation)
+                    keep_aspect=True)
 
                 self.setPixmap(pixmap)
 
                 # Mark camera as active
                 if not self.camera_active:
                     self.camera_active = True
+                    print("🎥 Debug window: Camera stream started successfully")
+
+                # Debug logging for camera stream (every 60 frames = ~2 seconds)
+                if hasattr(self, '_frame_count'):
+                    self._frame_count += 1
+                else:
+                    self._frame_count = 1
+
+                if self._frame_count % 60 == 0:  # Log every 60 frames
+                    height, width = frame.shape[:2]
+                    print(f"🎥 Debug window: Frame {self._frame_count}, "
+                          f"size: {width}x{height}, "
+                          f"pixmap: {pixmap.width()}x{pixmap.height()}")
 
             except Exception as e:
                 self.setText(f"📷 Chyba při zobrazení: {str(e)}")
+                print(f"❌ Debug window camera error: {e}")
+                import traceback
+                traceback.print_exc()
         else:
             if self.camera_active:
                 self.setText("📷 Kamera nedostupná")
+                print("⚠️ Debug window: Camera frame is None")
             else:
                 self.setText("📷 Inicializace kamery...")
 

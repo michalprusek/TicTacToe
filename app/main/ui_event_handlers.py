@@ -20,6 +20,7 @@ if project_root not in sys.path:
 from app.main.debug_window import DebugWindow
 from app.main import game_logic
 from app.core.arm_thread import ArmCommand
+from app.main.game_utils import setup_logger
 
 
 class UIEventHandlers(QObject):
@@ -29,7 +30,7 @@ class UIEventHandlers(QObject):
         super().__init__()
 
         self.main_window = main_window
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
 
         # Debug window reference
         self.debug_window = None

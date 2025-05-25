@@ -8,6 +8,7 @@ from typing import Tuple, Optional, List, Dict
 import numpy as np
 import cv2
 import torch
+from app.main.game_utils import setup_logger
 
 from app.core.detector_constants import (
     DEFAULT_DETECT_MODEL_PATH,
@@ -38,7 +39,7 @@ class GameDetector:
     ):
         """Initializes the detector, loads models, and sets up the camera."""
         self.config = config
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
         self.logger.setLevel(log_level)
         self.camera_index = camera_index
         self.detect_model_path = detect_model_path

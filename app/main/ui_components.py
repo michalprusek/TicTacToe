@@ -13,6 +13,8 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QGraphicsOpacityEffect
 )
+from app.main.game_utils import setup_logger
+from app.main.gui_factory import ButtonFactory, LayoutFactory, LabelFactory
 from PyQt5.QtCore import Qt, QPropertyAnimation
 from PyQt5.QtGui import QIcon
 
@@ -24,7 +26,7 @@ class StatusPanel(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
         self.setup_ui()
         
     def setup_ui(self):
@@ -63,7 +65,7 @@ class ControlPanel(QWidget):
     
     def __init__(self, parent=None, config=None):
         super().__init__(parent)
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
         self.config = config if config is not None else AppConfig()
         self.setup_ui()
         

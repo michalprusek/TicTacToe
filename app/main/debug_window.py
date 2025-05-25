@@ -6,6 +6,7 @@ from typing import Optional, List
 
 import cv2
 import numpy as np
+from app.main.game_utils import setup_logger
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QCheckBox, QSlider, QGroupBox
@@ -23,7 +24,7 @@ class DebugWindow(QMainWindow):
     def __init__(self, config: Optional[AppConfig] = None, parent=None):
         """Initialize the debug window."""
         super().__init__(parent)
-        self.logger = logging.getLogger(__name__)
+        self.logger = setup_logger(__name__)
         self.config = config if config is not None else AppConfig()
 
         # Window setup
