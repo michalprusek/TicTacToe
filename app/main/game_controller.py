@@ -115,6 +115,9 @@ class GameController(QObject):
         self.status_changed.emit("new_game_detected", True)
         self.logger.info(f"Game reset. Current turn: {self.current_turn}")
 
+        # Set status to indicate it's human player's turn
+        QTimer.singleShot(2000, lambda: self.status_changed.emit("your_turn", True))
+
         # Move arm to neutral position
         if self.arm_controller:
             self.arm_controller.move_to_neutral_position()
@@ -187,6 +190,8 @@ class GameController(QObject):
             elif self.current_turn == self.ai_player and not self.arm_move_in_progress and not self.waiting_for_detection:
                 self.status_changed.emit("arm_turn", True)
                 self.logger.debug("Arm is on turn, but conditions for playing are not met.")
+            elif self.current_turn == self.human_player and not self.arm_move_in_progress and not self.waiting_for_detection:
+                self.status_changed.emit("your_turn", True)
 
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""

@@ -14,7 +14,7 @@ from app.main.gui_factory import LabelFactory, LayoutFactory
 # Language dictionaries
 LANG_CS = {
     "your_turn": "VÁŠ TAH", "ai_turn": "TAH AI", "arm_turn": "TAH RUKY",
-    "arm_moving": "RUKA SE POHYBUJE", "place_symbol": "POLOŽTE SYMBOL",
+    "arm_moving": "ROBOT HRAJE", "place_symbol": "POLOŽTE SYMBOL",
     "waiting_detection": "ČEKÁM NA DETEKCI", "win": "VÝHRA", "draw": "REMÍZA",
     "new_game": "Nová hra", "reset": "Reset", "debug": "Debug", "camera": "Kamera",
     "difficulty": "Obtížnost", "arm_connect": "Připojit ruku",
@@ -33,7 +33,7 @@ LANG_CS = {
 
 LANG_EN = {
     "your_turn": "YOUR TURN", "ai_turn": "AI TURN", "arm_turn": "ARM TURN",
-    "arm_moving": "ARM MOVING", "place_symbol": "PLACE SYMBOL",
+    "arm_moving": "ROBOT PLAYING", "place_symbol": "PLACE SYMBOL",
     "waiting_detection": "WAITING FOR DETECTION", "win": "WIN", "draw": "DRAW",
     "new_game": "New Game", "reset": "Reset", "debug": "Debug", "camera": "Camera",
     "difficulty": "Difficulty", "arm_connect": "Connect arm",

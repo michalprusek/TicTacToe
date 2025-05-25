@@ -270,7 +270,8 @@ class ArmController:
             return False
 
         # Use faster drawing speed and travel speed
-        half_size = size / 2.0
+        # Double the size for bigger symbols
+        half_size = size
         draw_speed = speed if speed is not None else (
             DEFAULT_SPEED // 2)  # Poloviční rychlost pro kreslení
         safe_move_speed = DEFAULT_SPEED  # Maximální rychlost pro přesuny
@@ -285,7 +286,7 @@ class ArmController:
         center_x_adj = center_x
         center_y_adj = center_y
 
-        # Points for the X with adjusted center
+        # Points for the X with adjusted center (doubled size)
         p1_x = center_x_adj - half_size
         p1_y = center_y_adj - half_size
         p2_x = center_x_adj + half_size
@@ -343,6 +344,9 @@ class ArmController:
         if not self.connected:
             self.logger.error("Cannot draw O: Arm not connected.")
             return False
+
+        # Double the radius for bigger symbols
+        radius = radius * 2.0
 
         # Use faster drawing speed and travel speed
         draw_speed = speed if speed is not None else (
