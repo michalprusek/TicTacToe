@@ -11,13 +11,13 @@ from functools import wraps
 
 class ErrorHandler:
     """Centralized error handling for common operations."""
-    
+
     @staticmethod
-    def log_error(logger: logging.Logger, operation: str, error: Exception, 
+    def log_error(logger: logging.Logger, operation: str, error: Exception,
                   include_traceback: bool = True) -> None:
         """
         Standardized error logging.
-        
+
         Args:
             logger: Logger instance
             operation: Description of the operation that failed
@@ -25,14 +25,14 @@ class ErrorHandler:
             include_traceback: Whether to include full traceback
         """
         error_msg = f"Error in {operation}: {error}"
-        
+
         if include_traceback:
             logger.error(f"{error_msg}\n{traceback.format_exc()}")
         else:
             logger.error(error_msg)
-    
+
     @staticmethod
-    def safe_operation(logger: logging.Logger, operation_name: str, 
+    def safe_operation(logger: logging.Logger, operation_name: str,
                       default_return: Any = None, log_traceback: bool = False):
         """
         Decorator for safe operation execution with standardized error handling.
@@ -47,17 +47,17 @@ class ErrorHandler:
                     return default_return
             return wrapper
         return decorator
-    
+
     @staticmethod
     def camera_operation_handler(logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for camera operations."""
         return ErrorHandler.safe_operation(
-            logger, f"camera {operation}", 
-            default_return=False, 
+            logger, f"camera {operation}",
+            default_return=False,
             log_traceback=False
         )
-    
-    @staticmethod  
+
+    @staticmethod
     def arm_operation_handler(logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for arm operations."""
         return ErrorHandler.safe_operation(
@@ -65,7 +65,7 @@ class ErrorHandler:
             default_return=False,
             log_traceback=True
         )
-    
+
     @staticmethod
     def gui_operation_handler(logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for GUI operations."""

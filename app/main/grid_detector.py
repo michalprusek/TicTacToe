@@ -26,7 +26,7 @@ class GridDetector:
 
     def __init__(self, pose_model, config=None, logger=None):
         """Initialize the grid detector.
-        
+
         Args:
             pose_model: The YOLO pose model for grid detection
             config: Configuration object
@@ -35,7 +35,7 @@ class GridDetector:
         self.pose_model = pose_model
         self.config = config
         self.logger = logger or logging.getLogger(__name__)
-        
+
         # Grid detection parameters
         self.pose_conf_threshold = getattr(config, 'pose_conf_threshold', 0.5)
         self.grid_detection_retries = 0
@@ -92,7 +92,7 @@ class GridDetector:
                         len(kpts), GRID_POINTS_COUNT
                     )
                     kpts = kpts[:GRID_POINTS_COUNT]
-                
+
                 # Update keypoints with the detected points
                 keypoints = kpts
         else:
@@ -102,36 +102,36 @@ class GridDetector:
 
     def sort_grid_points(self, keypoints: np.ndarray) -> np.ndarray:
         """Sorts the grid points into a consistent order.
-        
+
         Args:
             keypoints: Array of shape (16, 2) containing the grid points
-            
+
         Returns:
             Sorted array of shape (16, 2)
         """
         # Filter out points with zero coordinates (not detected)
         valid_points = keypoints[np.sum(np.abs(keypoints), axis=1) > 0]
-        
+
         if len(valid_points) < 4:
             self.logger.debug("Not enough valid points to sort grid: %s", len(valid_points))
             return keypoints
-            
+
         # Sort points for 4x4 grid layout (row by row, left to right)
         # This is CRITICAL for correct cell center calculation!
-        
+
         self.logger.debug(f"🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
-        
+
         # Sort by Y coordinate first (top to bottom)
         y_sorted_indices = np.argsort(valid_points[:, 1])
         y_sorted_points = valid_points[y_sorted_indices]
-        
+
         # Adaptive row grouping - handle partial grids gracefully
         if len(valid_points) >= 12:  # At least 3 rows
             # Try to group into 4 rows
             points_per_row = len(valid_points) // 4
             remainder = len(valid_points) % 4
             sorted_valid_points = []
-            
+
             current_idx = 0
             for row in range(4):
                 # Calculate points in this row (distribute remainder)
@@ -143,9 +143,9 @@ class GridDetector:
                     row_sorted = row_points[x_sorted_indices]
                     sorted_valid_points.extend(row_sorted)
                     current_idx += row_size
-                    
+
                     self.logger.debug(f"  Row {row}: {row_size} points sorted by X")
-            
+
             sorted_valid_points = np.array(sorted_valid_points)
         else:
             # Fallback for very incomplete grids - just sort by Y then X
@@ -153,82 +153,82 @@ class GridDetector:
             combined_sort = np.lexsort((valid_points[:, 0], valid_points[:, 1]))
             sorted_valid_points = valid_points[combined_sort]
             self.logger.debug(f"  Fallback: lexicographic sort (Y,X)")
-        
+
         # Create a new array for the sorted points
         sorted_keypoints = np.zeros_like(keypoints)
         sorted_keypoints[:len(valid_points)] = sorted_valid_points
-        
+
         return sorted_keypoints
 
     def is_valid_grid(self, keypoints: np.ndarray) -> bool:
         """Checks if the detected grid is valid.
-        
+
         Args:
             keypoints: Array of shape (16, 2) containing the grid points
-            
+
         Returns:
             True if the grid is valid, False otherwise
         """
         # Count non-zero points
         valid_points = keypoints[np.sum(np.abs(keypoints), axis=1) > 0]
         valid_count = len(valid_points)
-        
+
         # Check if we have enough points
         if valid_count < MIN_POINTS_FOR_HOMOGRAPHY:
-            self.logger.debug("Not enough valid grid points: %s/%s", 
+            self.logger.debug("Not enough valid grid points: %s/%s",
                              valid_count, MIN_POINTS_FOR_HOMOGRAPHY)
             return False
-            
+
         # Check if points form a reasonable grid (distances between adjacent points)
         # This is a simplified check - in a real implementation, you would do more validation
-        
+
         # Calculate distances between all pairs of points
         distances = []
         for i in range(valid_count):
             for j in range(i+1, valid_count):
                 dist = np.linalg.norm(valid_points[i] - valid_points[j])
                 distances.append(dist)
-                
+
         # Check if distances have reasonable standard deviation
         if len(distances) > 0:
             std_dev = np.std(distances)
             mean_dist = np.mean(distances)
             if std_dev / mean_dist > GRID_DIST_STD_DEV_THRESHOLD:
-                self.logger.debug("Grid point distances too variable: std/mean = %.2f", 
+                self.logger.debug("Grid point distances too variable: std/mean = %.2f",
                                  std_dev / mean_dist)
                 return False
-                
+
         return True
 
     def compute_homography(self, keypoints: np.ndarray) -> Optional[np.ndarray]:
         """Computes the homography matrix from ideal grid to image coordinates.
-        
+
         Args:
             keypoints: Array of shape (16, 2) containing the grid points
-            
+
         Returns:
             Homography matrix or None if computation fails
         """
         # Filter out points with zero coordinates (not detected)
         valid_points = keypoints[np.sum(np.abs(keypoints), axis=1) > 0]
-        
+
         if len(valid_points) < MIN_POINTS_FOR_HOMOGRAPHY:
-            self.logger.debug("Not enough valid points for homography: %s/%s", 
+            self.logger.debug("Not enough valid points for homography: %s/%s",
                              len(valid_points), MIN_POINTS_FOR_HOMOGRAPHY)
             return None
-            
+
         try:
             # Create ideal grid points (normalized coordinates)
             ideal_points = IDEAL_GRID_NORM.copy()
-            
+
             # Compute homography from ideal grid to image coordinates
             H, _ = cv2.findHomography(
-                ideal_points[:len(valid_points)], 
-                valid_points, 
-                cv2.RANSAC, 
+                ideal_points[:len(valid_points)],
+                valid_points,
+                cv2.RANSAC,
                 RANSAC_REPROJ_THRESHOLD
             )
-            
+
             return H
         except Exception as e:
             self.logger.error("Error computing homography: %s", e)
@@ -236,23 +236,23 @@ class GridDetector:
 
     def update_grid_status(self, is_valid: bool, current_time: float) -> bool:
         """Updates the grid status based on validity and timing.
-        
+
         Args:
             is_valid: Whether the current grid detection is valid
             current_time: Current timestamp
-            
+
         Returns:
             True if grid status changed significantly, False otherwise
         """
         grid_status_changed = False
-        
+
         if is_valid:
             # Grid is valid now
             if self.last_valid_grid_time is None:
                 # First valid detection
                 self.logger.info("Grid detected for the first time")
                 grid_status_changed = True
-            
+
             # Update last valid time
             self.last_valid_grid_time = current_time
             # Reset retry counter
@@ -262,7 +262,7 @@ class GridDetector:
             if self.last_valid_grid_time is not None:
                 # We had a valid grid before
                 time_since_valid = current_time - self.last_valid_grid_time
-                
+
                 if time_since_valid > self.grid_lost_threshold_seconds:
                     # Grid has been lost for too long
                     self.logger.info("Grid lost after %.2f seconds", time_since_valid)
@@ -271,12 +271,12 @@ class GridDetector:
                 else:
                     # Increment retry counter
                     self.grid_detection_retries += 1
-                    
+
                     if self.grid_detection_retries > self.max_grid_detection_retries:
                         # Too many retries, consider grid lost
-                        self.logger.info("Grid lost after %s retries", 
+                        self.logger.info("Grid lost after %s retries",
                                         self.grid_detection_retries)
                         self.last_valid_grid_time = None
                         grid_status_changed = True
-        
+
         return grid_status_changed

@@ -223,14 +223,14 @@ class UIEventHandlers(QObject):
             [flat_board[i*3 + j] for j in range(3)]
             for i in range(3)
         ]
-        
+
         # DEBUG: Log what YOLO actually detected
         non_empty_symbols = []
         for r in range(3):
             for c in range(3):
                 if detected_board[r][c] != ' ':
                     non_empty_symbols.append(f"({r},{c})={detected_board[r][c]}")
-        
+
         if non_empty_symbols:
             self.logger.info(f"🔍 YOLO DETECTION: {', '.join(non_empty_symbols)}")
         else:
@@ -254,7 +254,7 @@ class UIEventHandlers(QObject):
 
                 if detected_board[expected_row][expected_col] == expected_symbol:
                     self.logger.info(f"✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
-                    
+
                     # Successfully detected arm move - reset detection flags
                     gc.waiting_for_detection = False
                     gc.arm_move_in_progress = False
@@ -263,16 +263,16 @@ class UIEventHandlers(QObject):
                     gc.expected_symbol = None
                     gc.detection_wait_time = 0.0
                     gc.ai_move_retry_count = 0
-                    
+
                     # Switch turn to human
                     gc.current_turn = gc.human_player
-                    
+
                     # Update board with detected state
                     if hasattr(self.main_window, 'board_widget'):
                         self.main_window.board_widget.board = [row[:] for row in detected_board]
                         self.main_window.board_widget.update()
                         self.logger.info(f"GUI updated with detected board state")
-                    
+
                     # Check for game end, then continue to human turn if game not over
                     gc._check_game_end()
                     if not gc.game_over:

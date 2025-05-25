@@ -63,7 +63,11 @@ class GameState:
 
         # Cell centers in UV space, transformed from ideal grid for game logic
         self._cell_centers_uv_transformed = None
-        self._cell_polygons_uv_transformed: Optional[List[np.ndarray]] = None  # Added initialization
+        # Cell polygons in UV space, transformed from ideal grid
+        self._cell_polygons_uv_transformed: Optional[List[np.ndarray]] = None
+
+        # Current frame for processing
+        self._frame: Optional[np.ndarray] = None
 
     def reset_game(self):
         """Resets game state, keeping grid points if valid."""
@@ -218,20 +222,22 @@ class GameState:
             return []
 
         # Convert symbols to expected format
-        detected_symbols = self._convert_symbols_to_expected_format(detected_symbols, class_id_to_player)
+        detected_symbols = self._convert_symbols_to_expected_format(
+            detected_symbols, class_id_to_player)
 
         changed_cells = []
 
         # Debug: Log current board state
         board_str = str([row[:] for row in self._board_state])
-        self.logger.info(f"Current board state before symbol update: {board_str}")
+        self.logger.info("Current board state before symbol update: %s", board_str)
 
         # ✅ CRITICAL DEBUG: Log all YOLO detections for verification (fallback method)
-        self.logger.info(f"🔍 FALLBACK METHOD - YOLO DETECTED {len(detected_symbols)} SYMBOLS:")
+        self.logger.info("🔍 FALLBACK METHOD - YOLO DETECTED %d SYMBOLS:",
+                          len(detected_symbols))
 
         # ✅ CRITICAL FIX: Filter out low-confidence detections (fallback method)
         # Use dynamic threshold if available, otherwise default to 0.85
-        MIN_CONFIDENCE_THRESHOLD = getattr(self, 'symbol_confidence_threshold', 0.85)
+        min_confidence_threshold = getattr(self, 'symbol_confidence_threshold', 0.85)
         filtered_symbols = []
 
         for i, symbol_info in enumerate(detected_symbols):
@@ -239,18 +245,23 @@ class GameState:
             player = symbol_info.get('player', 'Unknown')
             confidence = symbol_info.get('confidence', 0.0)
 
-            self.logger.info(f"  Symbol {i+1}: {player} at {center} (confidence: {confidence:.3f})")
+            self.logger.info("  Symbol %d: %s at %s (confidence: %.3f)",
+                              i+1, player, center, confidence)
 
             # Only accept high-confidence detections
-            if confidence >= MIN_CONFIDENCE_THRESHOLD:
+            if confidence >= min_confidence_threshold:
                 filtered_symbols.append(symbol_info)
-                self.logger.info(f"    ✅ ACCEPTED (confidence >= {MIN_CONFIDENCE_THRESHOLD})")
+                self.logger.info("    ✅ ACCEPTED (confidence >= %.3f)",
+                                  min_confidence_threshold)
             else:
-                self.logger.warning(f"    ❌ REJECTED (confidence {confidence:.3f} < {MIN_CONFIDENCE_THRESHOLD})")
+                self.logger.warning(
+                    "    ❌ REJECTED (confidence %.3f < %.3f)",
+                    confidence, min_confidence_threshold)
 
         # Update detected_symbols to only include high-confidence detections
         detected_symbols = filtered_symbols
-        self.logger.info(f"🔍 FALLBACK AFTER FILTERING: {len(detected_symbols)} HIGH-CONFIDENCE SYMBOLS")
+        self.logger.info("🔍 FALLBACK AFTER FILTERING: %d HIGH-CONFIDENCE SYMBOLS",
+                          len(detected_symbols))
 
         for symbol_info in detected_symbols: # Use unsorted for now
             symbol_center_uv = symbol_info.get('center_uv')
@@ -258,7 +269,7 @@ class GameState:
 
             if symbol_center_uv is None or player is None:
                 self.logger.warning(
-                    f"Skipping symbol due to missing data: {symbol_info}"
+                    "Skipping symbol due to missing data: %s", symbol_info
                 )
                 continue
 
@@ -273,12 +284,12 @@ class GameState:
                 self._board_state[row][col] = player
                 changed_cells.append((row, col))
                 self.logger.info(
-                    f"Placed '{player}' at ({row},{col}) based on symbol at {symbol_center_uv}"
-                )
+                    "Placed '%s' at (%d,%d) based on symbol at %s",
+                    player, row, col, symbol_center_uv)
             else:
                 self.logger.info(
-                    f"Cell ({row},{col}) already occupied by {self._board_state[row][col]}. Symbol {player} not placed."
-                )
+                    "Cell (%d,%d) already occupied by %s. Symbol %s not placed.",
+                    row, col, self._board_state[row][col], player)
             # else:
             #     self.logger.debug(
             #         f"Cell ({row},{col}) already occupied by {self.board[row][col]}. Symbol {player} not placed."
@@ -327,7 +338,7 @@ class GameState:
                 # Already in expected format
                 converted_symbols.append(symbol)
             else:
-                self.logger.warning(f"Symbol has unexpected format: {symbol}")
+                self.logger.warning("Symbol has unexpected format: %s", symbol)
 
         return converted_symbols
 
@@ -376,14 +387,14 @@ class GameState:
 
             # Debug: Log current board state
             board_str = str([row[:] for row in self._board_state])
-            self.logger.info(f"Current board state before robust symbol update: {board_str}")
+            self.logger.info("Current board state before robust symbol update: %s", board_str)
 
             # ✅ CRITICAL DEBUG: Log all YOLO detections for verification
-            self.logger.info(f"🔍 YOLO DETECTED {len(detected_symbols)} SYMBOLS:")
+            self.logger.info("🔍 YOLO DETECTED %d SYMBOLS:", len(detected_symbols))
 
             # ✅ CRITICAL FIX: Filter out low-confidence detections
             # Use dynamic threshold if available, otherwise default to 0.85
-            MIN_CONFIDENCE_THRESHOLD = getattr(self, 'symbol_confidence_threshold', 0.85)
+            min_confidence_threshold = getattr(self, 'symbol_confidence_threshold', 0.85)
             filtered_symbols = []
 
             for i, symbol_info in enumerate(detected_symbols):
@@ -391,25 +402,30 @@ class GameState:
                 player = symbol_info.get('player', 'Unknown')
                 confidence = symbol_info.get('confidence', 0.0)
 
-                self.logger.info(f"  Symbol {i+1}: {player} at {center} (confidence: {confidence:.3f})")
+                self.logger.info("  Symbol %d: %s at %s (confidence: %.3f)",
+                              i+1, player, center, confidence)
 
                 # Only accept high-confidence detections
-                if confidence >= MIN_CONFIDENCE_THRESHOLD:
+                if confidence >= min_confidence_threshold:
                     filtered_symbols.append(symbol_info)
-                    self.logger.info(f"    ✅ ACCEPTED (confidence >= {MIN_CONFIDENCE_THRESHOLD})")
+                    self.logger.info("    ✅ ACCEPTED (confidence >= %.3f)",
+                                  min_confidence_threshold)
                 else:
-                    self.logger.warning(f"    ❌ REJECTED (confidence {confidence:.3f} < {MIN_CONFIDENCE_THRESHOLD})")
+                    self.logger.warning(
+                    "    ❌ REJECTED (confidence %.3f < %.3f)",
+                    confidence, min_confidence_threshold)
 
             # Update detected_symbols to only include high-confidence detections
             detected_symbols = filtered_symbols
-            self.logger.info(f"🔍 AFTER FILTERING: {len(detected_symbols)} HIGH-CONFIDENCE SYMBOLS")
+            self.logger.info("🔍 AFTER FILTERING: %d HIGH-CONFIDENCE SYMBOLS",
+                          len(detected_symbols))
 
             for symbol_info in detected_symbols:
                 symbol_center_uv = symbol_info.get('center_uv')
                 player = symbol_info.get('player')
 
                 if symbol_center_uv is None or player is None:
-                    self.logger.warning(f"Skipping symbol due to missing data: {symbol_info}")
+                    self.logger.warning("Skipping symbol due to missing data: %s", symbol_info)
                     continue
 
                 # Transformace středu symbolu do normalizovaného prostoru
@@ -474,7 +490,7 @@ class GameState:
             return changed_cells
 
         except Exception as e:
-            self.logger.error(f"Error in robust symbol mapping: {e}")
+            self.logger.error("Error in robust symbol mapping: %s", e)
             return []
 
     def is_game_over(self) -> bool:
@@ -656,13 +672,13 @@ class GameState:
                 if changed_cells: # If a move was made
                     self._changed_cells_this_turn = changed_cells
                     self._last_move_timestamp = timestamp # Update last move time
-                    self.logger.info(f"Move made. Cooldown started. Changed cells: {changed_cells}")
+                    self.logger.info("Move made. Cooldown started. Changed cells: %s", changed_cells)
                 else:
                     self.logger.debug("No valid move detected or board unchanged.")
             else:
                 self.logger.debug(
-                    f"Move cooldown active. {(timestamp - self._last_move_timestamp):.2f}s / "
-                    f"{self._move_cooldown_seconds:.2f}s"
+                    "Move cooldown active. %.2fs / %.2fs",
+                    timestamp - self._last_move_timestamp, self._move_cooldown_seconds
                 )
         else:
             self.logger.warning(
@@ -816,12 +832,12 @@ class GameState:
 
                     cell_centers.append([center_x, center_y])
 
-                    self.logger.debug(f"  Cell ({r_cell},{c_cell}): "
-                                    f"TL={p_tl_idx}({p_tl[0]:.1f},{p_tl[1]:.1f}) "
-                                    f"TR={p_tr_idx}({p_tr[0]:.1f},{p_tr[1]:.1f}) "
-                                    f"BL={p_bl_idx}({p_bl[0]:.1f},{p_bl[1]:.1f}) "
-                                    f"BR={p_br_idx}({p_br[0]:.1f},{p_br[1]:.1f}) "
-                                    f"→ center=({center_x:.1f}, {center_y:.1f})")
+                    self.logger.debug(
+                        "  Cell (%d,%d): TL=%d(%.1f,%.1f) TR=%d(%.1f,%.1f) "
+                        "BL=%d(%.1f,%.1f) BR=%d(%.1f,%.1f) → center=(%.1f, %.1f)",
+                        r_cell, c_cell, p_tl_idx, p_tl[0], p_tl[1], p_tr_idx, p_tr[0], p_tr[1],
+                        p_bl_idx, p_bl[0], p_bl[1], p_br_idx, p_br[0], p_br[1], center_x, center_y
+                    )
 
             if len(cell_centers) == 9:
                 self._cell_centers_uv_transformed = np.array(
@@ -836,7 +852,7 @@ class GameState:
                 self.logger.info("🗺️ CELL CENTERS DEBUG:")
                 for i, center in enumerate(self._cell_centers_uv_transformed):
                     row, col = i // 3, i % 3
-                    self.logger.info(f"  Cell ({row},{col}): UV=({center[0]:.1f}, {center[1]:.1f})")
+                    self.logger.info("  Cell (%d,%d): UV=(%.1f, %.1f)", row, col, center[0], center[1])
 
                 return True
             else:
@@ -846,7 +862,7 @@ class GameState:
                 )
                 return False
         except ValueError as ve:
-            self.logger.error(f"ValueError during cell center calculation: {ve}")
+            self.logger.error("ValueError during cell center calculation: %s", ve)
             return False
         except IndexError as e:
             self.logger.error(
@@ -885,7 +901,8 @@ def robust_sort_grid_points(
 
     # Validate input
     if all_16_points is None or len(all_16_points) != 16:
-        logger.warning(f"Invalid input: expected 16 points, got {len(all_16_points) if all_16_points is not None else 'None'}")
+        logger.warning("Invalid input: expected 16 points, got %s",
+                      len(all_16_points) if all_16_points is not None else 'None')
         return None, None
 
     try:
@@ -912,7 +929,7 @@ def robust_sort_grid_points(
             # ZÁLOŽNÁ METÓDA: Použiť cv2.minAreaRect
 
             # Najdenie minimal bounding rectangle všetkých 16 bodov
-            rect = cv2.minAreaRect(points_np.reshape(-1, 1, 2).astype(np.float32))
+            rect = cv2.minAreaRect(points_np)
             box_points = cv2.boxPoints(rect)  # Vracia 4 rohy obdĺžnika
 
             # Usporiadanie bodov z box_points do poradia TL, TR, BR, BL
@@ -999,9 +1016,9 @@ def robust_sort_grid_points(
             logger.warning("Failed to compute final homography")
             return None, None
 
-        logger.debug(f"Successfully computed robust grid sorting and homography")
+        logger.debug("Successfully computed robust grid sorting and homography")
         return sorted_grid_points_src, H_final
 
     except Exception as e:
-        logger.error(f"Error in robust_sort_grid_points: {e}")
+        logger.error("Error in robust_sort_grid_points: %s", e)
         return None, None

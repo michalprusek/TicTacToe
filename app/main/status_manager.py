@@ -159,7 +159,7 @@ class StatusManager(QObject):
                 QTimer.singleShot(1000, lambda: self.show_game_end_notification("ARM_WIN"))
             elif message_key_or_text == "draw":
                 self.set_status_style_safe("draw", self._get_status_style("draw"))
-                # Show draw notification popup  
+                # Show draw notification popup
                 from app.main import game_logic
                 QTimer.singleShot(1000, lambda: self.show_game_end_notification(game_logic.TIE))
             elif message_key_or_text == "new_game_detected":
@@ -249,7 +249,7 @@ class StatusManager(QObject):
         # Determine message and color based on winner
         from app.main import game_logic
         print(f"DEBUG: show_game_end_notification called with winner='{winner}'")  # Debug
-        
+
         icon_text, message_text, color = "", "", ""
         if winner == game_logic.TIE:
             icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40f"

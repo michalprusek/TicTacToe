@@ -46,7 +46,7 @@ class ArmMovementController(QObject):
         self.safe_z = DEFAULT_SAFE_Z
         self.draw_z = DEFAULT_DRAW_Z
         self.symbol_size = DEFAULT_SYMBOL_SIZE
-        
+
         # Load neutral position from calibration
         self.neutral_position = self._load_neutral_position()
 
@@ -59,7 +59,7 @@ class ArmMovementController(QObject):
             calibration_path = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
             with open(calibration_path, 'r') as f:
                 calibration_data = json.load(f)
-            
+
             neutral_pos = calibration_data.get("neutral_position", {})
             return {
                 'x': neutral_pos.get('x', 150),  # fallback to old hardcoded values
@@ -85,7 +85,7 @@ class ArmMovementController(QObject):
                 self.draw_z = self.config.arm.draw_z
 
         arm_connection_successful = False
-        
+
         try:
             # Initialize arm thread
             self.arm_thread = ArmThread(port=arm_port)
@@ -122,7 +122,7 @@ class ArmMovementController(QObject):
                 safe_z=self.safe_z,
                 speed=MAX_SPEED
             )
-        
+
         # Store connection status - signal will be emitted from GUI after connections are made
         self._initial_connection_status = arm_connection_successful
         self.logger.info(f"Arm initialization complete. Connection status: {arm_connection_successful}")
@@ -355,7 +355,7 @@ class ArmMovementController(QObject):
 
             self.logger.info(f"  📍 Step 1 - Grid position: ({row},{col})")
             self.logger.info(f"  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
-            
+
             # ENHANCED DEBUG: Show grid points used for this cell
             self.logger.info(f"  🔧 GRID DEBUG - Cell ({row},{col}) calculation:")
             if hasattr(game_state_obj, '_grid_points') and game_state_obj._grid_points is not None:
@@ -364,7 +364,7 @@ class ArmMovementController(QObject):
                 p_tr_idx = row * 4 + (col + 1)    # top-right
                 p_bl_idx = (row + 1) * 4 + col    # bottom-left
                 p_br_idx = (row + 1) * 4 + (col + 1)  # bottom-right
-                
+
                 grid_points = game_state_obj._grid_points
                 if len(grid_points) > max(p_tl_idx, p_tr_idx, p_bl_idx, p_br_idx):
                     self.logger.info(f"    Grid points used: TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}")
@@ -372,15 +372,15 @@ class ArmMovementController(QObject):
                     self.logger.info(f"    TR=({grid_points[p_tr_idx][0]:.0f},{grid_points[p_tr_idx][1]:.0f})")
                     self.logger.info(f"    BL=({grid_points[p_bl_idx][0]:.0f},{grid_points[p_bl_idx][1]:.0f})")
                     self.logger.info(f"    BR=({grid_points[p_br_idx][0]:.0f},{grid_points[p_br_idx][1]:.0f})")
-                    
+
                     # Calculate expected center for verification
-                    expected_center_u = (grid_points[p_tl_idx][0] + grid_points[p_tr_idx][0] + 
+                    expected_center_u = (grid_points[p_tl_idx][0] + grid_points[p_tr_idx][0] +
                                        grid_points[p_bl_idx][0] + grid_points[p_br_idx][0]) / 4
-                    expected_center_v = (grid_points[p_tl_idx][1] + grid_points[p_tr_idx][1] + 
+                    expected_center_v = (grid_points[p_tl_idx][1] + grid_points[p_tr_idx][1] +
                                        grid_points[p_bl_idx][1] + grid_points[p_br_idx][1]) / 4
                     self.logger.info(f"    Expected center: ({expected_center_u:.1f},{expected_center_v:.1f})")
                     self.logger.info(f"    Actual center:   ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
-                    
+
                     # Verify calculation
                     diff_u = abs(expected_center_u - uv_center[0])
                     diff_v = abs(expected_center_v - uv_center[1])

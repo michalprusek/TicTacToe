@@ -115,7 +115,7 @@ class GameController(QObject):
         # Reset celebration trigger to allow new notifications
         if hasattr(self.main_window, '_celebration_triggered'):
             delattr(self.main_window, '_celebration_triggered')
-        
+
         self.status_changed.emit("new_game_detected", True)
         self.logger.info(f"Game reset. Current turn: {self.current_turn}")
 
@@ -319,7 +319,7 @@ class GameController(QObject):
             # Get symbol count for logging and winner determination
             x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
             self.logger.info(f"Symbol count at game end: X={x_count}, O={o_count}, Total={total_count}")
-            
+
             # For TIE, keep it as is
             if game_logic_winner == game_logic.TIE:
                 self.winner = game_logic.TIE
@@ -343,11 +343,11 @@ class GameController(QObject):
             self.game_over = True
             self.arm_move_in_progress = False
             self.waiting_for_detection = False
-            
+
             # Get symbol count again for logging if not already done
             if 'total_count' not in locals():
                 x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
-            
+
             self.logger.info(f"GAME END! Winner: {self.winner}. Move count: {self.move_counter}. Total symbols on board: {total_count}")
 
             # Show game end notification
@@ -402,7 +402,7 @@ class GameController(QObject):
         x_count = counts.get('X', 0)
         o_count = counts.get('O', 0)
         total_count = x_count + o_count
-        
+
         self.logger.debug(f"Board symbol counts: X={x_count}, O={o_count}, Total={total_count}")
         return x_count, o_count, total_count
 

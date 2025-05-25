@@ -323,8 +323,8 @@ class ArmController:
         # Return to neutral position after drawing (from calibration)
         neutral_pos = {"x": 95.96, "y": -89.94, "z": 12.0}
         if not self.go_to_position(
-                x=neutral_pos["x"], 
-                y=neutral_pos["y"], 
+                x=neutral_pos["x"],
+                y=neutral_pos["y"],
                 z=neutral_pos["z"],
                 speed=travel_speed,
                 wait=True):
@@ -404,8 +404,8 @@ class ArmController:
         # Return to neutral position after drawing (from calibration)
         neutral_pos = {"x": 95.96, "y": -89.94, "z": 12.0}
         if not self.go_to_position(
-                x=neutral_pos["x"], 
-                y=neutral_pos["y"], 
+                x=neutral_pos["x"],
+                y=neutral_pos["y"],
                 z=neutral_pos["z"],
                 speed=travel_speed,
                 wait=True):

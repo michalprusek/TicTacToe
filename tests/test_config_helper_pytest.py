@@ -67,35 +67,24 @@ class TestCameraConfig:
     
     def test_get_camera_config_partial_attributes(self):
         """Test get_camera_config with some attributes present."""
-        mock_config = Mock(spec=[])  # Use empty spec to avoid mock attributes
-        mock_config.camera_index = 2
-        mock_config.flip_horizontal = True
+        # Create a simple object with partial attributes
+        class PartialConfig:
+            def __init__(self):
+                self.camera_index = 2
+                self.flip_horizontal = True
+                # Missing: camera_fps, flip_vertical
         
-        # Mock getattr to return defaults for missing attributes
-        with patch('builtins.getattr') as mock_getattr:
-            def getattr_side_effect(obj, attr, default=None):
-                if attr == 'camera_index':
-                    return 2
-                elif attr == 'flip_horizontal':
-                    return True
-                elif attr == 'camera_fps':
-                    return 30  # default
-                elif attr == 'flip_vertical':
-                    return False  # default
-                return default
-            
-            mock_getattr.side_effect = getattr_side_effect
-            
-            helper = ConfigHelper(config=mock_config)
-            result = helper.get_camera_config()
-            
-            expected = {
-                'camera_index': 2,
-                'fps': 30,  # default
-                'flip_horizontal': True,
-                'flip_vertical': False  # default
-            }
-            assert result == expected
+        helper = ConfigHelper(config=PartialConfig())
+        result = helper.get_camera_config()
+        
+        expected = {
+            'camera_index': 2,
+            'fps': 30,  # default
+            'flip_horizontal': True,
+            'flip_vertical': False  # default
+        }
+        
+        assert result == expected
 
 
 class TestArmConfig:
@@ -282,11 +271,14 @@ class TestSafeValue:
     
     def test_get_safe_value_attribute_error_handling(self):
         """Test get_safe_value handles AttributeError gracefully."""
-        mock_config = Mock()
-        # Configure mock to raise AttributeError
-        type(mock_config).test_key = PropertyMock(side_effect=AttributeError("Test error"))
+        # Create a config object that raises AttributeError when accessing test_key
+        class BadConfig:
+            def __getattribute__(self, name):
+                if name == 'test_key':
+                    raise AttributeError("Test error")
+                return super().__getattribute__(name)
         
-        helper = ConfigHelper(config=mock_config)
+        helper = ConfigHelper(config=BadConfig())
         result = helper.get_safe_value("test_key", "fallback")
         
         assert result == "fallback"

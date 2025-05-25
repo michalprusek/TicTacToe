@@ -54,17 +54,18 @@ class TestDrawCenteredTextMessage:
         frame = np.zeros((200, 300, 3), dtype=np.uint8)
         message_lines = ["Line 1", "Line 2", "Line 3"]
         
-        # Mock text size calculation - different sizes for each line
+        # Mock text size calculation - different sizes for each line plus one extra for baseline
         mock_textsize.side_effect = [
             ((80, 20), 5),   # Line 1
             ((100, 20), 5),  # Line 2
-            ((60, 20), 5)    # Line 3
+            ((60, 20), 5),   # Line 3
+            ((80, 20), 5)    # Extra call for baseline calculation
         ]
         
         draw_centered_text_message(frame, message_lines)
         
-        # Should call getTextSize for each line
-        assert mock_textsize.call_count == len(message_lines)
+        # Should call getTextSize for each line plus one for baseline calculation
+        assert mock_textsize.call_count == len(message_lines) + 1
         
         # Should draw background rectangle once
         mock_rect.assert_called_once()

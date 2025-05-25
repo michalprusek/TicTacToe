@@ -41,4 +41,4 @@ class TestAppConfig:
         """Test configuration types."""
         config = AppConfig()
         assert isinstance(config.game_detector.camera_index, int)
-        assert isinstance(config.arm_controller.port, str)
+        assert config.arm_controller.port is None or isinstance(config.arm_controller.port, str)

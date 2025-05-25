@@ -158,20 +158,20 @@ class TicTacToeApp(QMainWindow):
         container.setStyleSheet(
             "background-color: #333740; border-radius: 15px; padding: 20px;"
         )
-        
+
         layout = QHBoxLayout(container)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(30)
-        
+
         # Left side: Game board
         board_container = self._create_board_container()
         layout.addWidget(board_container, 1)
-        
+
         # Right side: Statistics
         self.statistics_widget = GameStatisticsWidget(self.status_manager)
         self.statistics_widget.setFixedWidth(280)
         layout.addWidget(self.statistics_widget, 0)
-        
+
         return container
 
     def _create_board_container(self):
@@ -312,7 +312,7 @@ class TicTacToeApp(QMainWindow):
         self.arm_controller.arm_connected.connect(
             self._handle_arm_connection_changed
         )
-        
+
         # Force emit current arm connection status after GUI is connected
         current_arm_status = self.arm_controller.is_arm_available()
         self.logger.info(f"Forcing arm connection status emit: {current_arm_status}")
@@ -320,12 +320,12 @@ class TicTacToeApp(QMainWindow):
 
         # Connect arm controller to game controller
         self.game_controller.set_arm_controller(self.arm_controller)
-        
+
         # Connect game ended signal to statistics
         self.game_controller.game_ended.connect(
             self._handle_game_ended
         )
-        
+
         # Connect statistics reset to show confirmation
         self.statistics_widget.reset_requested.connect(
             self._handle_statistics_reset

@@ -70,7 +70,7 @@ class DetectionThread(threading.Thread):
 
         # Initialize detector
         self.detector = None
-        
+
         # Load calibration data
         self.calibration_data = self._load_calibration_data()
 
@@ -154,7 +154,7 @@ class DetectionThread(threading.Thread):
                     self.detector.config.bbox_conf_threshold = self.confidence_threshold
                 if hasattr(self.detector.config, "pose_conf_threshold"):
                     self.detector.config.pose_conf_threshold = self.confidence_threshold
-                
+
                 # Pokud GameDetector má obecný confidence_threshold, nastavíme ho také,
                 # ale prioritu má specifičtější nastavení v configu.
                 # Tento blok by měl být až po nastavení specifičtějších prahů.
@@ -204,7 +204,7 @@ class DetectionThread(threading.Thread):
         if self.is_alive():
             self.join(timeout=1.0)  # Wait for thread to finish
             self.logger.info("Detection thread stopped")
-    
+
     def _load_calibration_data(self) -> Optional[Dict]:
         """Load calibration data from JSON file."""
         try:
@@ -214,7 +214,7 @@ class DetectionThread(threading.Thread):
                 import os
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
                 calibration_file = os.path.join(project_root, "app", "calibration", calibration_file)
-            
+
             with open(calibration_file, 'r') as f:
                 data = json.load(f)
                 self.logger.info(f"Loaded calibration data from {calibration_file}")

@@ -22,8 +22,8 @@ class TicTacToeBoard(QWidget):
         self.cell_size = 160  # Optimized cell size for better visibility
         self.setFixedSize(3 * self.cell_size, 3 * self.cell_size)  # Fixed size for proper 3x3 grid
         self.setStyleSheet("""
-            background-color: #252830; 
-            border-radius: 15px; 
+            background-color: #252830;
+            border-radius: 15px;
             border: 2px solid #34495e;
         """)
         self.winning_line = None  # Store winning line
@@ -198,7 +198,7 @@ class TicTacToeBoard(QWidget):
         if not board:
             self.logger.warning("update_board: Received None or empty board")
             return
-        
+
         # Zjistíme změny mezi starým a novým stavem
         changes = []
         if highlight_changes and hasattr(self, '_display_board'):
@@ -209,14 +209,14 @@ class TicTacToeBoard(QWidget):
 
         # Store display board separately from game state - this is what gets drawn!
         self._display_board = [row[:] for row in board]  # Deep copy for display
-        
+
         # Debug log the board update
         self.logger.debug(f"Board updated to: {self._display_board}")
-        
-        # CRITICAL: DO NOT update self.board here! 
+
+        # CRITICAL: DO NOT update self.board here!
         # self.board should remain as internal game logic state
         # _display_board is what gets rendered from camera detection
-        
+
         if winning_line is not None:
             self.winning_line = winning_line
 

@@ -33,7 +33,7 @@ class FPSCalculator:
         """
         if not self._timestamps: # No durations recorded yet
             return 0.0
-        
+
         # Calculate FPS based on the average duration of frames in the buffer
         avg_duration = sum(self._timestamps) / len(self._timestamps)
         if avg_duration > 0:

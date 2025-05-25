@@ -10,7 +10,7 @@ from PyQt5.QtGui import QFont
 
 class StyleManager:
     """Centralized styling for consistent UI appearance."""
-    
+
     # Base styles
     BASE_BUTTON_STYLE = """
         QPushButton {
@@ -28,15 +28,15 @@ class StyleManager:
             background-color: #1f618d;
         }
     """
-    
+
     STATUS_STYLES = {
         "default": "color: #333333; font-weight: bold; font-size: 14px;",
-        "info": "color: #3498db; font-weight: bold; font-size: 14px;", 
+        "info": "color: #3498db; font-weight: bold; font-size: 14px;",
         "warning": "color: #f39c12; font-weight: bold; font-size: 14px;",
         "error": "color: #e74c3c; font-weight: bold; font-size: 14px;",
         "success": "color: #27ae60; font-weight: bold; font-size: 14px;"
     }
-    
+
     @staticmethod
     def style_button(button: QPushButton, style_type: str = "default") -> None:
         """Apply standardized button styling."""
@@ -47,18 +47,18 @@ class StyleManager:
                                                    .replace("#2980b9", "#c0392b")
                                                    .replace("#1f618d", "#a93226"),
             "success": StyleManager.BASE_BUTTON_STYLE.replace("#3498db", "#27ae60")
-                                                    .replace("#2980b9", "#229954") 
+                                                    .replace("#2980b9", "#229954")
                                                     .replace("#1f618d", "#1e8449")
         }
         button.setStyleSheet(styles.get(style_type, styles["default"]))
-    
+
     @staticmethod
     def style_status_label(label: QLabel, status_type: str = "default") -> None:
         """Apply standardized status label styling."""
-        style = StyleManager.STATUS_STYLES.get(status_type, 
+        style = StyleManager.STATUS_STYLES.get(status_type,
                                               StyleManager.STATUS_STYLES["default"])
         label.setStyleSheet(style)
-    
+
     @staticmethod
     def create_status_panel_style() -> str:
         """Get standardized status panel styling."""
