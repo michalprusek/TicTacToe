@@ -2,7 +2,6 @@
 Grid detector module for the TicTacToe application.
 """
 import logging
-import time
 from typing import Tuple, Optional, List
 
 import numpy as np
@@ -119,7 +118,7 @@ class GridDetector:
         # Sort points for 4x4 grid layout (row by row, left to right)
         # This is CRITICAL for correct cell center calculation!
 
-        self.logger.debug(f"🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
+        self.logger.debug("🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
 
         # Sort by Y coordinate first (top to bottom)
         y_sorted_indices = np.argsort(valid_points[:, 1])
@@ -144,7 +143,7 @@ class GridDetector:
                     sorted_valid_points.extend(row_sorted)
                     current_idx += row_size
 
-                    self.logger.debug(f"  Row {row}: {row_size} points sorted by X")
+                    self.logger.debug("  Row {row}: {row_size} points sorted by X")
 
             sorted_valid_points = np.array(sorted_valid_points)
         else:
@@ -152,7 +151,7 @@ class GridDetector:
             # Secondary sort by X coordinate
             combined_sort = np.lexsort((valid_points[:, 0], valid_points[:, 1]))
             sorted_valid_points = valid_points[combined_sort]
-            self.logger.debug(f"  Fallback: lexicographic sort (Y,X)")
+            self.logger.debug("  Fallback: lexicographic sort (Y,X)")
 
         # Create a new array for the sorted points
         sorted_keypoints = np.zeros_like(keypoints)
@@ -194,7 +193,7 @@ class GridDetector:
             std_dev = np.std(distances)
             mean_dist = np.mean(distances)
             if std_dev / mean_dist > GRID_DIST_STD_DEV_THRESHOLD:
-                self.logger.debug("Grid point distances too variable: std/mean = %.2f",
+                self.logger.debug("Grid point distances too variable: std/mean = %.2",
                                  std_dev / mean_dist)
                 return False
 

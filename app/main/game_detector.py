@@ -178,7 +178,7 @@ class GameDetector:
         # Log performance periodically
         current_time = time.time()
         if current_time - self.last_log_time > self.log_interval:
-            self.logger.info("Processing FPS: %.2f", fps)
+            self.logger.info("Processing FPS: %.2", fps)
             self.last_log_time = current_time
 
         # --- 6. Draw Detection Results --- #

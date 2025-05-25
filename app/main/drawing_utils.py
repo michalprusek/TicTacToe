@@ -1,7 +1,8 @@
 """Drawing utility functions for the Tic Tac Toe application."""
+from typing import List, Tuple
+
 import cv2
 import numpy as np
-from typing import List, Tuple
 
 from app.core.constants import (
     MESSAGE_TEXT_COLOR, MESSAGE_BG_COLOR, PLAYER_X_COLOR, PLAYER_O_COLOR,

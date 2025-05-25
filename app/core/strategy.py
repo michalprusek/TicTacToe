@@ -1,8 +1,11 @@
+"""
+Strategy module for TicTacToe game AI.
+"""
 import logging
+import math
+import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, Dict, Type
-import random
-import math
 
 from .game_state import GameState, PLAYER_X, PLAYER_O, EMPTY
 
@@ -96,7 +99,8 @@ class MinimaxStrategy(Strategy):
         return best_move
 
     def _minimax(self, board: List[List[str]], current_player: str, depth: int,
-                 alpha: float, beta: float, ai_player: str) -> Tuple[float, Optional[Tuple[int, int]]]:
+                 alpha: float, beta: float,
+                 ai_player: str) -> Tuple[float, Optional[Tuple[int, int]]]:
         """
         Minimax algorithm with alpha-beta pruning.
 
@@ -145,26 +149,26 @@ class MinimaxStrategy(Strategy):
                     break  # Beta cut-off
 
             return best_score, best_move
-        else:
-            # Human's turn (minimize score from AI's perspective)
-            best_score = math.inf
-            best_move = None
 
-            for move in available_moves:
-                r, c = move
-                board[r][c] = human_player
-                score, _ = self._minimax(board, ai_player, depth + 1, alpha, beta, ai_player)
-                board[r][c] = EMPTY  # Undo move
+        # Human's turn (minimize score from AI's perspective)
+        best_score = math.inf
+        best_move = None
 
-                if score < best_score:
-                    best_score = score
-                    best_move = move
+        for move in available_moves:
+            r, c = move
+            board[r][c] = human_player
+            score, _ = self._minimax(board, ai_player, depth + 1, alpha, beta, ai_player)
+            board[r][c] = EMPTY  # Undo move
 
-                beta = min(beta, score)
-                if beta <= alpha:
-                    break  # Alpha cut-off
+            if score < best_score:
+                best_score = score
+                best_move = move
 
-            return best_score, best_move
+            beta = min(beta, score)
+            if beta <= alpha:
+                break  # Alpha cut-off
+
+        return best_score, best_move
 
     def _get_available_moves(self, board: List[List[str]]) -> List[Tuple[int, int]]:
         """Get all available moves on the board."""
@@ -245,7 +249,7 @@ class BernoulliStrategySelector(StrategySelector):
         else:
             self._p = max(0.0, min(1.0, p))
 
-        self.logger.debug("Initialized BernoulliStrategySelector with p=%.2f", self._p)
+        self.logger.debug("Initialized BernoulliStrategySelector with p=%.2", self._p)
 
     @property
     def p(self) -> float:
@@ -283,8 +287,8 @@ class BernoulliStrategySelector(StrategySelector):
         # If random_value >= p, select random (random play)
         selected_strategy = 'minimax' if random_value < self._p else 'random'
 
-        self.logger.info(f"🎯 STRATEGY SELECTION: p={self._p:.2f}, "
-                        f"random={random_value:.3f}, selected='{selected_strategy}'")
+        self.logger.info("🎯 STRATEGY SELECTION: p=%.2f, random=%.3f, selected='%s'",
+                        self._p, random_value, selected_strategy)
 
         return selected_strategy
 
@@ -306,15 +310,15 @@ class BernoulliStrategySelector(StrategySelector):
 
         # Use the selected strategy to get the move
         if strategy == 'minimax':
-            self.logger.info(f"🧠 USING MINIMAX STRATEGY for player {player}")
+            self.logger.info("🧠 USING MINIMAX STRATEGY for player %s", player)
             move = game_logic.get_best_move(board, player)
-            self.logger.info(f"🎯 MINIMAX SELECTED MOVE: {move}")
+            self.logger.info("🎯 MINIMAX SELECTED MOVE: %s", move)
             return move
-        else:
-            self.logger.info(f"🎲 USING RANDOM STRATEGY for player {player}")
-            move = game_logic.get_random_move(board, player)
-            self.logger.info(f"🎯 RANDOM SELECTED MOVE: {move}")
-            return move
+
+        self.logger.info("🎲 USING RANDOM STRATEGY for player %s", player)
+        move = game_logic.get_random_move(board, player)
+        self.logger.info("🎯 RANDOM SELECTED MOVE: %s", move)
+        return move
 
 
 STRATEGY_MAP: Dict[str, Type[Strategy]] = {
@@ -324,6 +328,18 @@ STRATEGY_MAP: Dict[str, Type[Strategy]] = {
 
 
 def create_strategy(strategy_type: str, player: str) -> Strategy:
+    """Create a strategy instance based on strategy type and player.
+    
+    Args:
+        strategy_type: Type of strategy ('random' or 'minimax')
+        player: Player symbol ('X' or 'O')
+        
+    Returns:
+        Strategy instance
+        
+    Raises:
+        ValueError: If strategy_type is unknown
+    """
     strategy_class = STRATEGY_MAP.get(strategy_type.lower())
     if strategy_class:
         return strategy_class(player)

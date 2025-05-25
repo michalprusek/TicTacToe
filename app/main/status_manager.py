@@ -99,7 +99,7 @@ class StatusManager(QObject):
             language_code = "cs"
 
         self.language_changed.emit(language_code)
-        self.logger.info(f"Language changed to {language_code}")
+        self.logger.info("Language changed to {language_code}")
 
     def create_status_panel(self):
         """Create the main status panel."""
@@ -175,7 +175,7 @@ class StatusManager(QObject):
         # Emit signal for other components
         self.status_updated.emit(message, is_key)
 
-        self.logger.debug(f"Status updated: {message}")
+        self.logger.debug("Status updated: {message}")
 
     def set_status_style_safe(self, style_key, style_css):
         """Safely set status panel style."""
@@ -252,7 +252,7 @@ class StatusManager(QObject):
 
         icon_text, message_text, color = "", "", ""
         if winner == game_logic.TIE:
-            icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40f"
+            icon_text, message_text, color = "🤝", self.tr("draw"), "#f1c40"
         elif winner == "HUMAN_WIN":
             icon_text, message_text, color = "🏆", self.tr("win"), "#2ecc71"
             print("DEBUG: Setting win text for HUMAN_WIN")  # Debug

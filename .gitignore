@@ -1,5 +1,5 @@
-# Claude Code instrukcije
-CLAUDE.md
+# Claude Code instrukcije (commented out - keeping CLAUDE.md in repo)
+# CLAUDE.md
 **/.claude/settings.local.json
 
 # Byte-compiled / optimized / DLL files
@@ -189,3 +189,15 @@ temp/
 # Scripts output
 scripts/output/
 uArm-Python-SDK/
+
+# Setup and build files
+setup.py.bak
+MANIFEST.in.bak
+requirements-test.txt
+
+# Development files
+*.prof
+*.lprof
+
+# Game data backups
+game_statistics.json.bak

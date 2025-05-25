@@ -67,7 +67,7 @@ class ArmMovementController(QObject):
                 'z': neutral_pos.get('z', DEFAULT_SAFE_Z)
             }
         except Exception as e:
-            self.logger.warning(f"Could not load neutral position from calibration: {e}. Using defaults.")
+            self.logger.warning("Could not load neutral position from calibration: {e}. Using defaults.")
             return {'x': 150, 'y': 0, 'z': DEFAULT_SAFE_Z}
 
     def _init_arm_components(self):
@@ -113,7 +113,7 @@ class ArmMovementController(QObject):
                 self.arm_controller.swift = self.arm_thread.arm_controller.swift if hasattr(self.arm_thread.arm_controller, 'swift') else None
 
         except Exception as e:
-            self.logger.error(f"Error initializing arm components: {e}")
+            self.logger.error("Error initializing arm components: {e}")
             arm_connection_successful = False
             # Initialize dummy arm controller for fallback
             self.arm_controller = ArmController(
@@ -125,7 +125,7 @@ class ArmMovementController(QObject):
 
         # Store connection status - signal will be emitted from GUI after connections are made
         self._initial_connection_status = arm_connection_successful
-        self.logger.info(f"Arm initialization complete. Connection status: {arm_connection_successful}")
+        self.logger.info("Arm initialization complete. Connection status: {arm_connection_successful}")
 
     def is_arm_available(self):
         """Check if arm is available for use."""
@@ -172,13 +172,13 @@ class ArmMovementController(QObject):
             return success
 
         except Exception as e:
-            self.logger.error(f"Error moving to neutral position: {e}")
+            self.logger.error("Error moving to neutral position: {e}")
             self.arm_status_changed.emit("move_failed")
             return False
 
     def draw_ai_symbol(self, row, col, symbol_to_draw):
         """Draw AI symbol at specified position using consolidated arm control."""
-        self.logger.info(f"Request to draw {symbol_to_draw} at ({row},{col})")
+        self.logger.info("Request to draw {symbol_to_draw} at ({row},{col})")
 
         if not self.is_arm_available():
             raise RuntimeError(f"Cannot draw symbol {symbol_to_draw}: robotic arm is not available")
@@ -188,7 +188,7 @@ class ArmMovementController(QObject):
         if target_x is None or target_y is None:
             raise RuntimeError(f"Cannot get coordinates for drawing at ({row},{col})")
 
-        self.logger.info(f"Drawing {symbol_to_draw} at coordinates ({target_x:.1f}, {target_y:.1f})")
+        self.logger.info("Drawing {symbol_to_draw} at coordinates ({target_x:.1f}, {target_y:.1f})")
 
         try:
             # Use low-level arm controller for direct drawing (consolidated approach)
@@ -221,16 +221,16 @@ class ArmMovementController(QObject):
                 )
 
             if success:
-                self.logger.info(f"Successfully drew {symbol_to_draw} at ({row},{col})")
+                self.logger.info("Successfully drew {symbol_to_draw} at ({row},{col})")
                 self.arm_move_completed.emit(True)
                 return True
             else:
-                self.logger.error(f"Failed to draw {symbol_to_draw}")
+                self.logger.error("Failed to draw {symbol_to_draw}")
                 self.arm_move_completed.emit(False)
                 return False
 
         except Exception as e:
-            self.logger.error(f"Error drawing symbol: {e}")
+            self.logger.error("Error drawing symbol: {e}")
             self.arm_move_completed.emit(False)
             return False
 
@@ -253,7 +253,7 @@ class ArmMovementController(QObject):
         start_x, start_y = self._get_cell_coordinates_from_yolo(start_row, start_col)
         end_x, end_y = self._get_cell_coordinates_from_yolo(end_row, end_col)
 
-        self.logger.info(f"Drawing winning line from ({start_x:.1f}, {start_y:.1f}) to ({end_x:.1f}, {end_y:.1f})")
+        self.logger.info("Drawing winning line from ({start_x:.1f}, {start_y:.1f}) to ({end_x:.1f}, {end_y:.1f})")
 
         try:
             # Movement sequence
@@ -283,7 +283,7 @@ class ArmMovementController(QObject):
             return True
 
         except Exception as e:
-            self.logger.error(f"Error drawing winning line: {e}")
+            self.logger.error("Error drawing winning line: {e}")
             raise
 
     def _unified_arm_command(self, command, *args, **kwargs):
@@ -329,16 +329,16 @@ class ArmMovementController(QObject):
             if not success:
                 raise RuntimeError(f"Arm command '{command}' failed to execute")
 
-            self.logger.info(f"Arm command '{command}' executed successfully")
+            self.logger.info("Arm command '{command}' executed successfully")
             return success
 
         except Exception as e:
-            self.logger.error(f"Error executing arm command '{command}': {e}")
+            self.logger.error("Error executing arm command '{command}': {e}")
             raise
 
     def _get_cell_coordinates_from_yolo(self, row, col):
         """Get cell coordinates from YOLO detection with improved interpolation."""
-        self.logger.info(f"🔍 COORDINATE TRANSFORMATION DEBUG for cell ({row},{col}):")
+        self.logger.info("🔍 COORDINATE TRANSFORMATION DEBUG for cell ({row},{col}):")
 
         # Get current detection state
         if hasattr(self.main_window, 'camera_controller'):
@@ -353,11 +353,11 @@ class ArmMovementController(QObject):
             if uv_center is None:
                 raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection")
 
-            self.logger.info(f"  📍 Step 1 - Grid position: ({row},{col})")
-            self.logger.info(f"  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+            self.logger.info("  📍 Step 1 - Grid position: ({row},{col})")
+            self.logger.info("  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
 
             # ENHANCED DEBUG: Show grid points used for this cell
-            self.logger.info(f"  🔧 GRID DEBUG - Cell ({row},{col}) calculation:")
+            self.logger.info("  🔧 GRID DEBUG - Cell ({row},{col}) calculation:")
             if hasattr(game_state_obj, '_grid_points') and game_state_obj._grid_points is not None:
                 # Show which grid points were used for this cell
                 p_tl_idx = row * 4 + col          # top-left
@@ -367,33 +367,33 @@ class ArmMovementController(QObject):
 
                 grid_points = game_state_obj._grid_points
                 if len(grid_points) > max(p_tl_idx, p_tr_idx, p_bl_idx, p_br_idx):
-                    self.logger.info(f"    Grid points used: TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}")
-                    self.logger.info(f"    TL=({grid_points[p_tl_idx][0]:.0f},{grid_points[p_tl_idx][1]:.0f})")
-                    self.logger.info(f"    TR=({grid_points[p_tr_idx][0]:.0f},{grid_points[p_tr_idx][1]:.0f})")
-                    self.logger.info(f"    BL=({grid_points[p_bl_idx][0]:.0f},{grid_points[p_bl_idx][1]:.0f})")
-                    self.logger.info(f"    BR=({grid_points[p_br_idx][0]:.0f},{grid_points[p_br_idx][1]:.0f})")
+                    self.logger.info("    Grid points used: TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}")
+                    self.logger.info("    TL=({grid_points[p_tl_idx][0]:.0f},{grid_points[p_tl_idx][1]:.0f})")
+                    self.logger.info("    TR=({grid_points[p_tr_idx][0]:.0f},{grid_points[p_tr_idx][1]:.0f})")
+                    self.logger.info("    BL=({grid_points[p_bl_idx][0]:.0f},{grid_points[p_bl_idx][1]:.0f})")
+                    self.logger.info("    BR=({grid_points[p_br_idx][0]:.0f},{grid_points[p_br_idx][1]:.0f})")
 
                     # Calculate expected center for verification
                     expected_center_u = (grid_points[p_tl_idx][0] + grid_points[p_tr_idx][0] +
                                        grid_points[p_bl_idx][0] + grid_points[p_br_idx][0]) / 4
                     expected_center_v = (grid_points[p_tl_idx][1] + grid_points[p_tr_idx][1] +
                                        grid_points[p_bl_idx][1] + grid_points[p_br_idx][1]) / 4
-                    self.logger.info(f"    Expected center: ({expected_center_u:.1f},{expected_center_v:.1f})")
-                    self.logger.info(f"    Actual center:   ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+                    self.logger.info("    Expected center: ({expected_center_u:.1f},{expected_center_v:.1f})")
+                    self.logger.info("    Actual center:   ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
 
                     # Verify calculation
                     diff_u = abs(expected_center_u - uv_center[0])
                     diff_v = abs(expected_center_v - uv_center[1])
                     if diff_u > 5 or diff_v > 5:
-                        self.logger.warning(f"    ⚠️ CENTER MISMATCH: diff=({diff_u:.1f},{diff_v:.1f})")
+                        self.logger.warning("    ⚠️ CENTER MISMATCH: diff=({diff_u:.1f},{diff_v:.1f})")
 
             # DEBUG: Log all cell centers for comparison
-            self.logger.info(f"  🗺️ ALL CELL CENTERS for reference:")
+            self.logger.info("  🗺️ ALL CELL CENTERS for reference:")
             for debug_row in range(3):
                 for debug_col in range(3):
                     debug_center = game_state_obj.get_cell_center_uv(debug_row, debug_col)
                     if debug_center is not None:
-                        self.logger.info(f"    Cell ({debug_row},{debug_col}): UV=({debug_center[0]:.1f}, {debug_center[1]:.1f})")
+                        self.logger.info("    Cell ({debug_row},{debug_col}): UV=({debug_center[0]:.1f}, {debug_center[1]:.1f})")
 
             # Get calibration data
             calibration_data = camera_controller.get_calibration_data()
@@ -414,10 +414,10 @@ class ArmMovementController(QObject):
                         if xy_transformed_homogeneous[2, 0] != 0:
                             arm_x = xy_transformed_homogeneous[0, 0] / xy_transformed_homogeneous[2, 0]
                             arm_y = xy_transformed_homogeneous[1, 0] / xy_transformed_homogeneous[2, 0]
-                            self.logger.info(f"  📍 Step 3 - Matrix transformation (direct): ({arm_x:.1f}, {arm_y:.1f})")
+                            self.logger.info("  📍 Step 3 - Matrix transformation (direct): ({arm_x:.1f}, {arm_y:.1f})")
 
                             # COORDINATE VALIDATION - Check if coordinates are reasonable
-                            self.logger.info(f"  🔍 COORDINATE VALIDATION:")
+                            self.logger.info("  🔍 COORDINATE VALIDATION:")
 
                             # Check against calibration data bounds
                             cal_points = calibration_data.get("calibration_points_raw", [])
@@ -427,14 +427,14 @@ class ArmMovementController(QObject):
                                 min_x, max_x = min(cal_x_coords), max(cal_x_coords)
                                 min_y, max_y = min(cal_y_coords), max(cal_y_coords)
 
-                                self.logger.info(f"    Calibration X range: {min_x:.1f} to {max_x:.1f}")
-                                self.logger.info(f"    Calibration Y range: {min_y:.1f} to {max_y:.1f}")
-                                self.logger.info(f"    Current coordinates: X={arm_x:.1f}, Y={arm_y:.1f}")
+                                self.logger.info("    Calibration X range: {min_x:.1f} to {max_x:.1f}")
+                                self.logger.info("    Calibration Y range: {min_y:.1f} to {max_y:.1f}")
+                                self.logger.info("    Current coordinates: X={arm_x:.1f}, Y={arm_y:.1f}")
 
                                 if not (min_x <= arm_x <= max_x):
-                                    self.logger.warning(f"    ⚠️ X coordinate {arm_x:.1f} is outside calibration range [{min_x:.1f}, {max_x:.1f}]")
+                                    self.logger.warning("    ⚠️ X coordinate {arm_x:.1f} is outside calibration range [{min_x:.1f}, {max_x:.1f}]")
                                 if not (min_y <= arm_y <= max_y):
-                                    self.logger.warning(f"    ⚠️ Y coordinate {arm_y:.1f} is outside calibration range [{min_y:.1f}, {max_y:.1f}]")
+                                    self.logger.warning("    ⚠️ Y coordinate {arm_y:.1f} is outside calibration range [{min_y:.1f}, {max_y:.1f}]")
 
                                 # Find closest calibration point for reference
                                 distances = []
@@ -445,9 +445,9 @@ class ArmMovementController(QObject):
                                     distances.append((uv_dist, cal_uv, cal_xy))
 
                                 closest = min(distances, key=lambda x: x[0])
-                                self.logger.info(f"    📍 Closest calibration point:")
-                                self.logger.info(f"      UV: {closest[1]} -> XY: {closest[2][:2]}")
-                                self.logger.info(f"      Distance in UV space: {closest[0]:.1f} pixels")
+                                self.logger.info("    📍 Closest calibration point:")
+                                self.logger.info("      UV: {closest[1]} -> XY: {closest[2][:2]}")
+                                self.logger.info("      Distance in UV space: {closest[0]:.1f} pixels")
                         else:
                             raise RuntimeError("Division by zero in UV->XY transformation")
 
@@ -459,10 +459,10 @@ class ArmMovementController(QObject):
                 raise RuntimeError("No perspective transformation matrix available in calibration data")
 
             # DEBUG: Log final coordinates
-            self.logger.info(f"  🔍 CALIBRATION COMPARISON:")
-            self.logger.info(f"    Current UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
-            self.logger.info(f"    Transformed to: ({arm_x:.1f}, {arm_y:.1f})")
-            self.logger.info(f"  🎯 FINAL COORDINATES for ({row},{col}): X={arm_x:.1f}, Y={arm_y:.1f}")
+            self.logger.info("  🔍 CALIBRATION COMPARISON:")
+            self.logger.info("    Current UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+            self.logger.info("    Transformed to: ({arm_x:.1f}, {arm_y:.1f})")
+            self.logger.info("  🎯 FINAL COORDINATES for ({row},{col}): X={arm_x:.1f}, Y={arm_y:.1f}")
 
             return arm_x, arm_y
         else:

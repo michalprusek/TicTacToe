@@ -1,3 +1,6 @@
+"""
+Utility functions for the TicTacToe application.
+"""
 import time
 from collections import deque
 

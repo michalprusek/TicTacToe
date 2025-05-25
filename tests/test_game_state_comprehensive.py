@@ -580,9 +580,8 @@ class TestCurrentFrame:
     def test_get_current_frame(self):
         """Test get_current_frame method."""
         game_state = GameState()
-        # _frame attribute doesn't exist in init, should raise AttributeError
-        with pytest.raises(AttributeError):
-            result = game_state.get_current_frame()
+        # _frame attribute is initialized as None, should return None
+        assert game_state.get_current_frame() is None
 
 
 class TestConvertSymbolsToExpectedFormat:

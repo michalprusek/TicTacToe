@@ -2,7 +2,6 @@
 UI components for the TicTacToe application.
 """
 import os
-import logging
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,

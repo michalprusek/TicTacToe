@@ -1,0 +1,138 @@
+[MASTER]
+# Initialize Python path
+init-hook=import sys; sys.path.append('.')
+# Add cv2 to extension-pkg-whitelist to avoid no-member errors
+extension-pkg-whitelist=cv2
+# Use multiple processes to speed up Pylint
+jobs=1
+
+[MESSAGES CONTROL]
+# Disable only necessary false positives for OpenCV and PyQt5
+disable=no-member,
+        no-name-in-module
+
+[FORMAT]
+# Maximum number of characters on a single line (PEP 8 recommends 79, but 100 is more practical)
+max-line-length=100
+# Expected format of line ending, e.g. empty (any), LF or CRLF
+expected-line-ending-format=LF
+# String used as indentation unit (PEP 8: 4 spaces)
+indent-string='    '
+# Number of spaces of indent required inside a hanging or continued line
+indent-after-paren=4
+# Maximum number of lines in a module
+max-module-lines=1100
+
+[BASIC]
+# Naming style matching correct argument names
+argument-naming-style=snake_case
+# Naming style matching correct attribute names
+attr-naming-style=snake_case
+# Naming style matching correct class names
+class-naming-style=PascalCase
+# Naming style matching correct constant names
+const-naming-style=UPPER_CASE
+# Naming style matching correct function names
+function-naming-style=snake_case
+# Naming style matching correct method names
+method-naming-style=snake_case
+# Naming style matching correct module names
+module-naming-style=snake_case
+# Naming style matching correct variable names
+variable-naming-style=snake_case
+# Good variable names which should always be accepted
+good-names=i,j,k,ex,Run,_,x,y,z,dx,dy,dz,id,ok,ui
+
+[DESIGN]
+# Maximum number of arguments for function / method (PEP 8 doesn't specify, but 5 is reasonable)
+max-args=5
+# Maximum number of locals for function / method body
+max-locals=15
+# Maximum number of return / yield for function / method body
+max-returns=6
+# Maximum number of branch for function / method body
+max-branches=12
+# Maximum number of statements in function / method body
+max-statements=50
+# Maximum number of attributes for a class
+max-attributes=25
+# Maximum number of public methods for a class
+max-public-methods=20
+# Minimum number of public methods for a class
+min-public-methods=1
+
+[IMPORTS]
+# List of modules that can be imported at any level
+allow-any-import-level=
+# Analyse import fallback blocks
+analyse-fallback-blocks=no
+
+[CLASSES]
+# List of method names used to declare (i.e. assign) instance attributes
+defining-attr-methods=__init__,__new__,setUp,__post_init__
+# List of valid names for the first argument in a class method
+valid-classmethod-first-arg=cls
+# List of valid names for the first argument in a metaclass class method
+valid-metaclass-classmethod-first-arg=mcs
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when being caught
+overgeneral-exceptions=builtins.Exception,builtins.BaseException
+
+[LOGGING]
+# Format style used to check logging format string
+logging-format-style=new
+# Logging modules to check that the string format arguments are in logging function parameter format
+logging-modules=logging
+
+[MISCELLANEOUS]
+# List of note tags to take in consideration
+notes=FIXME,XXX,TODO
+
+[SIMILARITIES]
+# Minimum lines number of a similarity
+min-similarity-lines=4
+# Ignore comments when computing similarities
+ignore-comments=yes
+# Ignore docstrings when computing similarities
+ignore-docstrings=yes
+# Ignore imports when computing similarities
+ignore-imports=no
+
+[TYPECHECK]
+# List of decorators that produce context managers
+contextmanager-decorators=contextlib.contextmanager
+# List of members which are set dynamically and missed by pylint inference system
+generated-members=
+# Tells whether missing members accessed in mixin class should be ignored
+ignore-mixin-members=yes
+# Tells whether to warn about missing members when the owner of the attribute is inferred to be None
+ignore-none=yes
+# This flag controls whether pylint should warn about no-member and similar checks when an object is inferred to be None
+ignore-on-opaque-inference=yes
+# List of class names for which member attributes should not be checked
+ignored-classes=optparse.Values,thread._local,_thread._local
+# List of module names for which member attributes should not be checked
+ignored-modules=
+# Show a hint with the correct property name when a wrong property name is used
+missing-member-hint=yes
+# The type of string formatting that pylint should check
+missing-member-hint-distance=1
+# The minimum edit distance a name should have to be considered a close match for a missing member
+missing-member-max-choices=1
+
+[VARIABLES]
+# List of additional names supposed to be defined in builtins
+additional-builtins=
+# Tells whether unused global variables should be treated as a violation
+allow-global-unused-variables=yes
+# List of strings which can identify a callback function by name
+callbacks=cb_,_cb
+# A regular expression matching the name of dummy variables
+dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
+# Argument names that match this expression will be ignored
+ignored-argument-names=_.*|^ignored_|^unused_
+# Tells whether we should check for unused import in __init__ files
+init-import=no
+# List of qualified module names which can have objects that can redefine builtins
+redefining-builtins-modules=six.moves,past.builtins,future.builtins,builtins,io

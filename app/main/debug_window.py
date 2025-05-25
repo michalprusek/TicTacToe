@@ -162,7 +162,7 @@ class DebugWindow(QMainWindow):
     @pyqtSlot(int)
     def handle_camera_changed(self, index: int):
         """Handle camera selection change."""
-        self.logger.info(f"Změna kamery na index {index}")
+        self.logger.info("Změna kamery na index {index}")
         # Emit signal to parent to change camera
         if hasattr(self.parent(), "handle_camera_changed") and callable(self.parent().handle_camera_changed):
             self.parent().handle_camera_changed(index)
@@ -172,7 +172,7 @@ class DebugWindow(QMainWindow):
         """Handle confidence threshold change."""
         conf = value / 100.0
         self.conf_value_label.setText(f"{conf:.2f}")
-        self.logger.info(f"Změna prahu jistoty na {conf:.2f}")
+        self.logger.info("Změna prahu jistoty na {conf:.2f}")
         # Předání nastavení rodičovskému oknu
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
             if hasattr(self.parent().camera_thread, "detection_thread") and self.parent().camera_thread.detection_thread:
@@ -193,7 +193,7 @@ class DebugWindow(QMainWindow):
         """Handle symbol confidence threshold change."""
         conf = value / 100.0
         self.symbol_conf_value_label.setText(f"{conf:.2f}")
-        self.logger.info(f"Změna prahu jistoty symbolů na {conf:.2f}")
+        self.logger.info("Změna prahu jistoty symbolů na {conf:.2f}")
 
         # Update symbol confidence in game state
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
@@ -202,7 +202,7 @@ class DebugWindow(QMainWindow):
                 if hasattr(detection_thread, "detector") and detection_thread.detector:
                     if hasattr(detection_thread.detector, "game_state") and detection_thread.detector.game_state:
                         detection_thread.detector.game_state.symbol_confidence_threshold = conf
-                        self.logger.info(f"Updated symbol confidence threshold in game state to {conf:.2f}")
+                        self.logger.info("Updated symbol confidence threshold in game state to {conf:.2f}")
 
     @pyqtSlot()
     def handle_refresh_clicked(self):
@@ -218,7 +218,7 @@ class DebugWindow(QMainWindow):
                 # Aktualizujeme status
                 self.status_label.setText(f"Kamera {current_index} obnovena")
         except Exception as e:
-            self.logger.error(f"Chyba při obnovování kamery: {e}")
+            self.logger.error("Chyba při obnovování kamery: {e}")
             self.status_label.setText(f"Chyba při obnovování kamery: {str(e)}")
             # Nastavení textu i když kamera selže
             self.camera_view.setText("Chyba kamery - zkuste restartovat aplikaci")
@@ -227,7 +227,7 @@ class DebugWindow(QMainWindow):
     def handle_autofocus_changed(self, state: int):
         """Handle autofocus checkbox change."""
         enabled = state == Qt.Checked
-        self.logger.info(f"Vypnutí autofocusu: {enabled}")
+        self.logger.info("Vypnutí autofocusu: {enabled}")
         # Předání nastavení rodičovskému oknu
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
             # Zastavit a znovu spustit kameru s novým nastavením autofocusu
@@ -236,7 +236,7 @@ class DebugWindow(QMainWindow):
                     # Nastavení autofocusu přímo v kameře
                     self.parent().camera_thread.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0 if enabled else 1)
                 except Exception as e:
-                    self.logger.error(f"Chyba při nastavení autofocusu: {e}")
+                    self.logger.error("Chyba při nastavení autofocusu: {e}")
 
             # Nastavení konfigurace pro budoucí použití
             if hasattr(self.parent().camera_thread, "config"):
@@ -246,7 +246,7 @@ class DebugWindow(QMainWindow):
     def handle_show_detections_changed(self, state: int):
         """Handle show detections checkbox change."""
         enabled = state == Qt.Checked
-        self.logger.info(f"Zobrazení detekcí: {enabled}")
+        self.logger.info("Zobrazení detekcí: {enabled}")
         # Předání nastavení rodičovskému oknu
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
             if hasattr(self.parent().camera_thread, "detection_thread") and self.parent().camera_thread.detection_thread:
@@ -261,7 +261,7 @@ class DebugWindow(QMainWindow):
     def handle_show_grid_changed(self, state: int):
         """Handle show grid checkbox change."""
         enabled = state == Qt.Checked
-        self.logger.info(f"Zobrazení mřížky: {enabled}")
+        self.logger.info("Zobrazení mřížky: {enabled}")
         # Předání nastavení rodičovskému oknu
         if hasattr(self.parent(), "camera_thread") and self.parent().camera_thread:
             if hasattr(self.parent().camera_thread, "detection_thread") and self.parent().camera_thread.detection_thread:

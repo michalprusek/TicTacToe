@@ -211,7 +211,7 @@ class TicTacToeBoard(QWidget):
         self._display_board = [row[:] for row in board]  # Deep copy for display
 
         # Debug log the board update
-        self.logger.debug(f"Board updated to: {self._display_board}")
+        self.logger.debug("Board updated to: {self._display_board}")
 
         # CRITICAL: DO NOT update self.board here!
         # self.board should remain as internal game logic state

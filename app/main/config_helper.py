@@ -3,8 +3,9 @@ Configuration helper utilities for standardized config access.
 Consolidates repeated configuration access patterns.
 """
 
+from typing import Any, Optional
+
 from app.core.config import AppConfig
-from typing import Any, Optional, Union
 
 
 class ConfigHelper:
@@ -73,7 +74,6 @@ class ConfigHelper:
             if section and hasattr(self.config, section):
                 section_obj = getattr(self.config, section)
                 return getattr(section_obj, key, default)
-            else:
-                return getattr(self.config, key, default)
+            return getattr(self.config, key, default)
         except (AttributeError, TypeError):
             return default

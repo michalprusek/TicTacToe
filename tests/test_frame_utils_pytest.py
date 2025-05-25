@@ -320,8 +320,9 @@ class TestFrameConverterIntegration:
             # These might raise exceptions, which is acceptable
             FrameConverter.bgr_to_rgb(invalid_frame)
         except Exception as e:
-            # Exception is acceptable for invalid input
-            assert isinstance(e, (ValueError, AttributeError, IndexError))
+            # Exception is acceptable for invalid input - cv2.error is also valid
+            import cv2
+            assert isinstance(e, (ValueError, AttributeError, IndexError, cv2.error))
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ class BaseController(QObject):
             True if initialization successful, False otherwise
         """
         self._initialized = True
-        self.logger.info(f"{self.__class__.__name__} initialized successfully")
+        self.logger.info("{self.__class__.__name__} initialized successfully")
         return True
 
     def cleanup(self) -> None:
@@ -48,7 +48,7 @@ class BaseController(QObject):
         """
         self._connected = False
         self._initialized = False
-        self.logger.info(f"{self.__class__.__name__} cleaned up")
+        self.logger.info("{self.__class__.__name__} cleaned up")
 
     @property
     def is_initialized(self) -> bool:
@@ -62,7 +62,7 @@ class BaseController(QObject):
 
     def _log_status_change(self, status: str) -> None:
         """Log status changes with standardized format."""
-        self.logger.info(f"{self.__class__.__name__} status: {status}")
+        self.logger.info("{self.__class__.__name__} status: {status}")
 
     def _emit_status_change(self, message: str, is_key: bool = False) -> None:
         """Emit status change if signal available."""

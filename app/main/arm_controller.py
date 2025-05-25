@@ -1,9 +1,12 @@
+"""
+Robotic arm controller for TicTacToe game.
+"""
 import time
 import traceback
 import logging
 import math
-import sys
-import os
+# import sys
+# import os
 from typing import Optional, Tuple, Dict, Any
 
 # Import uArm - required for operation
@@ -77,7 +80,7 @@ class ArmController:
             raise RuntimeError("Could not get initial position from arm")
 
         self.logger.info(
-            "Initial pos: X=%.1f, Y=%.1f, Z=%.1f",
+            "Initial pos: X=%.1f, Y=%.1f, Z=%.1",
             pos[0], pos[1], pos[2])
         self.go_to_position(z=self.safe_z, wait=True)
         self.swift.set_wrist(90, wait=True)

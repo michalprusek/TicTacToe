@@ -1,3 +1,6 @@
+"""
+Game logic for TicTacToe game.
+"""
 import random
 import math
 from typing import List, Tuple

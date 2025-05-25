@@ -12,22 +12,40 @@ Aplikace pro hraní piškvorek s robotickým ramenem uArm Swift Pro. Systém pou
 
 ## Požadavky
 
-- Python 3.6+
+- Python 3.8+
 - uArm Swift Pro s firmwarem 4.0+
 - Webkamera
 - Závislosti uvedené v `requirements.txt`
 
 ## Instalace
 
-1. Klonujte repozitář:https://github.com/michalprusek/TicTacToe.git
-   ```
+### Metoda 1: Přímá instalace ze zdrojových kódů
+
+1. Klonujte repozitář:
+   ```bash
    git clone https://github.com/michalprusek/TicTacToe.git
    cd TicTacToe
    ```
 
 2. Nainstalujte závislosti:
-   ```
+   ```bash
    pip install -r requirements.txt
+   ```
+
+### Metoda 2: Instalace jako balíček
+
+1. Klonujte repozitář a nainstalujte pomocí setup.py:
+   ```bash
+   git clone https://github.com/michalprusek/TicTacToe.git
+   cd TicTacToe
+   pip install -e .
+   ```
+
+2. Po instalaci můžete spustit aplikaci odkudkoliv:
+   ```bash
+   tictactoe-robot
+   # nebo pro kalibraci
+   tictactoe-calibrate
    ```
 
 3. Nainstalujte uArm Python SDK:

@@ -1,0 +1,15 @@
+include README.md
+include requirements.txt
+include CLAUDE.md
+include pytest.ini
+include game_statistics.json
+recursive-include weights *.pt
+recursive-include app/calibration *.json
+recursive-include docs *.md *.png
+prune htmlcov
+prune tests
+prune __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *~
+global-exclude .DS_Store

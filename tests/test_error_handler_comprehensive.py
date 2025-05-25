@@ -289,7 +289,6 @@ class TestErrorHandlerIntegration:
         
         # Add handler to capture logs
         from io import StringIO
-        import logging
         
         log_capture = StringIO()
         handler = logging.StreamHandler(log_capture)

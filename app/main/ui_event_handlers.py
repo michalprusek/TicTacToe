@@ -6,7 +6,6 @@ Consolidates functionality from event_handlers.py.
 
 import logging
 import subprocess
-import time
 from PyQt5.QtCore import QObject, Qt, QTimer
 
 # Import required modules
@@ -39,7 +38,7 @@ class UIEventHandlers(QObject):
 
     def handle_cell_clicked(self, row, col):
         """Handle cell click from board widget."""
-        self.logger.info(f"Cell clicked: ({row}, {col})")
+        self.logger.info("Cell clicked: ({row}, {col})")
 
         # Delegate to game controller
         if hasattr(self.main_window, 'game_controller'):
@@ -65,7 +64,7 @@ class UIEventHandlers(QObject):
             # Set difficulty directly (0-10), which internally converts to probability (0.0-1.0)
             self.main_window.game_controller.strategy_selector.difficulty = value
             new_p = self.main_window.game_controller.strategy_selector.p
-            self.logger.info(f"Difficulty changed to {value}/10 -> p={new_p:.2f}")
+            self.logger.info("Difficulty changed to {value}/10 -> p={new_p:.2f}")
 
             # Log strategy distribution for verification
             if value == 10:
@@ -164,7 +163,7 @@ class UIEventHandlers(QObject):
             self.logger.info("UI texts updated")
 
         except Exception as e:
-            self.logger.error(f"Error updating UI texts: {e}")
+            self.logger.error("Error updating UI texts: {e}")
 
     def handle_calibrate_button_click(self):
         """Handle calibrate button click."""
@@ -182,14 +181,14 @@ class UIEventHandlers(QObject):
 
     def handle_camera_index_changed(self, new_index):
         """Handle camera index change."""
-        self.logger.info(f"Camera index changed to {new_index}")
+        self.logger.info("Camera index changed to {new_index}")
 
         if hasattr(self.main_window, 'camera_controller'):
             self.main_window.camera_controller.restart_camera(new_index)
 
     def handle_detection_threshold_changed(self, threshold):
         """Handle detection threshold change."""
-        self.logger.info(f"Detection threshold changed to {threshold}")
+        self.logger.info("Detection threshold changed to {threshold}")
 
         if hasattr(self.main_window, 'camera_controller'):
             self.main_window.camera_controller.set_detection_threshold(threshold)
@@ -232,7 +231,7 @@ class UIEventHandlers(QObject):
                     non_empty_symbols.append(f"({r},{c})={detected_board[r][c]}")
 
         if non_empty_symbols:
-            self.logger.info(f"🔍 YOLO DETECTION: {', '.join(non_empty_symbols)}")
+            self.logger.info("🔍 YOLO DETECTION: {', '.join(non_empty_symbols)}")
         else:
             self.logger.debug("🔍 YOLO DETECTION: Empty board")
 
@@ -253,7 +252,7 @@ class UIEventHandlers(QObject):
                 expected_symbol = gc.expected_symbol
 
                 if detected_board[expected_row][expected_col] == expected_symbol:
-                    self.logger.info(f"✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
+                    self.logger.info("✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
 
                     # Successfully detected arm move - reset detection flags
                     gc.waiting_for_detection = False
@@ -271,14 +270,14 @@ class UIEventHandlers(QObject):
                     if hasattr(self.main_window, 'board_widget'):
                         self.main_window.board_widget.board = [row[:] for row in detected_board]
                         self.main_window.board_widget.update()
-                        self.logger.info(f"GUI updated with detected board state")
+                        self.logger.info("GUI updated with detected board state")
 
                     # Check for game end, then continue to human turn if game not over
                     gc._check_game_end()
                     if not gc.game_over:
                         gc.status_changed.emit("your_turn", True)
                 else:
-                    self.logger.warning(f"❌ Expected {expected_symbol} at ({expected_row}, {expected_col}) but detected: {detected_board[expected_row][expected_col]}")
+                    self.logger.warning("❌ Expected {expected_symbol} at ({expected_row}, {expected_col}) but detected: {detected_board[expected_row][expected_col]}")
 
                     # Reset detection flags
                     gc.waiting_for_detection = False
@@ -308,7 +307,7 @@ class UIEventHandlers(QObject):
 
         # Check if the script exists
         if not os.path.exists(calibration_script):
-            self.logger.error(f"Calibration script not found: {calibration_script}")
+            self.logger.error("Calibration script not found: {calibration_script}")
             return
 
         # Launch the calibration script in a new process
@@ -316,7 +315,7 @@ class UIEventHandlers(QObject):
             subprocess.Popen([sys.executable, calibration_script])
             self.logger.info("Calibration script launched")
         except Exception as e:
-            self.logger.error(f"Failed to launch calibration script: {e}")
+            self.logger.error("Failed to launch calibration script: {e}")
 
     def handle_track_grid_center(self):
         """Track grid center (consolidated from event_handlers.py)."""
@@ -349,7 +348,7 @@ class UIEventHandlers(QObject):
                                 # Send command to arm to track this position
                                 if hasattr(self.main_window, 'arm_controller'):
                                     # Track position command would go here
-                                    self.logger.debug(f"Tracking grid center at {center_cell}")
+                                    self.logger.debug("Tracking grid center at {center_cell}")
 
     def update_camera_view_extended(self, frame):
         """Extended camera view update (consolidated from event_handlers.py)."""

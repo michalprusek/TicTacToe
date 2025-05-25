@@ -36,11 +36,11 @@ class GameStatistics:
                     for key in self.stats.keys():
                         if key in loaded_stats and isinstance(loaded_stats[key], int):
                             self.stats[key] = loaded_stats[key]
-                    self.logger.info(f"Statistics loaded: {self.stats}")
+                    self.logger.info("Statistics loaded: {self.stats}")
             else:
                 self.logger.info("No statistics file found, starting with empty stats")
         except Exception as e:
-            self.logger.error(f"Error loading statistics: {e}")
+            self.logger.error("Error loading statistics: {e}")
             # Keep default stats on error
 
     def save_statistics(self) -> None:
@@ -48,30 +48,30 @@ class GameStatistics:
         try:
             with open(self.stats_file, 'w', encoding='utf-8') as f:
                 json.dump(self.stats, f, indent=2)
-            self.logger.debug(f"Statistics saved: {self.stats}")
+            self.logger.debug("Statistics saved: {self.stats}")
         except Exception as e:
-            self.logger.error(f"Error saving statistics: {e}")
+            self.logger.error("Error saving statistics: {e}")
 
     def record_win(self) -> None:
         """Record a player win."""
         self.stats["wins"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info(f"Win recorded. Stats: {self.stats}")
+        self.logger.info("Win recorded. Stats: {self.stats}")
 
     def record_loss(self) -> None:
         """Record a player loss."""
         self.stats["losses"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info(f"Loss recorded. Stats: {self.stats}")
+        self.logger.info("Loss recorded. Stats: {self.stats}")
 
     def record_tie(self) -> None:
         """Record a tie game."""
         self.stats["ties"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info(f"Tie recorded. Stats: {self.stats}")
+        self.logger.info("Tie recorded. Stats: {self.stats}")
 
     def reset_statistics(self) -> None:
         """Reset all statistics to zero."""
@@ -279,7 +279,7 @@ class GameStatisticsWidget(QWidget):
                 self.statistics.record_loss()
 
         self.update_statistics_display()
-        self.logger.info(f"Game result recorded: winner={winner}, human_player={human_player}")
+        self.logger.info("Game result recorded: winner={winner}, human_player={human_player}")
 
     def reset_statistics(self):
         """Reset all statistics."""

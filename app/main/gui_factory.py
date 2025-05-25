@@ -2,15 +2,15 @@
 GUI Factory for standardized widget and layout creation.
 Consolidates repeated GUI creation patterns from multiple files.
 """
+from typing import Optional, List, Callable
 
 from PyQt5.QtWidgets import (
-    QPushButton, QLabel, QVBoxLayout, QHBoxLayout,
-    QWidget, QSlider, QCheckBox, QFrame
+    QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QWidget
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+
 from app.main.style_manager import StyleManager
-from typing import Optional, List, Callable
 
 
 class ButtonFactory:
@@ -82,7 +82,9 @@ class LayoutFactory:
         layout = QVBoxLayout()
         layout.setSpacing(spacing)
         layout.setContentsMargins(*margins)
-        return layout    @staticmethod
+        return layout
+
+    @staticmethod
     def create_hbox_layout(spacing: int = 5, margins: tuple = (5, 5, 5, 5)) -> QHBoxLayout:
         """Create horizontal box layout with standard spacing and margins."""
         layout = QHBoxLayout()

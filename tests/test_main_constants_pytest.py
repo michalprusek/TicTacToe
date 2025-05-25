@@ -26,20 +26,14 @@ class TestMainConstants:
     
     def test_window_dimensions(self):
         """Test window dimension constants."""
-        try:
-            from app.main.constants import DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
-            assert isinstance(DEFAULT_WINDOW_WIDTH, int)
-            assert isinstance(DEFAULT_WINDOW_HEIGHT, int)
-            assert DEFAULT_WINDOW_WIDTH > 0
-            assert DEFAULT_WINDOW_HEIGHT > 0
-        except ImportError:
-            pytest.skip("Window constants not available")
+        from app.main.constants import WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
+        assert isinstance(WINDOW_MIN_WIDTH, int)
+        assert isinstance(WINDOW_MIN_HEIGHT, int)
+        assert WINDOW_MIN_WIDTH > 0
+        assert WINDOW_MIN_HEIGHT > 0
     
     def test_fps_constants(self):
         """Test FPS constants."""
-        try:
-            from app.main.constants import DEFAULT_FPS
-            assert isinstance(DEFAULT_FPS, int)
-            assert DEFAULT_FPS > 0
-        except ImportError:
-            pytest.skip("FPS constants not available")
+        from app.main.constants import DETECTION_FPS
+        assert isinstance(DETECTION_FPS, int)
+        assert DETECTION_FPS > 0

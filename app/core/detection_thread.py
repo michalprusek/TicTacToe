@@ -45,7 +45,7 @@ class DetectionThread(threading.Thread):
                 device = 'cpu'
 
         self.device = device
-        self.logger.info(f"Detection thread using device: {self.device}")
+        self.logger.info("Detection thread using device: %s", self.device)
 
         # Thread control
         self.running = False
@@ -118,7 +118,7 @@ class DetectionThread(threading.Thread):
             )
             self.logger.info("Detector initialized successfully")
         except Exception as e:
-            self.logger.error(f"Failed to initialize detector: {e}")
+            self.logger.error("Failed to initialize detector: %s", e)
             self.running = False
             return
 
@@ -176,17 +176,19 @@ class DetectionThread(threading.Thread):
                 self.fps_history.append(1.0 / inference_time if inference_time > 0 else 0)
                 if len(self.fps_history) > 10:
                     self.fps_history.pop(0)
-                self.avg_fps = sum(self.fps_history) / len(self.fps_history) if self.fps_history else 0
+                if self.fps_history:
+                    self.avg_fps = sum(self.fps_history) / len(self.fps_history)
+                else:
+                    self.avg_fps = 0
 
                 # Log performance periodically
                 if len(self.fps_history) % 10 == 0:
                     self.logger.debug(
-                        f"Detection performance: {self.avg_fps:.2f} FPS, "
-                        f"inference time: {inference_time*1000:.1f}ms"
-                    )
+                        "Detection performance: %.2f FPS, inference time: %.1fms",
+                        self.avg_fps, inference_time*1000)
 
             except Exception as e:
-                self.logger.error(f"Error processing frame: {e}")
+                self.logger.error("Error processing frame: %s", e)
 
             # Calculate sleep time to maintain target FPS
             elapsed = time.time() - loop_start_time
@@ -200,10 +202,10 @@ class DetectionThread(threading.Thread):
         if self.detector:
             self.detector.release()
 
-        # Bezpečné ukončení - kontrola, zda vlákno běží před zavoláním join
+        # Bezpečné ukončení - kontrola, zda vlákno běží pred zavoláním join
         if self.is_alive():
             self.join(timeout=1.0)  # Wait for thread to finish
-            self.logger.info("Detection thread stopped")
+        self.logger.info("Detection thread stopped")
 
     def _load_calibration_data(self) -> Optional[Dict]:
         """Load calibration data from JSON file."""
@@ -211,16 +213,16 @@ class DetectionThread(threading.Thread):
             calibration_file = self.config.calibration_file
             if not calibration_file.startswith('/'):
                 # Relative path, make it absolute based on project root
-                import os
-                project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                calibration_file = os.path.join(project_root, "app", "calibration", calibration_file)
+                import os  # pylint: disable=import-outside-toplevel
+                project_root = os.path.dirname(os.path.dirname(
+                    os.path.dirname(__file__)))
+                calibration_file = os.path.join(
+                    project_root, "app", "calibration", calibration_file)
 
-            with open(calibration_file, 'r') as f:
+            with open(calibration_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                self.logger.info(f"Loaded calibration data from {calibration_file}")
+                self.logger.info("Loaded calibration data from %s", calibration_file)
                 return data
         except Exception as e:
-            self.logger.warning(f"Could not load calibration data: {e}")
+            self.logger.warning("Could not load calibration data: %s", e)
             return None
-        else:
-            self.logger.info("Detection thread not running")

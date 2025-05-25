@@ -5,8 +5,6 @@ Consolidates functionality from camera_manager.py.
 """
 
 import logging
-import time
-from typing import Tuple, Optional
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import cv2
@@ -50,7 +48,7 @@ class CameraController(QObject):
 
     def _init_camera(self):
         """Initialize camera thread."""
-        self.logger.info(f"Creating camera thread with index {self.camera_index}.")
+        self.logger.info("Creating camera thread with index {self.camera_index}.")
 
         self.camera_thread = CameraThread(camera_index=self.camera_index)
 
@@ -59,7 +57,7 @@ class CameraController(QObject):
         self.camera_thread.game_state_updated.connect(self._handle_game_state_updated)
         self.camera_thread.fps_updated.connect(self._handle_fps_updated)
 
-        self.logger.info(f"Camera thread for index {self.camera_index} created.")
+        self.logger.info("Camera thread for index {self.camera_index} created.")
 
     def start(self):
         """Start the camera thread."""
@@ -94,7 +92,7 @@ class CameraController(QObject):
 
     def restart_camera(self, new_camera_index):
         """Restart camera with new index."""
-        self.logger.info(f"Restarting camera with index {new_camera_index}.")
+        self.logger.info("Restarting camera with index {new_camera_index}.")
 
         # Stop current camera
         if self.camera_thread:
@@ -108,7 +106,7 @@ class CameraController(QObject):
         # Start new camera
         self.start()
 
-        self.logger.info(f"Camera restarted with index {new_camera_index}.")
+        self.logger.info("Camera restarted with index {new_camera_index}.")
 
     def _handle_frame_ready(self, frame):
         """Handle frame ready signal from camera thread."""
@@ -201,7 +199,7 @@ class CameraController(QObject):
                 # Only emit warning if grid is actually incomplete
                 if is_grid_incomplete:
                     self.grid_warning.emit(grid_issue_message)
-                    self.logger.warning(f"Grid warning: {grid_issue_message}")
+                    self.logger.warning("Grid warning: {grid_issue_message}")
 
             # Emit grid incomplete signal for UI notification only if actually incomplete
             if is_grid_incomplete:
@@ -254,7 +252,7 @@ class CameraController(QObject):
         if self.camera_thread and hasattr(self.camera_thread, 'detection_thread'):
             if hasattr(self.camera_thread.detection_thread, 'set_detection_threshold'):
                 self.camera_thread.detection_thread.set_detection_threshold(threshold)
-                self.logger.info(f"Detection threshold set to {threshold}")
+                self.logger.info("Detection threshold set to {threshold}")
 
     def get_detection_threshold(self):
         """Get current detection threshold."""

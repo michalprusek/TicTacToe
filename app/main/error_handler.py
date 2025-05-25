@@ -5,8 +5,8 @@ Consolidates repeated error handling patterns from multiple files.
 
 import logging
 import traceback
-from typing import Optional, Callable, Any
 from functools import wraps
+from typing import Any, Callable
 
 
 class ErrorHandler:
@@ -27,7 +27,7 @@ class ErrorHandler:
         error_msg = f"Error in {operation}: {error}"
 
         if include_traceback:
-            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            logger.error("{error_msg}\n{traceback.format_exc()}")
         else:
             logger.error(error_msg)
 

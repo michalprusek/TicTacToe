@@ -5,7 +5,6 @@ import logging
 from typing import List, Dict, Optional, Tuple, Any
 
 import numpy as np
-import cv2
 
 from app.core.game_state import GameState
 

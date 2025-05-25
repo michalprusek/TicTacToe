@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
-from typing import Optional, Tuple
 
 
 class FrameConverter:

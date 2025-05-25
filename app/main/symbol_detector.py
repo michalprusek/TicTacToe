@@ -119,7 +119,7 @@ class SymbolDetector:
                 return row, col
 
         # If point is not inside any cell, find the nearest cell
-        min_distance_sq = float('inf')
+        min_distance_sq = float('in')
         nearest_cell_coords = None
 
         for cell_idx, polygon in enumerate(cell_polygons):
@@ -134,7 +134,7 @@ class SymbolDetector:
                 nearest_cell_coords = (row, col)
 
         if nearest_cell_coords:
-            self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1f",
+            self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1",
                              x, y, nearest_cell_coords[0], nearest_cell_coords[1],
                              np.sqrt(min_distance_sq))
         else:

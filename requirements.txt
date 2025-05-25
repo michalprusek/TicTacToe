@@ -1,3 +1,4 @@
+# Core Dependencies
 numpy>=1.20.0
 opencv-python>=4.5.0
 PyQt5>=5.15.0
@@ -5,8 +6,12 @@ torch>=1.9.0
 ultralytics>=8.0.0
 matplotlib>=3.4.0
 pynput>=1.7.0
+Pillow>=8.0.0
+uarm>=2.3.0
 
-# Testing & Linting
+# Testing & Development
 pytest>=7.0.0
 pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+coverage>=7.0.0
 pylint>=2.15.0

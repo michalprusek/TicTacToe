@@ -84,9 +84,9 @@ class TicTacToeApp(QMainWindow):
             if os.path.exists(icon_path):
                 self.setWindowIcon(QIcon(icon_path))
             else:
-                self.logger.warning(f"Icon file not found: {icon_path}")
+                self.logger.warning("Icon file not found: {icon_path}")
         except Exception as e:
-            self.logger.error(f"Error setting icon: {e}")
+            self.logger.error("Error setting icon: {e}")
 
         # Show fullscreen if not in test mode
         if 'pytest' not in sys.modules:
@@ -315,7 +315,7 @@ class TicTacToeApp(QMainWindow):
 
         # Force emit current arm connection status after GUI is connected
         current_arm_status = self.arm_controller.is_arm_available()
-        self.logger.info(f"Forcing arm connection status emit: {current_arm_status}")
+        self.logger.info("Forcing arm connection status emit: {current_arm_status}")
         self._handle_arm_connection_changed(current_arm_status)
 
         # Connect arm controller to game controller
@@ -365,7 +365,7 @@ class TicTacToeApp(QMainWindow):
         human_player = self.game_controller.human_player
         self.statistics_widget.record_game_result(winner, human_player)
         # Show game end notification is already handled by status_manager
-        self.logger.info(f"Game ended: winner={winner}, recorded in statistics")
+        self.logger.info("Game ended: winner={winner}, recorded in statistics")
 
     def _handle_statistics_reset(self):
         """Handle statistics reset request."""

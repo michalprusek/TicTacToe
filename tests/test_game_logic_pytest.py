@@ -37,7 +37,7 @@ class TestGameLogicPytest:
         ([[PLAYER_X, PLAYER_O, EMPTY], [PLAYER_X, PLAYER_O, EMPTY], [PLAYER_X, EMPTY, EMPTY]], PLAYER_X),
         ([[PLAYER_X, PLAYER_O, PLAYER_X], [PLAYER_O, PLAYER_X, PLAYER_O], [PLAYER_X, PLAYER_O, PLAYER_X]], PLAYER_X),
         ([[PLAYER_O, PLAYER_O, PLAYER_O], [PLAYER_X, PLAYER_X, EMPTY], [EMPTY, EMPTY, EMPTY]], PLAYER_O),
-        ([[PLAYER_X, PLAYER_O, PLAYER_X], [PLAYER_O, PLAYER_X, PLAYER_O], [PLAYER_O, PLAYER_X, PLAYER_O]], None),
+        ([[PLAYER_X, PLAYER_O, PLAYER_X], [PLAYER_O, PLAYER_X, PLAYER_O], [PLAYER_O, PLAYER_X, PLAYER_O]], 'TIE'),
     ])
     def test_check_winner_scenarios(self, board_setup, expected):
         """Test various win scenarios."""

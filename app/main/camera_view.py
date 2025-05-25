@@ -1,7 +1,6 @@
 """
 Camera view module for the TicTacToe application.
 """
-import cv2
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap

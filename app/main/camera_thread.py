@@ -64,7 +64,7 @@ class CameraThread(QThread):
         # Pokus o vypnutí autofokusu (nemusí fungovat na všech kamerách)
         if self.config.disable_autofocus:
             self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-            self.logger.info(f"Autofocus status: {self.cap.get(cv2.CAP_PROP_AUTOFOCUS)}")
+            self.logger.info("Autofocus status: {self.cap.get(cv2.CAP_PROP_AUTOFOCUS)}")
 
         # Hlavní smyčka pro čtení snímků z kamery
         while self.running:

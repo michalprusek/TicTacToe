@@ -1,3 +1,6 @@
+"""
+Camera calibration module for TicTacToe robot arm.
+"""
 import logging
 import json
 import sys
@@ -54,7 +57,7 @@ KEY_RIGHT = 's'          # +X
 KEY_FORWARD = 'a'        # -Y (Blíž k tělu)
 KEY_BACKWARD = 'd'       # +Y (Dál od těla)
 KEY_UP = 'r'             # +Z
-KEY_DOWN = 'f'           # -Z
+KEY_DOWN = ''           # -Z
 KEY_CONFIRM = keyboard.Key.enter
 KEY_QUIT = keyboard.Key.esc
 KEY_MODIFIER = keyboard.Key.shift  # Hold Shift for coarse movement
@@ -110,13 +113,13 @@ def correct_grid_points_homography(
         np.float32)
     num_valid = len(valid_indices)
     correction_logger.debug(
-        f"Nalezeno %d validních bodů mřížky nad prahem %s.",
+        "Nalezeno %d validních bodů mřížky nad prahem %s.",
         num_valid, confidence_threshold
     )
     min_req_points = max(4, min_points_for_ransac)
     if num_valid < min_req_points:
         correction_logger.warning(
-            f"Nedostatek validních bodů (%d < %d) pro Homografii mřížky. Nelze opravit.",
+            "Nedostatek validních bodů (%d < %d) pro Homografii mřížky. Nelze opravit.",
             num_valid, min_req_points
         )
         return None
@@ -135,28 +138,28 @@ def correct_grid_points_homography(
         num_inliers = np.sum(
             ransac_mask) if ransac_mask is not None else 0  # Kontrola None
         correction_logger.debug(
-            f"Homografie mřížky RANSAC nalezla matici s %d inliery.",
+            "Homografie mřížky RANSAC nalezla matici s %d inliery.",
             num_inliers
         )
         if num_inliers < min_req_points:
             correction_logger.warning(
-                f"Homografie mřížky RANSAC nalezla příliš málo inlierů (%d).",
+                "Homografie mřížky RANSAC nalezla příliš málo inlierů (%d).",
                 num_inliers
             )
             return None
     except cv2.error as e:
         correction_logger.error(
-            f"OpenCV chyba findHomography pro mřížku: %s.", e
+            "OpenCV chyba findHomography pro mřížku: %s.", e
         )
         return None
     except Exception as e:
         correction_logger.exception("Neočekávaná chyba findHomography "
-                                    f"pro mřížku: %s.", e)
+                                    "pro mřížku: %s.", e)
         return None
     # Aplikujeme transformaci na všechny ideální body
     ideal_grid_all_reshaped = ideal_grid_all.reshape(-1, 1, 2)
     corrected_pts_xy = cv2.perspectiveTransform(
-        ideal_grid_all_reshaped, homography_matrix
+        ideal_grid_all_reshaped.astype(np.float32), homography_matrix
     ).reshape(-1, 2)
     correction_logger.debug("Korekce bodů mřížky homografií úspěšná.")
     return corrected_pts_xy
@@ -194,8 +197,8 @@ def get_stage_prompt(stage: str) -> str:
         # Počet cílů je nyní 16 (body mřížky)
         total_targets = 16
         # Prompt upraven pro detekované body
-        return (f"Cil %d/%d: Najedte HROTEM PERA pomoci "
-                f"WASDRF (+Shift) na CERVENY bod mrizky, pak [Enter]" % (idx + 1, total_targets))
+        return ("Cil %d/%d: Najedte HROTEM PERA pomoci "
+                "WASDRF (+Shift) na CERVENY bod mrizky, pak [Enter]" % (idx + 1, total_targets))
     elif stage == "touch_z":
         # Upřesněný prompt
         return ("Z-Kalibrace (Dotek): Pomoci R/F (+Shift) nastavte HROT PERA "
@@ -217,14 +220,14 @@ def get_stage_prompt(stage: str) -> str:
     elif stage == "error":
         return "Chyba kalibrace!"
     else:
-        return f"Neznama faze: %s" % stage
+        return "Neznama faze: %s" % stage
 
 
 def calculate_transformation() -> Optional[np.ndarray]:
     """Vypočítá perspektivní transformační matici (homografii)."""
     global calibration_points
     if len(calibration_points) < MIN_POINTS_FOR_TRANSFORM:
-        print(f"ERROR: Nedostatek bodů pro výpočet transformace (potřeba %d, máme %d)." % (MIN_POINTS_FOR_TRANSFORM, len(calibration_points)))
+        print("ERROR: Nedostatek bodů pro výpočet transformace (potřeba %d, máme %d)." % (MIN_POINTS_FOR_TRANSFORM, len(calibration_points)))
         return None
 
     # Připravíme pole bodů pro OpenCV
@@ -254,10 +257,10 @@ def calculate_transformation() -> Optional[np.ndarray]:
 
     num_inliers = np.sum(
         inliers) if inliers is not None else 0  # Kontrola None
-    print(f"Perspektivní transformace (homografie) vypočtena s %d / %d inliery." % (num_inliers, len(src_pts)))
+    print("Perspektivní transformace (homografie) vypočtena s %d / %d inliery." % (num_inliers, len(src_pts)))
 
     if num_inliers < MIN_POINTS_FOR_TRANSFORM:
-        print(f"WARNING: Počet inlierů (%d) je menší než minimum %d)." % (num_inliers, MIN_POINTS_FOR_TRANSFORM))
+        print("WARNING: Počet inlierů (%d) je menší než minimum %d)." % (num_inliers, MIN_POINTS_FOR_TRANSFORM))
 
     print("Vypočtená perspektivní transformační matice "
           "(Robot XY -> Image UV):")
@@ -369,14 +372,14 @@ def on_press(key):
 
                 # Uložíme pár (UV detekovaný bod, XYZ CÍLOVÁ pozice)
                 calibration_points.append((target_uv_tuple, confirmed_xyz))
-                print(f"Uložen kalibrační bod %d: "
-                      f"Cíl_UV=%s, Cíl_XYZ=%s" % (current_target_index + 1, target_uv_tuple, confirmed_xyz))
+                print("Uložen kalibrační bod %d: "
+                      "Cíl_UV=%s, Cíl_XYZ=%s" % (current_target_index + 1, target_uv_tuple, confirmed_xyz))
 
                 # Získání skutečné pozice pro info
                 actual_pos_arm = controller.get_position(cached=False)
                 if actual_pos_arm:
                     last_confirmed_pos_arm = actual_pos_arm
-                    print(f"    (Skutečná pozice: X=%f, Y=%f, Z=%f)" % (actual_pos_arm[0], actual_pos_arm[1], actual_pos_arm[2]))
+                    print("    (Skutečná pozice: X=%f, Y=%f, Z=%f)" % (actual_pos_arm[0], actual_pos_arm[1], actual_pos_arm[2]))
                 else:
                     last_confirmed_pos_arm = None
                     print("    (Skutečnou pozici se nepodařilo získat)")
@@ -412,11 +415,11 @@ def on_press(key):
                     "y": current_target_pos['y'],
                     "z": current_target_pos['z']
                 }
-                print(f"Neutrální pozice nastavena: X=%f, Y=%f, Z=%f" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
+                print("Neutrální pozice nastavena: X=%f, Y=%f, Z=%" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
 
                 # Přejdeme na výpočet transformace
                 current_stage = "calculating"
-                print(f"\n%s" % get_stage_prompt(current_stage))
+                print("\n%s" % get_stage_prompt(current_stage))
                 transform = calculate_transformation()
                 if transform is not None:
                     current_stage = "done"
@@ -464,7 +467,7 @@ def save_calibration_data(transform_matrix: Optional[np.ndarray]):
               "Data nebudou uložena.")
         missing_z = [k for k in required_z_keys if k not in calibrated_z]
         if missing_z:
-            print(f"  Chybějící Z hodnoty: %s" % missing_z)
+            print("  Chybějící Z hodnoty: %s" % missing_z)
         return
 
     # Připravíme data pro JSON
@@ -484,17 +487,17 @@ def save_calibration_data(transform_matrix: Optional[np.ndarray]):
     # Přidáme neutrální pozici, pokud byla nastavena
     if neutral_position:
         data_to_save["neutral_position"] = neutral_position
-        print(f"Neutrální pozice uložena: X=%f, Y=%f, Z=%f" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
+        print("Neutrální pozice uložena: X=%f, Y=%f, Z=%" % (neutral_position['x'], neutral_position['y'], neutral_position['z']))
     else:
         print("VAROVÁNÍ: Neutrální pozice nebyla nastavena!")
 
     try:
         with open(OUTPUT_FILE, 'w') as f:
             json.dump(data_to_save, f, indent=4)
-        print(f"Kalibrační data úspěšně uložena do %s" % OUTPUT_FILE)
+        print("Kalibrační data úspěšně uložena do %s" % OUTPUT_FILE)
     except Exception as e:
-        print(f"ERROR: Nepodařilo se uložit kalibrační data do "
-              f"%s: %s" % (OUTPUT_FILE, e))
+        print("ERROR: Nepodařilo se uložit kalibrační data do "
+              "%s: %s" % (OUTPUT_FILE, e))
 
 
 def calibration_main():
@@ -521,7 +524,7 @@ def calibration_main():
         logger.info("Pose model úspěšně načten.")
     except FileNotFoundError:
         logger.error(
-            f"!!!! CHYBA: Pose model nenalezen: %s !!!!", POSE_MODEL_PATH
+            "!!!! CHYBA: Pose model nenalezen: %s !!!!", POSE_MODEL_PATH
         )
         return
     except Exception as e:
@@ -530,17 +533,17 @@ def calibration_main():
     # ------------------------------
 
     # --- Inicializace kamery ---
-    logger.info(f"Otevírání kamery s indexem %s..." % CAM_INDEX)
+    logger.info("Otevírání kamery s indexem %s..." % CAM_INDEX)
     cap = cv2.VideoCapture(CAM_INDEX)
     if not cap.isOpened():
-        logger.error(f"Nepodařilo se otevřít kameru %s." % CAM_INDEX)
+        logger.error("Nepodařilo se otevřít kameru %s." % CAM_INDEX)
         return
     # Zkusíme nastavit rozlišení (pokud je potřeba, jinak zakomentujte)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    logger.info(f"Kamera otevřena (%sx%s)." % (frame_width, frame_height))
+    logger.info("Kamera otevřena (%sx%s)." % (frame_width, frame_height))
     cv2.namedWindow(WINDOW_NAME)
 
     # --- Inicializace ArmController ---
@@ -565,7 +568,7 @@ def calibration_main():
         # Nastavíme počáteční CÍLOVOU pozici
         start_x, start_y, _ = initial_pos_tuple  # Původní Z ignorujeme
         target_z_init = 10.0  # Cílová Z výška
-        logger.info(f"Přesun na počáteční výšku Z=%f..." % target_z_init)
+        logger.info("Přesun na počáteční výšku Z=%f..." % target_z_init)
         move_init_ok = controller.go_to_position(x=start_x, y=start_y,
                                                  z=target_z_init, speed=ARM_SPEED, wait=True)
 
@@ -625,8 +628,8 @@ def calibration_main():
             # Omezení Z (např.)
             target_z = max(0, min(250, target_z))
 
-            print(f"-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1f" % (target_x, target_y, target_z))
-            print(f"   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
+            print("-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1" % (target_x, target_y, target_z))
+            print("   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
 
             # Pošleme příkaz k pohybu s explicitní rychlostí a wait=True pro okamžitou odezvu
             move_ok = controller.go_to_position(x=target_x, y=target_y,
@@ -647,7 +650,7 @@ def calibration_main():
                     current_target_pos = {'x': actual_pos[0],
                                           'y': actual_pos[1],
                                           'z': actual_pos[2]}
-                    print(f"   CÍL resynchronizován na: %s" % current_target_pos)
+                    print("   CÍL resynchronizován na: %s" % current_target_pos)
                 else:
                     print("   WARNING: Nelze resynchronizovat CÍL.")
 
@@ -723,7 +726,7 @@ def calibration_main():
 
         # Zobrazení poslední SKUTEČNĚ POTVRZENÉ XYZ pozice (pokud existuje)
         if last_confirmed_pos_arm:
-            pos_text = (f"Potvrzena pozice: X=%f Y=%f Z=%f" % (last_confirmed_pos_arm[0], last_confirmed_pos_arm[1], last_confirmed_pos_arm[2]))
+            pos_text = ("Potvrzena pozice: X=%f Y=%f Z=%" % (last_confirmed_pos_arm[0], last_confirmed_pos_arm[1], last_confirmed_pos_arm[2]))
             # Černý obrys textu
             for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                 cv2.putText(display_frame, pos_text, (10 + dx, 30 + dy),
@@ -736,7 +739,7 @@ def calibration_main():
 
         # Zobrazení AKTUÁLNÍ CÍLOVÉ XYZ pozice
         if current_target_pos:
-            target_pos_text = f"Aktualni cil: X=%f Y=%f Z=%f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z'])
+            target_pos_text = "Aktualni cil: X=%f Y=%f Z=%" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z'])
             # Černý obrys textu
             for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                 cv2.putText(display_frame, target_pos_text, (10 + dx, 70 + dy),
@@ -770,8 +773,8 @@ def calibration_main():
                       "Data neuložena.")
                 current_stage = "error"  # Označíme chybu
         else:
-            print(f"Nedostatek bodů (%d) pro finální "
-                  f"výpočet. Data neuložena." % len(calibration_points))
+            print("Nedostatek bodů (%d) pro finální "
+                  "výpočet. Data neuložena." % len(calibration_points))
             current_stage = "error"
 
     elif current_stage == "error":

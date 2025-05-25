@@ -97,7 +97,7 @@ class TestDrawCenteredTextMessage:
         # Verify custom parameters were used in OpenCV calls
         mock_rect.assert_called_once()
         rect_args = mock_rect.call_args
-        assert rect_args[0][2] == (0, 255, 0)  # bg_color
+        assert rect_args[0][3] == (0, 255, 0)  # bg_color
         
         mock_puttext.assert_called_once()
         text_args = mock_puttext.call_args
