@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, Dict, Type
 import random
+import math
 
 from .game_state import GameState, PLAYER_X, PLAYER_O, EMPTY
 
@@ -37,13 +38,13 @@ class RandomStrategy(Strategy):
         return move
 
 
-class BasicStrategy(Strategy):
-    """A basic strategy for Tic Tac Toe."""
+class MinimaxStrategy(Strategy):
+    """A strategy that uses the minimax algorithm with alpha-beta pruning for optimal play."""
 
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
-        """Suggest the next best move based on the current game state."""
+        """Suggest the optimal move using minimax algorithm with alpha-beta pruning."""
         self.logger.debug(
-            "BasicStrategy: Suggesting move for board:\n%s",
+            "MinimaxStrategy: Suggesting move for board:\n%s",
             game_state.board_to_string()
         )
 
@@ -53,299 +54,158 @@ class BasicStrategy(Strategy):
         is_full = game_state.is_board_full() if hasattr(game_state, 'is_board_full') else False
 
         if winner or is_full:
-            self.logger.debug("BasicStrategy: Game already finished.")
+            self.logger.debug("MinimaxStrategy: Game already finished.")
             return None
 
-        player = self.player
-        self.logger.debug("BasicStrategy: Current player: %s", player)
+        # Convert GameState board to the format expected by minimax
+        board_copy = [row[:] for row in board]
 
-        move = self._find_winning_move(board, player)
-        if move:
-            self.logger.debug("BasicStrategy: Found winning move: %s", move)
-            return move
+        # Get the best move using minimax with alpha-beta pruning
+        best_move = self._get_best_move(board_copy, self.player)
 
-        opponent = self.opponent
-        move = self._find_winning_move(board, opponent)
-        if move:
-            self.logger.debug(
-                "BasicStrategy: Found blocking move: %s", move
-            )
-            return move
+        if best_move:
+            self.logger.debug("MinimaxStrategy: Selected optimal move: %s", best_move)
+        else:
+            self.logger.warning("MinimaxStrategy: No valid move found")
 
-        # 3. Take the center if available
-        if board[1][1] == EMPTY:
-            self.logger.debug("BasicStrategy: Taking center.")
-            return 1, 1
+        return best_move
 
-        move = self._find_opposite_corner(board)
-        if move:
-            self.logger.debug(
-                "BasicStrategy: Taking opposite corner: %s", move
-            )
-            return move
-
-        # 5. Take an empty corner
-        move = self._find_empty_corner(board)
-        if move:
-            self.logger.debug("BasicStrategy: Taking empty corner: %s", move)
-            return move
-
-        move = self._find_empty_side(board)
-        if move:
-            self.logger.debug("BasicStrategy: Taking empty side: %s", move)
-            return move
-
-        self.logger.warning("BasicStrategy: No strategic move found, falling back.")
-        return self._find_first_available(board)
-
-    def _determine_current_player(self, game_state: GameState) -> str:
-        # This method might be less relevant if strategy always plays as self.player
-        # Keeping it for potential future use or if called externally.
-        board = game_state.board  # Direct access to the board
-        x_count = sum(row.count(PLAYER_X) for row in board)
-        o_count = sum(row.count(PLAYER_O) for row in board)
-        return PLAYER_X if x_count == o_count else PLAYER_O
-
-    def _find_winning_move(self, board: List[List[str]], player: str) -> Optional[Tuple[int, int]]:
-        for r in range(3):
-            for c in range(3):
-                if board[r][c] == EMPTY:
-                    # Temporarily make the move
-                    board[r][c] = player
-                    if self._check_line(board, player, r, c):
-                        board[r][c] = EMPTY  # Revert the move
-                        return r, c
-                    board[r][c] = EMPTY
-        return None
-
-    def _find_opposite_corner(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        corners = [(0, 0), (0, 2), (2, 0), (2, 2)]
-        opponent = self.opponent
-        for r, c in corners:
-            if board[r][c] == opponent:
-                opposite_r, opposite_c = 2 - r, 2 - c
-                if board[opposite_r][opposite_c] == EMPTY:
-                    return opposite_r, opposite_c
-        return None
-
-    def _find_empty_corner(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        """Find an available empty corner."""
-        corners = [(0, 0), (0, 2), (2, 0), (2, 2)]
-        for r, c in corners:
-            if board[r][c] == EMPTY:
-                return r, c
-        return None
-
-    def _find_empty_side(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        sides = [(0, 1), (1, 0), (1, 2), (2, 1)]
-        for r, c in sides:
-            if board[r][c] == EMPTY:
-                return r, c
-        return None
-
-    def _find_first_available(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        for r in range(3):
-            for c in range(3):
-                if board[r][c] == EMPTY:
-                    return r, c
-        self.logger.error("BasicStrategy: _find_first_available called but no empty cells found.")
-        return None
-
-    def _check_line(self, board: List[List[str]], player: str, r: int, c: int) -> bool:
-        """Check if the move at (r, c) creates a winning line for the player."""
-        # Check row
-        if all(board[r][col] == player for col in range(3)):
-            return True
-        # Check column
-        if all(board[row][c] == player for row in range(3)):
-            return True
-        # Check diagonal
-        if r == c and all(board[i][i] == player for i in range(3)):
-            return True
-        # Check anti-diagonal
-        if r + c == 2 and all(board[i][2 - i] == player for i in range(3)):
-            return True
-        return False
-
-
-class AdvancedStrategy(Strategy):
-    """Implements a more advanced Tic Tac Toe strategy using common heuristics."""
-
-    def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
-        """Suggest the next best move using a set of prioritized rules."""
-        self.logger.debug(
-            "AdvancedStrategy: Suggesting move for board:\n%s",
-            game_state.board_to_string()
-        )
-        board = game_state.board
-
-        # Check if game is finished
-        winner = game_state.check_winner() if hasattr(game_state, 'check_winner') else None
-        is_full = game_state.is_board_full() if hasattr(game_state, 'is_board_full') else False
-
-        if winner or is_full:
-            self.logger.debug("AdvancedStrategy: Game finished.")
+    def _get_best_move(self, board: List[List[str]], player: str) -> Optional[Tuple[int, int]]:
+        """Find the best move using minimax algorithm with alpha-beta pruning."""
+        if self._is_board_full(board):
             return None
 
-        player = self.player
-        opponent = self.opponent
-        self.logger.debug("AdvancedStrategy: Current player: %s", player)
+        available_moves = self._get_available_moves(board)
+        if not available_moves:
+            return None
 
-        # 1. Win: If player has two in a row, place the third to win.
-        move = self._find_two_in_a_row(board, player)
-        if move:
-            self.logger.info("AdvancedStrategy: Found winning move at %s", move)
-            return move
+        # Handle case where only one move is left (optimization)
+        if len(available_moves) == 1:
+            return available_moves[0]
 
-        # 2. Block: If opponent has two in a row, block the third.
-        move = self._find_two_in_a_row(board, opponent)
-        if move:
-            self.logger.info("AdvancedStrategy: Found blocking move at %s", move)
-            return move
+        # If it's the first move, play center for speed
+        if len(available_moves) == 9:
+            return (1, 1)  # Center
 
-        # 3. Fork: Create a fork opportunity.
-        move = self._find_fork(board, player)
-        if move:
-            self.logger.info("AdvancedStrategy: Found fork opportunity at %s", move)
-            return move
+        # If it's the second move and center is available, take it
+        if len(available_moves) == 8 and board[1][1] == EMPTY:
+            return (1, 1)
 
-        # 4. Block Opponent's Fork:
-        move = self._block_opponent_fork(board, player, opponent)
-        if move:
-            self.logger.info("AdvancedStrategy: Blocking opponent's fork at %s", move)
-            return move
+        # Call minimax to find the best move
+        _, best_move = self._minimax(board, player, 0, -math.inf, math.inf, player)
+        return best_move
 
-        # 5. Center: Take the center square.
-        if board[1][1] == EMPTY:
-            self.logger.info("AdvancedStrategy: Taking center square (1, 1)")
-            return 1, 1
+    def _minimax(self, board: List[List[str]], current_player: str, depth: int,
+                 alpha: float, beta: float, ai_player: str) -> Tuple[float, Optional[Tuple[int, int]]]:
+        """
+        Minimax algorithm with alpha-beta pruning.
 
-        # 6. Opposite Corner: Play in the opposite corner of the opponent.
-        move = self._find_opposite_corner(board, opponent)
-        if move:
-            self.logger.info("AdvancedStrategy: Playing opposite corner %s", move)
-            return move
+        Args:
+            board: Current game board
+            current_player: Player whose turn it is
+            depth: Current depth in the game tree
+            alpha: Alpha value for pruning
+            beta: Beta value for pruning
+            ai_player: The AI player (maximizing player)
 
-        # 7. Empty Corner: Play in an empty corner.
-        move = self._find_empty_corner(board)
-        if move:
-            self.logger.info("AdvancedStrategy: Playing an empty corner %s", move)
-            return move
+        Returns:
+            Tuple of (score, best_move)
+        """
+        winner = self._check_winner(board)
+        human_player = self._get_other_player(ai_player)
 
-        # 8. Empty Side: Play in an empty side square.
-        move = self._find_empty_side(board)
-        if move:
-            self.logger.info("AdvancedStrategy: Playing an empty side %s", move)
-            return move
+        # Terminal states
+        if winner == ai_player:
+            return 10 - depth, None  # AI wins, prioritize faster wins
+        if winner == human_player:
+            return depth - 10, None  # Human wins, penalize slower losses
+        if winner == "TIE":
+            return 0, None  # Draw
 
-        self.logger.error("AdvancedStrategy: Could not find any move!")
-        return None
+        available_moves = self._get_available_moves(board)
+        is_maximizing = current_player == ai_player
 
-    def _get_lines(self):
-        """Returns all winning lines (rows, columns, diagonals)."""
-        return (
-            # Rows
-            [((0, 0), (0, 1), (0, 2))],
-            [((1, 0), (1, 1), (1, 2))],
-            [((2, 0), (2, 1), (2, 2))],
-            # Columns
-            [((0, 0), (1, 0), (2, 0))],
-            [((0, 1), (1, 1), (2, 1))],
-            [((0, 2), (1, 2), (2, 2))],
-            # Diagonals
-            [((0, 0), (1, 1), (2, 2))],
-            [((0, 2), (1, 1), (2, 0))]
-        )
+        if is_maximizing:
+            # AI's turn (maximize score)
+            best_score = -math.inf
+            best_move = None
 
-    def _find_two_in_a_row(self, board: List[List[str]], player: str) -> Optional[Tuple[int, int]]:
-        """Find a line where the player has two symbols and the third is empty."""
-        for line_coords in self._get_lines():
-            line = line_coords[0]
-            symbols = [board[r][c] for r, c in line]
-            if symbols.count(player) == 2 and symbols.count(EMPTY) == 1:
-                empty_index = symbols.index(EMPTY)
-                return line[empty_index]
-        return None
+            for move in available_moves:
+                r, c = move
+                board[r][c] = ai_player
+                score, _ = self._minimax(board, human_player, depth + 1, alpha, beta, ai_player)
+                board[r][c] = EMPTY  # Undo move
 
-    def _count_potential_wins(self, board: List[List[str]], player: str) -> int:
-        count = 0
-        for line_coords in self._get_lines():
-            line = line_coords[0]
-            symbols = [board[r][c] for r, c in line]
-            if symbols.count(player) == 2 and symbols.count(EMPTY) == 1:
-                count += 1
-        return count
+                if score > best_score:
+                    best_score = score
+                    best_move = move
 
-    def _find_fork(self, board: List[List[str]], player: str) -> Optional[Tuple[int, int]]:
-        """Find a fork opportunity for the given player."""
-        empty_cells = []
+                alpha = max(alpha, score)
+                if beta <= alpha:
+                    break  # Beta cut-off
+
+            return best_score, best_move
+        else:
+            # Human's turn (minimize score from AI's perspective)
+            best_score = math.inf
+            best_move = None
+
+            for move in available_moves:
+                r, c = move
+                board[r][c] = human_player
+                score, _ = self._minimax(board, ai_player, depth + 1, alpha, beta, ai_player)
+                board[r][c] = EMPTY  # Undo move
+
+                if score < best_score:
+                    best_score = score
+                    best_move = move
+
+                beta = min(beta, score)
+                if beta <= alpha:
+                    break  # Alpha cut-off
+
+            return best_score, best_move
+
+    def _get_available_moves(self, board: List[List[str]]) -> List[Tuple[int, int]]:
+        """Get all available moves on the board."""
+        moves = []
         for r in range(3):
             for c in range(3):
                 if board[r][c] == EMPTY:
-                    empty_cells.append((r, c))
+                    moves.append((r, c))
+        return moves
 
-        for r, c in empty_cells:
-            board[r][c] = player
-            if self._count_potential_wins(board, player) >= 2:
-                board[r][c] = EMPTY
-                return r, c
-            board[r][c] = EMPTY
-        return None
+    def _is_board_full(self, board: List[List[str]]) -> bool:
+        """Check if the board is full."""
+        return all(board[r][c] != EMPTY for r in range(3) for c in range(3))
 
-    def _block_opponent_fork(
-        self, board: List[List[str]], player: str, opponent: str
-    ) -> Optional[Tuple[int, int]]:
-        opponent_fork_move = self._find_fork(board, opponent)
-        if opponent_fork_move:
-            board[opponent_fork_move[0]][opponent_fork_move[1]] = player
-            if self._find_two_in_a_row(board, player) is not None:
-                board[opponent_fork_move[0]][opponent_fork_move[1]] = EMPTY
-                return opponent_fork_move
-            board[opponent_fork_move[0]][opponent_fork_move[1]] = EMPTY
+    def _check_winner(self, board: List[List[str]]) -> Optional[str]:
+        """Check if there is a winner on the board."""
+        # Check rows
+        for row in range(3):
+            if board[row][0] == board[row][1] == board[row][2] != EMPTY:
+                return board[row][0]
 
-        empty_cells = [
-            (r, c) for r in range(3) for c in range(3) if board[r][c] == EMPTY
-        ]
-        possible_blocking_moves = []
-        for r, c in empty_cells:
-            board[r][c] = player
-            if self._find_fork(board, opponent) is None:
-                possible_blocking_moves.append((r, c))
-            board[r][c] = EMPTY
+        # Check columns
+        for col in range(3):
+            if board[0][col] == board[1][col] == board[2][col] != EMPTY:
+                return board[0][col]
 
-        if len(possible_blocking_moves) >= 1:
-            return possible_blocking_moves[0]
+        # Check diagonals
+        if board[0][0] == board[1][1] == board[2][2] != EMPTY:
+            return board[0][0]
+        if board[0][2] == board[1][1] == board[2][0] != EMPTY:
+            return board[0][2]
+
+        # Check for tie
+        if self._is_board_full(board):
+            return "TIE"
 
         return None
 
-    def _find_opposite_corner(
-        self, board: List[List[str]], opponent: str
-    ) -> Optional[Tuple[int, int]]:
-        corners = [(0, 0), (0, 2), (2, 0), (2, 2)]
-        opponent_corners = [pos for pos in corners if board[pos[0]][pos[1]] == opponent]
-
-        if len(opponent_corners) == 1:
-            pos = opponent_corners[0]
-            r, c = pos
-            opposite_pos = (2 - r, 2 - c)
-            if board[opposite_pos[0]][opposite_pos[1]] == EMPTY:
-                return opposite_pos
-        return None
-
-    def _find_empty_corner(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        corners = [(0, 0), (0, 2), (2, 0), (2, 2)]
-        for r, c in corners:
-            if board[r][c] == EMPTY:
-                return r, c
-        return None
-
-    def _find_empty_side(self, board: List[List[str]]) -> Optional[Tuple[int, int]]:
-        """Play in an empty middle square on any side."""
-        sides = [(0, 1), (1, 0), (1, 2), (2, 1)]
-        for r, c in sides:
-            if board[r][c] == EMPTY:
-                return r, c
-        return None
+    def _get_other_player(self, player: str) -> str:
+        """Get the opposing player."""
+        return PLAYER_O if player == PLAYER_X else PLAYER_X
 
 
 class StrategySelector(ABC):
@@ -360,9 +220,9 @@ class StrategySelector(ABC):
 class FixedStrategySelector(StrategySelector):
     """Selects a fixed strategy."""
 
-    def __init__(self, strategy_type: str = 'advanced'):
+    def __init__(self, strategy_type: str = 'minimax'):
         self.strategy_type = strategy_type
-        if strategy_type.lower() not in ['basic', 'advanced', 'random']:
+        if strategy_type.lower() not in ['minimax', 'random']:
             raise ValueError(f"Invalid fixed strategy type specified: {strategy_type}")
         self.logger = logging.getLogger(__name__)
         self.logger.debug("Initialized FixedStrategySelector with type: %s", self.strategy_type)
@@ -372,10 +232,10 @@ class FixedStrategySelector(StrategySelector):
 
 
 class BernoulliStrategySelector(StrategySelector):
-    """Selects between basic and advanced strategy based on Bernoulli trial."""
+    """Selects between random and minimax strategy based on Bernoulli trial."""
 
     def __init__(self, p: float = 0.5, difficulty: int = None):
-        """p: probability of selecting 'advanced' strategy."""
+        """p: probability of selecting 'minimax' strategy."""
         self.logger = logging.getLogger(__name__)
 
         # If difficulty is provided, use it to set p
@@ -411,27 +271,19 @@ class BernoulliStrategySelector(StrategySelector):
     def select_strategy(self) -> str:
         """
         Select a strategy based on probability.
-        Returns 'minimax' (advanced) or 'random' (basic) for backward
-        compatibility.
+        Returns 'minimax' or 'random' with 50/50 probability when p=0.5.
+        When random value is 1: select 'minimax'
+        When random value is 0: select 'random'
         """
-        # For unit tests in tests/unit/test_strategy.py
-        import inspect
-        caller_frame = inspect.currentframe().f_back
-        caller_filename = caller_frame.f_code.co_filename
-
-        # Special case for unit tests
-        if 'unit/test_strategy.py' in caller_filename:
-            if 'test_select_strategy_minimax' in caller_filename:
-                return 'advanced'
-            elif 'test_select_strategy_random' in caller_filename:
-                return 'basic'
-
-        # For all other cases, use the original behavior
+        # Generate random value between 0 and 1
         random_value = random.random()
+
+        # Select strategy based on probability threshold
+        # If random_value < p, select minimax (intelligent play)
+        # If random_value >= p, select random (random play)
         selected_strategy = 'minimax' if random_value < self._p else 'random'
 
-        # OPRAVA 3: Přidat logování pro ověření strategie
-        self.logger.info(f"🎯 STRATEGY SELECTION: difficulty={self.difficulty}, p={self._p:.2f}, "
+        self.logger.info(f"🎯 STRATEGY SELECTION: p={self._p:.2f}, "
                         f"random={random_value:.3f}, selected='{selected_strategy}'")
 
         return selected_strategy
@@ -452,8 +304,8 @@ class BernoulliStrategySelector(StrategySelector):
 
         strategy = self.select_strategy()
 
-        # OPRAVA 3: Přidat logování pro ověření, která strategie se skutečně používá
-        if strategy == 'advanced' or strategy == 'minimax':
+        # Use the selected strategy to get the move
+        if strategy == 'minimax':
             self.logger.info(f"🧠 USING MINIMAX STRATEGY for player {player}")
             move = game_logic.get_best_move(board, player)
             self.logger.info(f"🎯 MINIMAX SELECTED MOVE: {move}")
@@ -467,8 +319,7 @@ class BernoulliStrategySelector(StrategySelector):
 
 STRATEGY_MAP: Dict[str, Type[Strategy]] = {
     'random': RandomStrategy,
-    'basic': BasicStrategy,
-    'advanced': AdvancedStrategy,
+    'minimax': MinimaxStrategy,
 }
 
 

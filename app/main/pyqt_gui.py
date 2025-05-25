@@ -729,15 +729,7 @@ class TicTacToeApp(QMainWindow):
         """Handle debug button click event"""
         self.show_debug_window()
 
-    def show_debug_window(self):
-        """Show debug window"""
-        # V testech přeskočíme zobrazení debug okna
-        if not hasattr(self, 'debug_window') or not self.debug_window:
-            # Vytvoříme debug okno, pokud neexistuje
-            self.debug_window = DebugWindow(config=self.config, parent=self)
 
-        # Zobrazení debug okna
-        self.debug_window.show()
 
     def handle_calibrate_button_click(self):
         """Handle calibrate button click event"""
@@ -764,25 +756,8 @@ class TicTacToeApp(QMainWindow):
         self.park_arm()
 
     def park_arm(self):
-        """Park robotic arm"""
-        # V testech přeskočíme parkování ruky
-        if not hasattr(self, 'arm_controller') or not self.arm_controller:
-            return
-
-        # Kontrola připojení ruky
-        if not self.arm_controller.connected:
-            self.status_label.setText("")
-            return
-
-        # Parkování ruky
-        self.status_label.setText("")
-        if hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected:
-            # Použití arm_thread pro parkování
-            self.arm_thread.go_to_position(x=PARK_X, y=PARK_Y, wait=True)
-        elif hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected:
-            # Záložní použití arm_controller
-            self.arm_controller.park(x=PARK_X, y=PARK_Y)
-        self.status_label.setText("")
+        """Park robotic arm using unified interface"""
+        return self._unified_arm_command('park', x=PARK_X, y=PARK_Y, wait=True)
 
     def handle_difficulty_changed(self, value):
         """Handle difficulty slider value change"""
@@ -994,32 +969,132 @@ class TicTacToeApp(QMainWindow):
             if not success:
                 self.logger.warning("Nepodařilo se odeslat příkaz pro pohyb ruky pomocí arm_controller")
 
-    def handle_camera_changed(self, camera_index):
-        """Handle camera change event"""
-        # V testech přeskočíme obsluhu změny kamery
-        if not hasattr(self, 'camera_thread') or not self.camera_thread:
-            return
 
-        # Zastavení stávajícího vlákna kamery
-        self.camera_thread.stop()
-        self.camera_thread.wait()
 
-        # Vytvoření nového vlákna kamery
-        self.camera_thread = CameraThread(camera_index=camera_index)
-        self.camera_thread.frame_ready.connect(self.update_camera_view)
-        self.camera_thread.game_state_updated.connect(self.handle_detected_game_state)
-        self.camera_thread.fps_updated.connect(self.update_fps_display)
-        self.camera_thread.start()
+    def _unified_arm_command(self, command, *args, **kwargs):
+        """🤖 UNIFIED ARM INTERFACE: Single point for all arm operations"""
+        # Convert positional arguments to keyword arguments for backward compatibility
+        if args:
+            # Handle common patterns like draw_o(x, y, radius, speed=speed)
+            if command in ['draw_o', 'draw_x'] and len(args) >= 3:
+                kwargs.setdefault('x', args[0])
+                kwargs.setdefault('y', args[1])
+                kwargs.setdefault('radius', args[2])
+                if len(args) >= 4:
+                    kwargs.setdefault('speed', args[3])
+            elif command == 'go_to_position' and len(args) >= 2:
+                kwargs.setdefault('x', args[0])
+                kwargs.setdefault('y', args[1])
+                if len(args) >= 3:
+                    kwargs.setdefault('z', args[2])
+            elif command == 'park' and len(args) >= 2:
+                kwargs.setdefault('x', args[0])
+                kwargs.setdefault('y', args[1])
+        # Check arm availability
+        arm_thread_available = (hasattr(self, 'arm_thread') and self.arm_thread and
+                               hasattr(self.arm_thread, 'connected') and self.arm_thread.connected)
+        arm_controller_available = (hasattr(self, 'arm_controller') and self.arm_controller and
+                                   hasattr(self.arm_controller, 'connected') and self.arm_controller.connected)
+
+        if not (arm_thread_available or arm_controller_available):
+            self.logger.warning(f"🚫 No arm available for command: {command}")
+            return False
+
+        success = False
+
+        # Execute command using preferred arm interface
+        if arm_thread_available:
+            success = self._execute_arm_thread_command(command, **kwargs)
+        elif arm_controller_available:
+            success = self._execute_arm_controller_command(command, **kwargs)
+
+        return success
+
+    def _execute_arm_thread_command(self, command, **kwargs):
+        """Execute command using arm_thread interface"""
+        try:
+            if command == 'park':
+                return self.arm_thread.go_to_position(x=kwargs.get('x', PARK_X),
+                                                     y=kwargs.get('y', PARK_Y),
+                                                     wait=kwargs.get('wait', True))
+            elif command == 'move_to_neutral':
+                x = kwargs.get('x', NEUTRAL_X)
+                y = kwargs.get('y', NEUTRAL_Y)
+                z = kwargs.get('z', NEUTRAL_Z)
+                return self.arm_thread.go_to_position(x=x, y=y, z=z, wait=kwargs.get('wait', False))
+            elif command == 'go_to_position':
+                return self.arm_thread.go_to_position(**kwargs)
+            elif command == 'draw_symbol':
+                symbol = kwargs.get('symbol')
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                if symbol == game_logic.PLAYER_O:
+                    return self.arm_thread.draw_o(x, y, DEFAULT_SYMBOL_SIZE_MM / 2, speed=speed)
+                else:
+                    return self.arm_thread.draw_x(x, y, DEFAULT_SYMBOL_SIZE_MM, speed=speed)
+            elif command == 'draw_o':
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                radius = kwargs.get('radius', DEFAULT_SYMBOL_SIZE_MM / 2)
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                return self.arm_thread.draw_o(x, y, radius, speed=speed)
+            elif command == 'draw_x':
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                size = kwargs.get('size', DEFAULT_SYMBOL_SIZE_MM)
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                return self.arm_thread.draw_x(x, y, size, speed=speed)
+            return False
+        except Exception as e:
+            self.logger.error(f"Arm thread command failed: {e}")
+            return False
+
+    def _execute_arm_controller_command(self, command, **kwargs):
+        """Execute command using arm_controller interface"""
+        try:
+            if command == 'park':
+                return self.arm_controller.park(x=kwargs.get('x', PARK_X), y=kwargs.get('y', PARK_Y))
+            elif command == 'move_to_neutral':
+                x = kwargs.get('x', NEUTRAL_X)
+                y = kwargs.get('y', NEUTRAL_Y)
+                z = kwargs.get('z', NEUTRAL_Z)
+                return self.arm_controller.go_to_position(x=x, y=y, z=z, wait=kwargs.get('wait', False))
+            elif command == 'go_to_position':
+                return self.arm_controller.go_to_position(**kwargs)
+            elif command == 'draw_symbol':
+                symbol = kwargs.get('symbol')
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                if symbol == game_logic.PLAYER_O:
+                    return self.arm_controller.draw_o(x, y, DEFAULT_SYMBOL_SIZE_MM / 2, speed=speed)
+                else:
+                    return self.arm_controller.draw_x(x, y, DEFAULT_SYMBOL_SIZE_MM, speed=speed)
+            elif command == 'draw_o':
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                radius = kwargs.get('radius', DEFAULT_SYMBOL_SIZE_MM / 2)
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                return self.arm_controller.draw_o(x, y, radius, speed=speed)
+            elif command == 'draw_x':
+                x = kwargs.get('x')
+                y = kwargs.get('y')
+                size = kwargs.get('size', DEFAULT_SYMBOL_SIZE_MM)
+                speed = kwargs.get('speed', DRAWING_SPEED)
+                return self.arm_controller.draw_x(x, y, size, speed=speed)
+            return False
+        except Exception as e:
+            self.logger.error(f"Arm controller command failed: {e}")
+            return False
 
     def handle_arm_connection_toggled(self, connected):
-        """Handle arm connection toggle event"""
-        # Unified method - check both arm_thread and arm_controller
+        """Handle arm connection toggle event using unified interface"""
         if hasattr(self, 'arm_thread') and self.arm_thread:
             if connected and not self.arm_thread.connected:
                 self.arm_thread.connect()
             elif not connected and self.arm_thread.connected:
                 self.arm_thread.disconnect()
-        # Fallback to arm_controller
         elif hasattr(self, 'arm_controller') and self.arm_controller:
             if connected and not self.arm_controller.connected:
                 self.arm_controller.connect()
@@ -2163,16 +2238,8 @@ class TicTacToeApp(QMainWindow):
         else:
             print(f"Přesouvám ruku do neutrální pozice ({x}, {y}, {z})...")
 
-        # Použití arm_thread, pokud je k dispozici
-        if hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected:
-            success = self.arm_thread.go_to_position(
-                x=x, y=y, z=z, speed=MAX_SPEED, wait=True)
-        # Záložní použití arm_controller
-        elif hasattr(self, 'arm_controller') and self.arm_controller and self.arm_controller.connected:
-            success = self.arm_controller.go_to_position(
-                x=x, y=y, z=z, speed=MAX_SPEED, wait=True)
-        else:
-            success = False
+        # Use unified arm interface
+        success = self._unified_arm_command('move_to_neutral', x=x, y=y, z=z, wait=True)
 
         if hasattr(self, 'status_label'):
             if success:
@@ -2326,83 +2393,9 @@ class TicTacToeApp(QMainWindow):
                 self.status_label.setText("❌ Chyba při kreslení výherní čáry")
             return False
 
-    def handle_difficulty_changed(self, value):
-        """Handle changes to the difficulty slider"""
-        self.strategy_selector.difficulty = value
-        self.difficulty_value_label.setText(f"{value}")
-        # Update status in debug window if it exists and is visible
-        if hasattr(self, 'debug_window') and self.debug_window is not None and hasattr(self.debug_window, 'status_label'):
-            self.debug_window.status_label.setText(
-                f"Obtížnost nastavena na {value}/10 (p={value / 10:.1f})")
 
-    def handle_cell_clicked(self, row, col):
-        """Handle clicks on the game board cells"""
-        # Only allow clicks if it's the human's turn and the cell is empty
-        if (not self.game_over and
-            (self.current_turn is None or self.current_turn == self.human_player) and
-                self.board_widget.board[row][col] == game_logic.EMPTY):
 
-            # First move determines human player
-            if self.human_player is None:
-                self.human_player = game_logic.PLAYER_X
-                self.ai_player = game_logic.PLAYER_O
-                self.current_turn = self.ai_player
 
-                # Initialize move counter for the first player move
-                self.move_counter = 1
-
-                # Remember the player's symbol for arm moves
-                self.arm_player_symbol = self.human_player
-                self.logger.info(f"First click: player is using symbol {self.human_player}")
-
-                # For even-numbered moves (next turn = 2), the arm should play
-                self.update_status(self.tr("arm_turn"))
-                self.main_status_panel.setStyleSheet("""
-                    background-color: #9b59b6;
-                    border-radius: 10px;
-                    border: 2px solid #8e44ad;
-                """)
-
-                # Pro zpětnou kompatibilitu
-                self.status_label.setText("")
-            else:
-                self.current_turn = self.ai_player
-
-                # Increment move counter
-                self.move_counter += 1
-                self.logger.info(f"Player clicked, move counter now: {self.move_counter}")
-
-                # Decide whether to use arm or AI based on move counter
-                if self.move_counter % 2 == 0:
-                    # For even-numbered moves, the arm plays next
-                    self.update_status(self.tr("arm_turn"))
-                else:
-                    # For odd-numbered moves, AI plays next
-                    self.update_status(self.tr("ai_turn"))
-
-                # Pro zpětnou kompatibilitu
-                self.status_label.setText("")
-
-            # NEAKTUALIZUJEME BOARD AUTOMATICKY - čekáme na YOLO detekci!
-            # self.board_widget.board[row][col] = self.human_player
-            # self.board_widget.update()
-
-            # Check for game end
-            self.check_game_end()
-
-            # If game not over, determine whether to trigger arm or AI move
-            if not self.game_over:
-                if self.move_counter % 2 == 0:
-                    # Even-numbered turns - arm's turn (after player)
-                    # Pause slightly longer to let UI update fully
-                    # CRITICAL: Use ai_player symbol (the one with fewer pieces)
-                    arm_symbol = self.ai_player
-                    self.logger.info(f"Even turn - arm plays {arm_symbol} (ai_player)")
-                    QTimer.singleShot(300, lambda: self.make_arm_move(arm_symbol))
-                else:
-                    # Odd-numbered turns - AI's turn (after player)
-                    # Pause slightly longer to let UI update fully
-                    QTimer.singleShot(300, self.make_ai_move)
 
     def handle_detected_game_state(self, detected_board):
         """Handle game state detected from camera"""
@@ -3073,29 +3066,15 @@ class TicTacToeApp(QMainWindow):
             self.status_label.setText(
                 f"Kreslím {symbol} na pozici ({row}, {col}) se souřadnicemi z YOLO...")
 
-        # Draw the appropriate symbol
-        success = False
-
-        # Použití arm_thread, pokud je k dispozici
-        if arm_thread_available:
-            if symbol == game_logic.PLAYER_O:
-                self.logger.info(f"Kreslím O pomocí arm_thread na ({target_x}, {target_y})")
-                success = self.arm_thread.draw_o(
-                    target_x, target_y, DEFAULT_SYMBOL_SIZE_MM / 2, speed=DRAWING_SPEED)
-            else:
-                self.logger.info(f"Kreslím X pomocí arm_thread na ({target_x}, {target_y})")
-                success = self.arm_thread.draw_x(
-                    target_x, target_y, DEFAULT_SYMBOL_SIZE_MM, speed=DRAWING_SPEED)
-        # Záložní použití arm_controller
-        elif arm_controller_available:
-            if symbol == game_logic.PLAYER_O:
-                self.logger.info(f"Kreslím O pomocí arm_controller na ({target_x}, {target_y})")
-                success = self.arm_controller.draw_o(
-                    target_x, target_y, DEFAULT_SYMBOL_SIZE_MM / 2, speed=DRAWING_SPEED)
-            else:
-                self.logger.info(f"Kreslím X pomocí arm_controller na ({target_x}, {target_y})")
-                success = self.arm_controller.draw_x(
-                    target_x, target_y, DEFAULT_SYMBOL_SIZE_MM, speed=DRAWING_SPEED)
+        # Draw the appropriate symbol using unified interface
+        if symbol == game_logic.PLAYER_O:
+            self.logger.info(f"Kreslím O na ({target_x}, {target_y})")
+            success = self._unified_arm_command('draw_symbol',
+                symbol=symbol, x=target_x, y=target_y, speed=DRAWING_SPEED)
+        else:
+            self.logger.info(f"Kreslím X na ({target_x}, {target_y})")
+            success = self._unified_arm_command('draw_symbol',
+                symbol=symbol, x=target_x, y=target_y, speed=DRAWING_SPEED)
 
         if success:
             self.status_label.setText(
@@ -3668,74 +3647,7 @@ class TicTacToeApp(QMainWindow):
         # Automatické skrytí po 5 sekundách
         QTimer.singleShot(5000, notification.hide)
 
-    def reset_game(self):
-        """Reset the game to initial state"""
-        # CRITICAL: Do not reset board_widget.board here!
-        # Board should only be updated from YOLO detections in update_board_from_detection
-        # Just clear the visual display
-        empty_board = game_logic.create_board()
-        self.board_widget.update_board(empty_board, None, highlight_changes=False)
-        self.board_widget.winning_line = None  # Vymazání výherní čáry
-        self.board_widget.update()
-        self.human_player = None
-        self.ai_player = None
-        self.current_turn = None
-        self.game_over = False
-        self.winner = None
-        self.waiting_for_detection = False
-        self.ai_move_retry_count = 0
-        self.detection_wait_time = 0
 
-        # Reset move counter for tracking even/odd turns
-        self.move_counter = 0
-
-        # Reset player symbol for arm moves
-        self.arm_player_symbol = None
-
-        # Reset status tracking to prevent flickering
-        self._last_status = None
-        self._last_periodic_status = None
-        self._move_in_progress = False
-        self._status_lock = False
-        self._current_status = None
-        self._last_status_change = 0
-        self._status_update_count = 0
-        self._current_style = None
-
-        # Reset varování o mřížce
-        if hasattr(self, 'grid_warning_active'):
-            self.grid_warning_active = False
-
-        # Reset celebration flag to allow new celebrations
-        if hasattr(self, '_celebration_triggered'):
-            delattr(self, '_celebration_triggered')
-
-        # 🤖 UNIFIED ARM SYSTEM: Reset all arm move flags
-        self.arm_move_in_progress = False
-        self.arm_move_scheduled = False
-        self.waiting_for_detection = False
-        self.last_arm_move_time = 0
-
-        # Skrytí varovného panelu, pokud existuje
-        if hasattr(self, 'warning_panel') and self.warning_panel.isVisible():
-            self.warning_panel.hide()
-
-        # Aktualizujeme hlavní stavovou zprávu
-        self.update_status("ZAČNĚTE HRU")
-        self.reset_status_panel_style()
-
-        # Pro zpětnou kompatibilitu
-        if hasattr(self, 'status_label') and self.status_label:
-            self.status_label.setText("")
-            self.status_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px; color: #e0e0e0;")
-
-        # Update debug window if it exists and is visible
-        if hasattr(self, 'debug_window') and self.debug_window is not None and hasattr(self.debug_window, 'status_label'):
-            self.debug_window.status_label.setText("")
-
-        # OPRAVA: Nebudeme volat handle_detected_game_state po resetu
-        # protože to může znovu nastavit výherní čáru
-        # Kamera bude pokračovat v detekci automaticky
 
     def show_debug_window(self):
         """Show the debug window"""
@@ -3848,14 +3760,9 @@ class TicTacToeApp(QMainWindow):
                     self.move_to_neutral_position()
                 QApplication.processEvents()
 
-                # Pak parkujeme ruku
+                # Pak parkujeme ruku using unified interface
                 self.status_label.setText("")
-                if hasattr(self, 'arm_thread') and self.arm_thread and hasattr(self.arm_thread, 'connected') and self.arm_thread.connected:
-                    # Použití arm_thread pro parkování
-                    self.arm_thread.go_to_position(x=PARK_X, y=PARK_Y, wait=True)
-                elif hasattr(self, 'arm_controller') and self.arm_controller and hasattr(self.arm_controller, 'connected') and self.arm_controller.connected:
-                    # Záložní použití arm_controller
-                    self.arm_controller.park(x=PARK_X, y=PARK_Y)
+                self._unified_arm_command('park', x=PARK_X, y=PARK_Y, wait=True)
                 # Give it a moment to complete the parking
                 QApplication.processEvents()
         except Exception as e:
@@ -4033,16 +3940,17 @@ class TicTacToeApp(QMainWindow):
     def _park_arm_after_win(self):
         """Park the robotic arm after a win"""
         try:
-            if hasattr(self, 'arm_thread') and self.arm_thread and self.arm_thread.connected:
-                self.logger.info("🅿️ Parking arm after win celebration")
-                # Move to neutral position from calibration
-                if hasattr(self, 'calibration_data') and self.calibration_data:
-                    neutral_x = self.calibration_data.get('neutral_x', 200)
-                    neutral_y = self.calibration_data.get('neutral_y', 0)
-                    self.arm_thread.go_to_position(x=neutral_x, y=neutral_y, wait=False)
-                else:
-                    # Default neutral position
-                    self.arm_thread.go_to_position(x=200, y=0, wait=False)
+            self.logger.info("🅿️ Parking arm after win celebration")
+            # Move to neutral position from calibration using unified interface
+            if hasattr(self, 'calibration_data') and self.calibration_data:
+                neutral_x = self.calibration_data.get('neutral_x', 200)
+                neutral_y = self.calibration_data.get('neutral_y', 0)
+                self._unified_arm_command('go_to_position',
+                                        x=neutral_x, y=neutral_y, wait=False)
+            else:
+                # Default neutral position
+                self._unified_arm_command('go_to_position',
+                                        x=200, y=0, wait=False)
         except Exception as e:
             self.logger.error(f"Error parking arm after win: {e}")
 

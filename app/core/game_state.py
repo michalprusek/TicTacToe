@@ -144,6 +144,52 @@ class GameState:
         # The difference can be at most 1 (e.g., X, XOX, XOXOX)
         return 0 <= diff <= 1
 
+    def get_valid_moves(self) -> List[Tuple[int, int]]:
+        """Get all valid moves (empty cells) on the board."""
+        valid_moves = []
+        for r in range(3):
+            for c in range(3):
+                if self._board_state[r][c] == EMPTY:
+                    valid_moves.append((r, c))
+        return valid_moves
+
+    def check_winner(self) -> Optional[str]:
+        """Check if there is a winner on the board."""
+        # Check rows
+        for row in range(3):
+            if (self._board_state[row][0] == self._board_state[row][1] ==
+                self._board_state[row][2] != EMPTY):
+                return self._board_state[row][0]
+
+        # Check columns
+        for col in range(3):
+            if (self._board_state[0][col] == self._board_state[1][col] ==
+                self._board_state[2][col] != EMPTY):
+                return self._board_state[0][col]
+
+        # Check diagonals
+        if (self._board_state[0][0] == self._board_state[1][1] ==
+            self._board_state[2][2] != EMPTY):
+            return self._board_state[0][0]
+        if (self._board_state[0][2] == self._board_state[1][1] ==
+            self._board_state[2][0] != EMPTY):
+            return self._board_state[0][2]
+
+        return None
+
+    def is_board_full(self) -> bool:
+        """Check if the board is full."""
+        return all(self._board_state[r][c] != EMPTY for r in range(3) for c in range(3))
+
+    def board_to_string(self) -> str:
+        """Convert the board to a string representation."""
+        result = ""
+        for row in self._board_state:
+            for cell in row:
+                result += cell if cell != EMPTY else " "
+            result += "\n"
+        return result.strip()
+
     def _update_board_with_symbols(
             self,
             detected_symbols: List[Dict],
