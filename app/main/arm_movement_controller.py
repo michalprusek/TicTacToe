@@ -92,7 +92,10 @@ class ArmMovementController(QObject):
                 safe_z=self.safe_z,
                 speed=MAX_SPEED
             )
-            self.arm_controller.connected = self.arm_thread.connected if self.arm_thread else False
+            # CRITICAL FIX: Sync connection status from ArmThread to ArmController
+            if self.arm_thread and self.arm_thread.connected:
+                self.arm_controller.connected = True
+                self.arm_controller.swift = self.arm_thread.arm_controller.swift if hasattr(self.arm_thread.arm_controller, 'swift') else None
 
         except Exception as e:
             self.logger.error(f"Error initializing arm components: {e}")
@@ -100,12 +103,23 @@ class ArmMovementController(QObject):
 
     def is_arm_available(self):
         """Check if arm is available for use."""
+        # CRITICAL FIX: Sync connection status before checking
+        self._sync_connection_status()
         arm_thread_available = (
             hasattr(self, 'arm_thread') and
             self.arm_thread and
             self.arm_thread.connected
         )
         return arm_thread_available
+
+    def _sync_connection_status(self):
+        """Sync connection status between ArmThread and ArmController."""
+        if self.arm_thread and self.arm_controller:
+            if self.arm_thread.connected and not self.arm_controller.connected:
+                self.arm_controller.connected = True
+                # Sync the swift instance if available
+                if hasattr(self.arm_thread, 'arm_controller') and hasattr(self.arm_thread.arm_controller, 'swift'):
+                    self.arm_controller.swift = self.arm_thread.arm_controller.swift
 
     def move_to_neutral_position(self):
         """Move arm to neutral position."""
@@ -297,7 +311,9 @@ class ArmMovementController(QObject):
             raise
 
     def _get_cell_coordinates_from_yolo(self, row, col):
-        """Get cell coordinates from YOLO detection."""
+        """Get cell coordinates from YOLO detection with improved interpolation."""
+        self.logger.info(f"🔍 COORDINATE TRANSFORMATION DEBUG for cell ({row},{col}):")
+
         # Get current detection state
         if hasattr(self.main_window, 'camera_controller'):
             camera_controller = self.main_window.camera_controller
@@ -311,32 +327,97 @@ class ArmMovementController(QObject):
             if uv_center is None:
                 raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection")
 
+            self.logger.info(f"  📍 Step 1 - Grid position: ({row},{col})")
+            self.logger.info(f"  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+
+            # DEBUG: Log all cell centers for comparison
+            self.logger.info(f"  🗺️ ALL CELL CENTERS for reference:")
+            for debug_row in range(3):
+                for debug_col in range(3):
+                    debug_center = game_state_obj.get_cell_center_uv(debug_row, debug_col)
+                    if debug_center is not None:
+                        self.logger.info(f"    Cell ({debug_row},{debug_col}): UV=({debug_center[0]:.1f}, {debug_center[1]:.1f})")
+
             # Get calibration data
             calibration_data = camera_controller.get_calibration_data()
-            if calibration_data and "perspective_transform_matrix_xy_to_uv" in calibration_data:
-                xy_to_uv_matrix = calibration_data["perspective_transform_matrix_xy_to_uv"]
+            if calibration_data and "calibration_points_raw" in calibration_data:
+                cal_points = calibration_data["calibration_points_raw"]
+                
+                # Find closest calibration point and use it for better accuracy
+                min_dist = float('inf')
+                closest_point = None
+                for point in cal_points:
+                    cal_uv = point["target_uv"]
+                    dist = ((uv_center[0] - cal_uv[0])**2 + (uv_center[1] - cal_uv[1])**2)**0.5
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_point = point
 
-                if xy_to_uv_matrix:
-                    try:
-                        # Inverse matrix for UV->XY transformation
-                        xy_to_uv_matrix = np.array(xy_to_uv_matrix, dtype=np.float32)
-                        uv_to_xy_matrix = np.linalg.inv(xy_to_uv_matrix)
+                if closest_point and min_dist < 150:  # Use nearest neighbor if close enough
+                    cal_uv = closest_point["target_uv"]
+                    cal_xyz = closest_point["robot_xyz"]
+                    
+                    # Simple offset-based interpolation from closest point
+                    uv_offset_x = uv_center[0] - cal_uv[0]
+                    uv_offset_y = uv_center[1] - cal_uv[1]
+                    
+                    # Estimated scale factors (pixels to mm) based on calibration data
+                    scale_x = 0.18  # mm per pixel in X direction (adjusted)
+                    scale_y = 0.18  # mm per pixel in Y direction (adjusted)
+                    
+                    # Apply offset with scaling
+                    arm_x = cal_xyz[0] + (uv_offset_x * scale_x)
+                    arm_y = cal_xyz[1] + (uv_offset_y * scale_y)
+                    
+                    self.logger.info(f"  📍 Step 3 - Using nearest neighbor interpolation:")
+                    self.logger.info(f"    Closest cal point UV: ({cal_uv[0]}, {cal_uv[1]}) → XYZ: ({cal_xyz[0]:.1f}, {cal_xyz[1]:.1f})")
+                    self.logger.info(f"    UV offset: ({uv_offset_x:.1f}, {uv_offset_y:.1f})")
+                    self.logger.info(f"    Scale factors: ({scale_x:.3f}, {scale_y:.3f}) mm/pixel")
+                    self.logger.info(f"    Final coordinates: ({arm_x:.1f}, {arm_y:.1f})")
+                    
+                elif "perspective_transform_matrix_xy_to_uv" in calibration_data:
+                    # Fallback to matrix transformation
+                    xy_to_uv_matrix = calibration_data["perspective_transform_matrix_xy_to_uv"]
+                    
+                    if xy_to_uv_matrix:
+                        try:
+                            # Inverse matrix for UV->XY transformation
+                            xy_to_uv_matrix = np.array(xy_to_uv_matrix, dtype=np.float32)
+                            uv_to_xy_matrix = np.linalg.inv(xy_to_uv_matrix)
 
-                        # Homogeneous coordinates for transformation
-                        uv_point_homogeneous = np.array([uv_center[0], uv_center[1], 1.0], dtype=np.float32).reshape(3, 1)
-                        xy_transformed_homogeneous = np.dot(uv_to_xy_matrix, uv_point_homogeneous)
+                            # Homogeneous coordinates for transformation
+                            uv_point_homogeneous = np.array([uv_center[0], uv_center[1], 1.0], dtype=np.float32).reshape(3, 1)
+                            xy_transformed_homogeneous = np.dot(uv_to_xy_matrix, uv_point_homogeneous)
 
-                        if xy_transformed_homogeneous[2, 0] != 0:
-                            arm_x = xy_transformed_homogeneous[0, 0] / xy_transformed_homogeneous[2, 0]
-                            arm_y = xy_transformed_homogeneous[1, 0] / xy_transformed_homogeneous[2, 0]
-                            return arm_x, arm_y
-                        else:
-                            raise RuntimeError("Division by zero in UV->XY transformation")
+                            if xy_transformed_homogeneous[2, 0] != 0:
+                                arm_x = xy_transformed_homogeneous[0, 0] / xy_transformed_homogeneous[2, 0]
+                                arm_y = xy_transformed_homogeneous[1, 0] / xy_transformed_homogeneous[2, 0]
+                                self.logger.info(f"  📍 Step 3 - Matrix transformation: ({arm_x:.1f}, {arm_y:.1f})")
+                            else:
+                                raise RuntimeError("Division by zero in UV->XY transformation")
 
-                    except Exception as e:
-                        raise RuntimeError(f"Error in UV->XY transformation for ({row},{col}): {e}")
+                        except Exception as e:
+                            raise RuntimeError(f"Error in UV->XY transformation for ({row},{col}): {e}")
+                    else:
+                        raise RuntimeError("Missing transformation matrix in calibration data")
                 else:
-                    raise RuntimeError("Missing transformation matrix in calibration data")
+                    raise RuntimeError("No suitable calibration method available")
+
+                # DEBUG: Compare with calibration data
+                self.logger.info(f"  🔍 CALIBRATION COMPARISON:")
+                self.logger.info(f"    Current UV: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+                self.logger.info(f"    Transformed to: ({arm_x:.1f}, {arm_y:.1f})")
+
+                if closest_point:
+                    cal_uv = closest_point["target_uv"]
+                    cal_xyz = closest_point["robot_xyz"]
+                    self.logger.info(f"    Closest calibration point:")
+                    self.logger.info(f"      UV: ({cal_uv[0]}, {cal_uv[1]}) → XYZ: ({cal_xyz[0]:.1f}, {cal_xyz[1]:.1f}, {cal_xyz[2]:.1f})")
+                    self.logger.info(f"      Distance from current UV: {min_dist:.1f} pixels")
+
+                self.logger.info(f"  🎯 FINAL COORDINATES for ({row},{col}): X={arm_x:.1f}, Y={arm_y:.1f}")
+
+                return arm_x, arm_y
             else:
                 raise RuntimeError("Missing calibration data")
         else:

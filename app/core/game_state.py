@@ -814,6 +814,13 @@ class GameState:
                     "Computed %s cell centers for game logic from _grid_points.",
                     len(self._cell_centers_uv_transformed)
                 )
+
+                # DEBUG: Log all cell centers for coordinate debugging
+                self.logger.info("🗺️ CELL CENTERS DEBUG:")
+                for i, center in enumerate(self._cell_centers_uv_transformed):
+                    row, col = i // 3, i % 3
+                    self.logger.info(f"  Cell ({row},{col}): UV=({center[0]:.1f}, {center[1]:.1f})")
+
                 return True
             else:
                 self.logger.error(

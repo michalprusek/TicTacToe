@@ -27,7 +27,7 @@ class GameStateManager:
         self.game_state = GameState()
 
         # Class ID to player mapping
-        self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 2, 1: 1})  # O=2, X=1
+        self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 1, 1: 2})  # X=1, O=2
 
     def update_game_state(
         self,
