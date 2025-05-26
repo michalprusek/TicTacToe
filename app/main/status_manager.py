@@ -344,7 +344,9 @@ class StatusManager(QObject):
 
     def show_grid_incomplete_notification(self):
         """Show grid incomplete notification."""
+        # pylint: disable=import-outside-toplevel
         from PyQt5.QtCore import QPropertyAnimation
+        # pylint: disable=import-outside-toplevel
         from PyQt5.QtWidgets import QGraphicsOpacityEffect
 
         # Hide any existing notification first
