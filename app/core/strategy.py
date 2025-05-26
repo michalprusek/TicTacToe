@@ -37,7 +37,7 @@ class RandomStrategy(Strategy):
             self.logger.debug("RandomStrategy: No valid moves available.")
             return None
         move = random.choice(valid_moves)
-        self.logger.debug("RandomStrategy: Suggesting move %s", move)
+        self.logger.debug(f"RandomStrategy: Suggesting move {move}")
         return move
 
 
@@ -47,8 +47,7 @@ class MinimaxStrategy(Strategy):
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
         """Suggest the optimal move using minimax algorithm with alpha-beta pruning."""
         self.logger.debug(
-            "MinimaxStrategy: Suggesting move for board:\n%s",
-            game_state.board_to_string()
+            f"MinimaxStrategy: Suggesting move for board:\n{game_state.board_to_string()}"
         )
 
         board = game_state.board
@@ -67,7 +66,7 @@ class MinimaxStrategy(Strategy):
         best_move = self._get_best_move(board_copy, self.player)
 
         if best_move:
-            self.logger.debug("MinimaxStrategy: Selected optimal move: %s", best_move)
+            self.logger.debug(f"MinimaxStrategy: Selected optimal move: {best_move}")
         else:
             self.logger.warning("MinimaxStrategy: No valid move found")
 
@@ -229,7 +228,7 @@ class FixedStrategySelector(StrategySelector):
         if strategy_type.lower() not in ['minimax', 'random']:
             raise ValueError(f"Invalid fixed strategy type specified: {strategy_type}")
         self.logger = logging.getLogger(__name__)
-        self.logger.debug("Initialized FixedStrategySelector with type: %s", self.strategy_type)
+        self.logger.debug(f"Initialized FixedStrategySelector with type: {self.strategy_type}")
 
     def select_strategy(self) -> str:
         return self.strategy_type.lower()
@@ -249,7 +248,7 @@ class BernoulliStrategySelector(StrategySelector):
         else:
             self._p = max(0.0, min(1.0, p))
 
-        self.logger.debug("Initialized BernoulliStrategySelector with p=%.2", self._p)
+        self.logger.debug(f"Initialized BernoulliStrategySelector with p={self._p:.2f}")
 
     @property
     def p(self) -> float:
@@ -287,8 +286,7 @@ class BernoulliStrategySelector(StrategySelector):
         # If random_value >= p, select random (random play)
         selected_strategy = 'minimax' if random_value < self._p else 'random'
 
-        self.logger.info("🎯 STRATEGY SELECTION: p=%.2f, random=%.3f, selected='%s'",
-                        self._p, random_value, selected_strategy)
+        self.logger.info(f"🎯 STRATEGY SELECTION: p={self._p:.2f}, random={random_value:.3f}, selected='{selected_strategy}'")
 
         return selected_strategy
 
@@ -310,14 +308,14 @@ class BernoulliStrategySelector(StrategySelector):
 
         # Use the selected strategy to get the move
         if strategy == 'minimax':
-            self.logger.info("🧠 USING MINIMAX STRATEGY for player %s", player)
+            self.logger.info(f"🧠 USING MINIMAX STRATEGY for player {player}")
             move = game_logic.get_best_move(board, player)
-            self.logger.info("🎯 MINIMAX SELECTED MOVE: %s", move)
+            self.logger.info(f"🎯 MINIMAX SELECTED MOVE: {move}")
             return move
 
-        self.logger.info("🎲 USING RANDOM STRATEGY for player %s", player)
+        self.logger.info(f"🎲 USING RANDOM STRATEGY for player {player}")
         move = game_logic.get_random_move(board, player)
-        self.logger.info("🎯 RANDOM SELECTED MOVE: %s", move)
+        self.logger.info(f"🎯 RANDOM SELECTED MOVE: {move}")
         return move
 
 

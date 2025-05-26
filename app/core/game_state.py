@@ -125,7 +125,7 @@ class GameState:
                 symbol = self._board_state[r][c]
                 if symbol not in [PLAYER_X, PLAYER_O, EMPTY]:
                     self.logger.warning(
-                        "Invalid symbol '%s' found at (%d,%d)", symbol, r, c
+                        f"Invalid symbol '{symbol}' found at ({r},{c})"
                     )
                     return False
         return True
@@ -237,13 +237,12 @@ class GameState:
         # Debug: Log current board state
         board_str = str([row[:] for row in self._board_state])
         self.logger.info(
-            "Current board state before symbol update: %s", board_str
+            f"Current board state before symbol update: {board_str}"
         )
 
         # ✅ CRITICAL DEBUG: Log all YOLO detections for verification
         # (fallback method)
-        self.logger.info("🔍 FALLBACK METHOD - YOLO DETECTED %d SYMBOLS",
-                          len(detected_symbols))
+        self.logger.info(f"🔍 FALLBACK METHOD - YOLO DETECTED {len(detected_symbols)} SYMBOLS")
 
         # ✅ CRITICAL FIX: Filter out low-confidence detections
         # (fallback method)
@@ -258,24 +257,20 @@ class GameState:
             player = symbol_info.get('player', 'Unknown')
             confidence = symbol_info.get('confidence', 0.0)
 
-            self.logger.info("  Symbol %d: %s at %s (confidence: %.3f)",
-                              i+1, player, center, confidence)
+            self.logger.info(f"  Symbol {i+1}: {player} at {center} (confidence: {confidence:.3f})")
 
             # Only accept high-confidence detections
             if confidence >= min_confidence_threshold:
                 filtered_symbols.append(symbol_info)
-                self.logger.info("    ✅ ACCEPTED (confidence >= %.3f)",
-                                  min_confidence_threshold)
+                self.logger.info(f"    ✅ ACCEPTED (confidence >= {min_confidence_threshold:.3f})")
             else:
                 self.logger.warning(
-                    "    ❌ REJECTED (confidence %.3f < %.3f)",
-                    confidence, min_confidence_threshold)
+                    f"    ❌ REJECTED (confidence {confidence:.3f} < {min_confidence_threshold:.3f})")
 
         # Update detected_symbols to only include high-confidence detections
         detected_symbols = filtered_symbols
         self.logger.info(
-            "🔍 FALLBACK AFTER FILTERING: %d HIGH-CONFIDENCE SYMBOLS",
-            len(detected_symbols)
+            f"🔍 FALLBACK AFTER FILTERING: {len(detected_symbols)} HIGH-CONFIDENCE SYMBOLS"
         )
 
         for symbol_info in detected_symbols: # Use unsorted for now
@@ -284,7 +279,7 @@ class GameState:
 
             if symbol_center_uv is None or player is None:
                 self.logger.warning(
-                    "Skipping symbol due to missing data: %s", symbol_info
+                    f"Skipping symbol due to missing data: {symbol_info}"
                 )
                 continue
 
@@ -301,12 +296,11 @@ class GameState:
                 self._board_state[row][col] = player
                 changed_cells.append((row, col))
                 self.logger.info(
-                    "Placed '%s' at (%d,%d) based on symbol at %s",
-                    player, row, col, symbol_center_uv)
+                    f"Placed '{player}' at ({row},{col}) based on symbol at {symbol_center_uv}")
             else:
                 self.logger.info(
-                    "Cell (%d,%d) already occupied by %s. Symbol %s not "
-                    "placed.", row, col, self._board_state[row][col], player
+                    f"Cell ({row},{col}) already occupied by {self._board_state[row][col]}. "
+                    f"Symbol {player} not placed."
                 )
             # else:
             #     self.logger.debug(
@@ -315,7 +309,7 @@ class GameState:
             #     )
 
         # if not changed_cells:
-        #     self.logger.debug("No cells were changed in this update cycle.)
+        #     self.logger.debug("No cells were changed in this update cycle.")
 
         return changed_cells
 
@@ -363,7 +357,7 @@ class GameState:
                 # Already in expected format
                 converted_symbols.append(symbol)
             else:
-                self.logger.warning("Symbol has unexpected format: %s", symbol)
+                self.logger.warning(f"Symbol has unexpected format: {symbol}")
 
         return converted_symbols
 
@@ -421,13 +415,12 @@ class GameState:
             # Debug: Log current board state
             board_str = str([row[:] for row in self._board_state])
             self.logger.info(
-                "Current board state before robust symbol update: %s",
-                board_str
+                f"Current board state before robust symbol update: {board_str}"
             )
 
             # ✅ CRITICAL DEBUG: Log all YOLO detections for verification
             self.logger.info(
-                "🔍 YOLO DETECTED %d SYMBOLS", len(detected_symbols)
+                f"🔍 YOLO DETECTED {len(detected_symbols)} SYMBOLS"
             )
 
             # ✅ CRITICAL FIX: Filter out low-confidence detections
@@ -442,24 +435,20 @@ class GameState:
                 player = symbol_info.get('player', 'Unknown')
                 confidence = symbol_info.get('confidence', 0.0)
 
-                self.logger.info("  Symbol %d: %s at %s (confidence: %.3f)",
-                              i+1, player, center, confidence)
+                self.logger.info(f"  Symbol {i+1}: {player} at {center} (confidence: {confidence:.3f})")
 
                 # Only accept high-confidence detections
                 if confidence >= min_confidence_threshold:
                     filtered_symbols.append(symbol_info)
-                    self.logger.info("    ✅ ACCEPTED (confidence >= %.3f)",
-                                  min_confidence_threshold)
+                    self.logger.info(f"    ✅ ACCEPTED (confidence >= {min_confidence_threshold:.3f})")
                 else:
                     self.logger.warning(
-                        "    ❌ REJECTED (confidence %.3f < %.3f)",
-                        confidence, min_confidence_threshold)
+                        f"    ❌ REJECTED (confidence {confidence:.3f} < {min_confidence_threshold:.3f})")
 
             # Update detected_symbols to only include high-confidence
             # detections
             detected_symbols = filtered_symbols
-            self.logger.info("🔍 AFTER FILTERING: %d HIGH-CONFIDENCE SYMBOLS",
-                          len(detected_symbols))
+            self.logger.info(f"🔍 AFTER FILTERING: {len(detected_symbols)} HIGH-CONFIDENCE SYMBOLS")
 
             for symbol_info in detected_symbols:
                 symbol_center_uv = symbol_info.get('center_uv')
@@ -467,7 +456,7 @@ class GameState:
 
                 if symbol_center_uv is None or player is None:
                     self.logger.warning(
-                        "Skipping symbol due to missing data: %s", symbol_info
+                        f"Skipping symbol due to missing data: {symbol_info}"
                     )
                     continue
 
@@ -510,10 +499,9 @@ class GameState:
                 else:
                     # Symbol je mimo herní oblast (na okraji mřížky)
                     self.logger.warning(
-                        "ROBUST: Symbol at %s mapped to grid "
-                        "(%d,%d) which is outside game area. "
-                        "Normalized coords: (%.1f,%.1f)",
-                        symbol_center_uv, grid_row, grid_col, nx, ny
+                        f"ROBUST: Symbol at {symbol_center_uv} mapped to grid "
+                        f"({grid_row},{grid_col}) which is outside game area. "
+                        f"Normalized coords: ({nx:.1f},{ny:.1f})"
                     )
                     continue
 
@@ -524,29 +512,24 @@ class GameState:
                         self._board_state[final_row][final_col] = player
                         changed_cells.append((final_row, final_col))
                         self.logger.info(
-                            "ROBUST: Placed '%s' at (%d,%d) based on symbol "
-                            "at %s -> normalized (%.1f,%.1f) -> grid (%d,%d)",
-                            player, final_row, final_col, symbol_center_uv,
-                            nx, ny, grid_row, grid_col
+                            f"ROBUST: Placed '{player}' at ({final_row},{final_col}) based on symbol "
+                            f"at {symbol_center_uv} -> normalized ({nx:.1f},{ny:.1f}) -> grid ({grid_row},{grid_col})"
                         )
                     else:
                         self.logger.info(
-                            "ROBUST: Cell (%d,%d) already occupied by %s. "
-                            "Symbol %s not placed.",
-                            final_row, final_col,
-                            self._board_state[final_row][final_col], player
+                            f"ROBUST: Cell ({final_row},{final_col}) already occupied by {self._board_state[final_row][final_col]}. "
+                            f"Symbol {player} not placed."
                         )
                 else:
                     self.logger.warning(
-                        "ROBUST: Symbol at %s mapped to invalid cell (%d,%d). "
-                        "Normalized coords: (%.1f,%.1f)",
-                        symbol_center_uv, final_row, final_col, nx, ny
+                        f"ROBUST: Symbol at {symbol_center_uv} mapped to invalid cell ({final_row},{final_col}). "
+                        f"Normalized coords: ({nx:.1f},{ny:.1f})"
                     )
 
             return changed_cells
 
         except Exception as e:
-            self.logger.error("Error in robust symbol mapping: %s", e)
+            self.logger.error(f"Error in robust symbol mapping: {e}")
             return []
 
     def is_game_over(self) -> bool:
@@ -575,19 +558,17 @@ class GameState:
            self.error_message.startswith("FATAL:") and \
            not message.startswith("FATAL:"):
             self.logger.debug(
-                "Skipping non-fatal error '%s' as fatal error '%s' is active.",
-                message, self.error_message
+                f"Skipping non-fatal error '{message}' as fatal error '{self.error_message}' is active."
             )
             return
         self.error_message = message
-        self.logger.error("Error set: %s", self.error_message)
+        self.logger.error(f"Error set: {self.error_message}")
 
     def clear_error_message(self) -> None:
         """Clear the current error message."""
         if self.error_message:
             self.logger.info(
-                "Clearing error: %s",
-                self.error_message
+                f"Clearing error: {self.error_message}"
             )
             self.error_message = None
 
@@ -664,8 +645,7 @@ class GameState:
             self._cell_centers_uv_transformed = None
             self._cell_polygons_uv_transformed = None
             self.logger.warning(
-                "Grid not fully detected (%d points). Game paused.",
-                len(ordered_kpts_uv) if ordered_kpts_uv is not None else 0
+                f"Grid not fully detected ({len(ordered_kpts_uv) if ordered_kpts_uv is not None else 0} points). Game paused."
             )
             return # Stop further processing for this frame
 
@@ -743,8 +723,7 @@ class GameState:
                     # Update last move time
                     self._last_move_timestamp = timestamp
                     self.logger.info(
-                        "Move made. Cooldown started. Changed cells: %s",
-                        changed_cells
+                        f"Move made. Cooldown started. Changed cells: {changed_cells}"
                     )
                 else:
                     self.logger.debug(
@@ -752,9 +731,7 @@ class GameState:
                     )
             else:
                 self.logger.debug(
-                    "Move cooldown active. %.2fs / %.2fs",
-                    timestamp - self._last_move_timestamp,
-                    self._move_cooldown_seconds
+                    f"Move cooldown active. {timestamp - self._last_move_timestamp:.2f}s / {self._move_cooldown_seconds:.2f}s"
                 )
         else:
             self.logger.warning(
@@ -806,8 +783,7 @@ class GameState:
                 self.winner = self._board_state[r1][c1]
                 self.winning_line_indices = line_indices
                 self.logger.info(
-                    "Winner: %s, Line: %s", self.winner,
-                    self.winning_line_indices
+                    f"Winner: {self.winner}, Line: {self.winning_line_indices}"
                 )
                 return
 
@@ -846,8 +822,7 @@ class GameState:
                 return self._cell_centers_uv_transformed[idx]
             else:
                 self.logger.warning(
-                    "Invalid cell index %d for get_cell_center_uv.",
-                    idx
+                    f"Invalid cell index {idx} for get_cell_center_uv."
                 )
                 return None
         else:
@@ -868,9 +843,7 @@ class GameState:
         if (self._grid_points is None or
                 len(self._grid_points) != GRID_POINTS_COUNT):
             self.logger.debug(
-                "Not enough grid points for transformation. Points: %s",
-                (len(self._grid_points) if self._grid_points is not None
-                 else 'None')
+                f"Not enough grid points for transformation. Points: {len(self._grid_points) if self._grid_points is not None else 'None'}"
             )
             return False
 
@@ -899,10 +872,8 @@ class GameState:
                             0 <= p_bl_idx < GRID_POINTS_COUNT and
                             0 <= p_br_idx < GRID_POINTS_COUNT):
                         self.logger.error(
-                            "Invalid point indices for cell (%d,%d): "
-                            "TL=%d, TR=%d, BL=%d, BR=%d",
-                            r_cell, c_cell, p_tl_idx, p_tr_idx,
-                            p_bl_idx, p_br_idx
+                            f"Invalid point indices for cell ({r_cell},{c_cell}): "
+                            f"TL={p_tl_idx}, TR={p_tr_idx}, BL={p_bl_idx}, BR={p_br_idx}"
                         )
                         raise ValueError(
                             "Invalid grid point indices for cell center "
@@ -922,12 +893,9 @@ class GameState:
                     cell_centers.append([center_x, center_y])
 
                     self.logger.debug(
-                        "  Cell (%d,%d): TL=%d(%.1f,%.1f) TR=%d(%.1f,%.1f) "
-                        "BL=%d(%.1f,%.1f) BR=%d(%.1f,%.1f) → center="
-                        "(%.1f, %.1f)", r_cell, c_cell, p_tl_idx, p_tl[0],
-                        p_tl[1], p_tr_idx, p_tr[0], p_tr[1], p_bl_idx,
-                        p_bl[0], p_bl[1], p_br_idx, p_br[0], p_br[1],
-                        center_x, center_y
+                        f"  Cell ({r_cell},{c_cell}): TL={p_tl_idx}({p_tl[0]:.1f},{p_tl[1]:.1f}) TR={p_tr_idx}({p_tr[0]:.1f},{p_tr[1]:.1f}) "
+                        f"BL={p_bl_idx}({p_bl[0]:.1f},{p_bl[1]:.1f}) BR={p_br_idx}({p_br[0]:.1f},{p_br[1]:.1f}) → center="
+                        f"({center_x:.1f}, {center_y:.1f})"
                     )
 
             if len(cell_centers) == 9:
@@ -935,8 +903,7 @@ class GameState:
                     cell_centers, dtype=np.float32
                 )
                 self.logger.info(
-                    "Computed %d cell centers for game logic from "
-                    "_grid_points.", len(self._cell_centers_uv_transformed)
+                    f"Computed {len(self._cell_centers_uv_transformed)} cell centers for game logic from _grid_points."
                 )
 
                 # DEBUG: Log all cell centers for coordinate debugging
@@ -944,31 +911,27 @@ class GameState:
                 for i, center in enumerate(self._cell_centers_uv_transformed):
                     row, col = i // 3, i % 3
                     self.logger.info(
-                        "Cell (%d,%d): UV=(%.1f, %.1f)",
-                        row, col, center[0], center[1]
+                        f"Cell ({row},{col}): UV=({center[0]:.1f}, {center[1]:.1f})"
                     )
 
                 return True
             else:
                 self.logger.error(
-                    "Failed to compute all 9 cell centers for logic. Got %d.",
-                    len(cell_centers)
+                    f"Failed to compute all 9 cell centers for logic. Got {len(cell_centers)}."
                 )
                 return False
         except ValueError as ve:
             self.logger.error(
-                "ValueError during cell center calculation: %s", ve
+                f"ValueError during cell center calculation: {ve}"
             )
             return False
         except IndexError as e:
             self.logger.error(
-                "IndexError computing logic cell centers from _grid_points: "
-                "%s", e, exc_info=True
+                f"IndexError computing logic cell centers from _grid_points: {e}", exc_info=True
             )
             return False
         except Exception as e:
             self.logger.error(
-                "Error computing logic cell centers from _grid_points: "
-                "%s - %s", type(e).__name__, e, exc_info=True
+                f"Error computing logic cell centers from _grid_points: {type(e).__name__} - {e}", exc_info=True
             )
             return False

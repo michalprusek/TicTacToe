@@ -45,7 +45,7 @@ class DetectionThread(threading.Thread):
                 device = 'cpu'
 
         self.device = device
-        self.logger.info("Detection thread using device: %s", self.device)
+        self.logger.info(f"Detection thread using device: {self.device}")
 
         # Thread control
         self.running = False
@@ -118,7 +118,7 @@ class DetectionThread(threading.Thread):
             )
             self.logger.info("Detector initialized successfully")
         except Exception as e:
-            self.logger.error("Failed to initialize detector: %s", e)
+            self.logger.error(f"Failed to initialize detector: {e}")
             self.running = False
             return
 

@@ -270,14 +270,14 @@ class ArmThread(threading.Thread):
                     command.mark_completed(result is not None, result)
 
                 else:
-                    self.logger.warning("Unknown command type: %s", command.command_type)
+                    self.logger.warning(f"Unknown command type: {command.command_type}")
                     command.mark_completed(False)
 
                 # Mark task as done in the queue
                 self.command_queue.task_done()
 
             except Exception as e:
-                self.logger.error("Error processing arm command: %s", e)
+                self.logger.error(f"Error processing arm command: {e}")
                 if 'command' in locals():
                     command.mark_completed(False)
                     self.command_queue.task_done()
@@ -300,7 +300,7 @@ class ArmThread(threading.Thread):
                         break
                 self.logger.info("🛑 Cleared arm command queue and stopped current moves")
             except Exception as e:
-                self.logger.error("Error stopping current arm move: %s", e)
+                self.logger.error(f"Error stopping current arm move: {e}")
 
     def stop(self):
         """Stop the arm thread."""
