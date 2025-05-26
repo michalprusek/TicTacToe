@@ -2,6 +2,34 @@
 Pytest tests for style manager module.
 """
 import pytest
+import sys
+from unittest.mock import Mock, MagicMock, patch
+
+# Ensure clean import state
+modules_to_mock = [
+    'PyQt5', 'PyQt5.QtWidgets', 'PyQt5.QtCore', 'PyQt5.QtGui', 
+    'app.main.shared_styles'
+]
+for module in modules_to_mock:
+    if module in sys.modules:
+        del sys.modules[module]
+
+# Mock PyQt5 modules globally before any imports
+sys.modules['PyQt5'] = MagicMock()
+sys.modules['PyQt5.QtWidgets'] = MagicMock()
+sys.modules['PyQt5.QtCore'] = MagicMock()
+sys.modules['PyQt5.QtGui'] = MagicMock()
+
+# Mock shared_styles to return strings
+mock_shared_styles = MagicMock()
+mock_shared_styles.create_button_style.return_value = "button { color: blue; }"
+sys.modules['app.main.shared_styles'] = mock_shared_styles
+
+# Force reimport
+if 'app.main.style_manager' in sys.modules:
+    del sys.modules['app.main.style_manager']
+
+from app.main.style_manager import StyleManager
 
 
 class TestStyleManager:
@@ -9,15 +37,10 @@ class TestStyleManager:
     
     def test_style_manager_import(self):
         """Test style manager can be imported."""
-        try:
-            import app.main.style_manager
-            assert app.main.style_manager is not None
-        except ImportError:
-            pytest.skip("Style manager not available")
+        assert StyleManager is not None
     
     def test_style_functions(self):
         """Test style functions exist."""
-        from app.main.style_manager import StyleManager
         assert hasattr(StyleManager, 'style_button')
         assert hasattr(StyleManager, 'style_status_label')
         assert callable(StyleManager.style_button)
@@ -25,7 +48,6 @@ class TestStyleManager:
     
     def test_theme_functions(self):
         """Test theme functions exist."""
-        from app.main.style_manager import StyleManager
         assert hasattr(StyleManager, 'create_status_panel_style')
         assert callable(StyleManager.create_status_panel_style)
         # Test that we can get style strings
@@ -50,9 +72,6 @@ class TestStyleManager:
 
     def test_style_button_with_mock_button(self):
         """Test style_button method with mock QPushButton."""
-        from unittest.mock import Mock
-        from app.main.style_manager import StyleManager
-        
         mock_button = Mock()
         
         # Test default style
@@ -70,9 +89,6 @@ class TestStyleManager:
 
     def test_style_status_label_with_mock_label(self):
         """Test style_status_label method with mock QLabel."""
-        from unittest.mock import Mock
-        from app.main.style_manager import StyleManager
-        
         mock_label = Mock()
         
         # Test all status types
@@ -87,8 +103,6 @@ class TestStyleManager:
 
     def test_status_styles_constants(self):
         """Test STATUS_STYLES constants are properly defined."""
-        from app.main.style_manager import StyleManager
-        
         required_styles = ["default", "info", "warning", "error", "success"]
         for style_name in required_styles:
             assert style_name in StyleManager.STATUS_STYLES

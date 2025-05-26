@@ -13,13 +13,13 @@ The computer vision pipeline uses a two-stage YOLO-based approach to detect the 
 
 ### Grid Detection Model (`weights/best_pose.pt`)
 - **Architecture**: YOLOv8 Pose Estimation
-- **Input**: 640×640 RGB images
+- **Input**: 640×480 RGB images
 - **Output**: 16 keypoints representing grid intersection points
 - **Training**: Custom dataset with annotated grid corners and intersections
 
 ### Symbol Detection Model (`weights/best_detection.pt`)
 - **Architecture**: YOLOv8 Object Detection
-- **Input**: 640×640 RGB images  
+- **Input**: 640×480 RGB images  
 - **Output**: Bounding boxes and classes for X and O symbols
 - **Classes**: 
   - 0: X symbol
@@ -32,7 +32,7 @@ The computer vision pipeline uses a two-stage YOLO-based approach to detect the 
 ```python
 def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     # 1. Resize to model input size
-    resized = cv2.resize(frame, (640, 640))
+    resized = cv2.resize(frame, (640, 480))
     
     # 2. Normalize pixel values
     normalized = resized / 255.0

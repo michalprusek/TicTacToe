@@ -1,7 +1,6 @@
 """
 Strategy module for TicTacToe game AI.
 """
-# pylint: disable=too-many-arguments,too-few-public-methods
 import logging
 import math
 import random
@@ -9,9 +8,13 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, Dict, Type
 
 from .game_state import GameState, PLAYER_X, PLAYER_O, EMPTY
+from .minimax_algorithm import (
+    get_available_moves, minimax_maximize, minimax_minimize,
+    get_optimal_move_with_heuristics
+)
 
 
-class Strategy(ABC):
+class Strategy(ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class for Tic Tac Toe strategies."""
 
     def __init__(self, player: str):
@@ -28,7 +31,7 @@ class Strategy(ABC):
         raise NotImplementedError
 
 
-class RandomStrategy(Strategy):
+class RandomStrategy(Strategy):  # pylint: disable=too-few-public-methods
     """A strategy that suggests a random valid move."""
 
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
@@ -42,7 +45,7 @@ class RandomStrategy(Strategy):
         return move
 
 
-class MinimaxStrategy(Strategy):
+class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
     """A strategy that uses the minimax algorithm with alpha-beta pruning for optimal play."""
 
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
@@ -78,28 +81,17 @@ class MinimaxStrategy(Strategy):
         if self._is_board_full(board):
             return None
 
-        available_moves = self._get_available_moves(board)
-        if not available_moves:
-            return None
-
-        # Handle case where only one move is left (optimization)
-        if len(available_moves) == 1:
-            return available_moves[0]
-
-        # If it's the first move, play center for speed
-        if len(available_moves) == 9:
-            return (1, 1)  # Center
-
-        # If it's the second move and center is available, take it
-        if len(available_moves) == 8 and board[1][1] == EMPTY:
-            return (1, 1)
+        # Try heuristics first
+        heuristic_move = get_optimal_move_with_heuristics(board)
+        if heuristic_move:
+            return heuristic_move
 
         # Call minimax to find the best move
-        _, best_move = self._minimax(board, player, 0, -math.inf, math.inf, player)
+        _, best_move = self._minimax(board, player, 0, alpha=-math.inf, beta=math.inf, ai_player=player)
         return best_move
 
-    def _minimax(self, board: List[List[str]], current_player: str, depth: int,
-                 alpha: float, beta: float,
+    def _minimax(self, board: List[List[str]], current_player: str, depth: int,  # pylint: disable=too-many-arguments
+                 *, alpha: float, beta: float,
                  ai_player: str) -> Tuple[float, Optional[Tuple[int, int]]]:
         """
         Minimax algorithm with alpha-beta pruning.
@@ -120,15 +112,21 @@ class MinimaxStrategy(Strategy):
         if terminal_score is not None:
             return terminal_score, None
 
-        available_moves = self._get_available_moves(board)
+        available_moves = get_available_moves(board)
         is_maximizing = current_player == ai_player
 
+        minimax_args = {
+            'board': board, 'available_moves': available_moves, 'depth': depth,
+            'alpha': alpha, 'beta': beta, 'ai_player': ai_player,
+            'minimax_func': self._minimax
+        }
+
         if is_maximizing:
-            return self._maximize_score(board, available_moves, depth, alpha, beta, ai_player)
-        return self._minimize_score(board, available_moves, depth, alpha, beta, ai_player)
+            return minimax_maximize(**minimax_args)
+        return minimax_minimize(**minimax_args)
 
     def _evaluate_terminal_state(self, board: List[List[str]], depth: int,
-                                ai_player: str) -> Optional[float]:
+                                 ai_player: str) -> Optional[float]:
         """Evaluate terminal game states."""
         winner = self._check_winner(board)
         human_player = self._get_other_player(ai_player)
@@ -141,62 +139,6 @@ class MinimaxStrategy(Strategy):
             return 0  # Draw
         return None  # Not a terminal state
 
-    def _maximize_score(self, board: List[List[str]], available_moves: List[Tuple[int, int]],
-                       depth: int, alpha: float, beta: float, ai_player: str
-                       ) -> Tuple[float, Optional[Tuple[int, int]]]:
-        """Handle maximizing player logic."""
-        best_score = -math.inf
-        best_move = None
-        human_player = self._get_other_player(ai_player)
-
-        for move in available_moves:
-            r, c = move
-            board[r][c] = ai_player
-            score, _ = self._minimax(board, human_player, depth + 1, alpha, beta, ai_player)
-            board[r][c] = EMPTY  # Undo move
-
-            if score > best_score:
-                best_score = score
-                best_move = move
-
-            alpha = max(alpha, score)
-            if beta <= alpha:
-                break  # Beta cut-off
-
-        return best_score, best_move
-
-    def _minimize_score(self, board: List[List[str]], available_moves: List[Tuple[int, int]],
-                       depth: int, alpha: float, beta: float, ai_player: str
-                       ) -> Tuple[float, Optional[Tuple[int, int]]]:
-        """Handle minimizing player logic."""
-        best_score = math.inf
-        best_move = None
-        human_player = self._get_other_player(ai_player)
-
-        for move in available_moves:
-            r, c = move
-            board[r][c] = human_player
-            score, _ = self._minimax(board, ai_player, depth + 1, alpha, beta, ai_player)
-            board[r][c] = EMPTY  # Undo move
-
-            if score < best_score:
-                best_score = score
-                best_move = move
-
-            beta = min(beta, score)
-            if beta <= alpha:
-                break  # Alpha cut-off
-
-        return best_score, best_move
-
-    def _get_available_moves(self, board: List[List[str]]) -> List[Tuple[int, int]]:
-        """Get all available moves on the board."""
-        moves = []
-        for r in range(3):
-            for c in range(3):
-                if board[r][c] == EMPTY:
-                    moves.append((r, c))
-        return moves
 
     def _is_board_full(self, board: List[List[str]]) -> bool:
         """Check if the board is full."""
@@ -231,7 +173,7 @@ class MinimaxStrategy(Strategy):
         return PLAYER_O if player == PLAYER_X else PLAYER_X
 
 
-class StrategySelector(ABC):
+class StrategySelector(ABC):  # pylint: disable=too-few-public-methods
     """Abstract base class for selecting a strategy."""
 
     @abstractmethod
@@ -240,7 +182,7 @@ class StrategySelector(ABC):
         raise NotImplementedError
 
 
-class FixedStrategySelector(StrategySelector):
+class FixedStrategySelector(StrategySelector):  # pylint: disable=too-few-public-methods
     """Selects a fixed strategy."""
 
     def __init__(self, strategy_type: str = 'minimax'):
@@ -348,14 +290,14 @@ STRATEGY_MAP: Dict[str, Type[Strategy]] = {
 
 def create_strategy(strategy_type: str, player: str) -> Strategy:
     """Create a strategy instance based on strategy type and player.
-    
+
     Args:
         strategy_type: Type of strategy ('random' or 'minimax')
         player: Player symbol ('X' or 'O')
-        
+
     Returns:
         Strategy instance
-        
+
     Raises:
         ValueError: If strategy_type is unknown
     """

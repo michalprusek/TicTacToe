@@ -2,6 +2,7 @@
 GUI Factory for standardized widget and layout creation.
 Consolidates repeated GUI creation patterns from multiple files.
 """
+# pylint: disable=no-name-in-module
 from typing import Optional, List, Callable
 
 from PyQt5.QtWidgets import (

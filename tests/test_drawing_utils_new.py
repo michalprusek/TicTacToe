@@ -174,16 +174,12 @@ class TestDrawingUtils:
         draw_text_lines(
             self.test_frame, 
             ["Test line"],
-            start_x=50, start_y=100, y_offset=30,
-            font_face=cv2.FONT_HERSHEY_DUPLEX,
-            font_scale=1.0,
-            color=(0, 255, 0),
-            thickness=2
+            start_x=50, start_y=100, y_offset=30
         )
         
         mock_puttext.assert_called_once_with(
             self.test_frame, "Test line", (50, 100),
-            cv2.FONT_HERSHEY_DUPLEX, 1.0, (0, 255, 0), 2
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1
         )
 
     def test_frame_integrity(self):

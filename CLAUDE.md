@@ -32,10 +32,6 @@ pip install -r requirements.txt
 Lint code:
 ```bash
 pylint app/
-# Or use the wrapper script:
-./pylint.sh
-# For score only:
-./pylint.sh --score=y
 ```
 
 Run tests:
@@ -78,14 +74,6 @@ Run tests with verbose output and coverage:
 pytest tests/ -v --cov=app --cov-report=term-missing
 ```
 
-Debug scripts for computer vision development:
-```bash
-python debug_coordinates.py          # Test coordinate transformation
-python debug_grid_mapping.py         # Debug grid point detection
-python debug_resolution_mismatch.py  # Fix camera resolution issues
-python debug_transformation_log.py   # Log homography calculations
-python test_resolution_scaling.py    # Test camera scaling
-```
 
 Utility scripts:
 ```bash

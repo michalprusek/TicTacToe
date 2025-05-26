@@ -1,6 +1,7 @@
 """
 Game state manager module for the TicTacToe application.
 """
+# pylint: disable=too-many-arguments,protected-access,no-member,unused-import
 import logging
 from typing import List, Dict, Optional, Tuple, Any
 

@@ -6,9 +6,10 @@ Comprehensive guide to testing the Robotic TicTacToe application.
 
 ### Framework: Pure pytest
 - **No unittest dependencies** - all tests use pure pytest syntax
-- **Hardware mocking** - tests run without physical devices
+- **Hardware mocking** - tests run without physical devices  
 - **Signal testing** - PyQt5 signals properly tested
 - **80%+ coverage** achieved for critical modules
+- **DŮLEŽITÉ**: Používej pouze pytest! Nepoužívej unittest!
 
 ## Test Structure
 

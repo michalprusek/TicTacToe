@@ -1,12 +1,12 @@
 """
 Robotic arm controller for TicTacToe game.
 """
-import time
-import traceback
+# pylint: disable=wrong-import-position,ungrouped-imports,too-many-instance-attributes
+# pylint: disable=logging-format-truncated,too-many-arguments,too-many-locals,invalid-name
 import logging
 import math
-# import sys
-# import os
+import time
+import traceback
 from typing import Optional, Tuple, Dict, Any
 
 # Import uArm - required for operation
@@ -17,9 +17,12 @@ if uarm_sdk_path:
 else:
     print("uArm SDK path not found")
 
-from uarm.wrapper import SwiftAPI
+try:
+    from uarm.wrapper import SwiftAPI  # pylint: disable=import-error
+except ImportError:
+    print("uArm library not available")
+    SwiftAPI = None
 
-# Import shared constants
 from app.main.constants import (
     DEFAULT_SPEED, MAX_SPEED_FACTOR, DEFAULT_SAFE_Z, DEFAULT_DRAW_Z
 )

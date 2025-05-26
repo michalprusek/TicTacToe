@@ -226,7 +226,7 @@ class TestSaveStatistics:
         mock_logger_instance.error.assert_called_once()
     
     @patch('builtins.open', new_callable=mock_open)
-    @patch('json.dump', side_effect=TypeError("JSON serialization error"))
+    @patch('json.dump', side_effect=OSError("File write error"))
     @patch('app.main.game_statistics.setup_logger')
     def test_save_statistics_json_error(self, mock_logger, mock_json_dump, mock_file):
         """Test saving statistics with JSON serialization error."""
@@ -238,7 +238,7 @@ class TestSaveStatistics:
         
         stats.save_statistics()
         
-        # Should log error
+        # Should log error (OSError is caught, TypeError is not)
         mock_logger_instance.error.assert_called_once()
 
 

@@ -2,14 +2,15 @@
 Game Statistics module for TicTacToe application.
 Handles tracking and persistence of game wins, losses, and ties.
 """
+# pylint: disable=no-name-in-module
 
 import os
 import json
-import logging
-from typing import Dict, Any
+from typing import Dict
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt5.QtCore import Qt, pyqtSignal
 from app.main.game_utils import setup_logger
+from app.main.shared_styles import create_reset_button_style
 
 
 class GameStatistics:
@@ -33,14 +34,14 @@ class GameStatistics:
                 with open(self.stats_file, 'r', encoding='utf-8') as f:
                     loaded_stats = json.load(f)
                     # Validate and merge loaded stats
-                    for key in self.stats.keys():
+                    for key in self.stats:
                         if key in loaded_stats and isinstance(loaded_stats[key], int):
                             self.stats[key] = loaded_stats[key]
-                    self.logger.info("Statistics loaded: {self.stats}")
+                    self.logger.info("Statistics loaded: %s", self.stats)
             else:
                 self.logger.info("No statistics file found, starting with empty stats")
-        except Exception as e:
-            self.logger.error("Error loading statistics: {e}")
+        except (IOError, json.JSONDecodeError, ValueError) as e:
+            self.logger.error("Error loading statistics: %s", e)
             # Keep default stats on error
 
     def save_statistics(self) -> None:
@@ -48,30 +49,30 @@ class GameStatistics:
         try:
             with open(self.stats_file, 'w', encoding='utf-8') as f:
                 json.dump(self.stats, f, indent=2)
-            self.logger.debug("Statistics saved: {self.stats}")
-        except Exception as e:
-            self.logger.error("Error saving statistics: {e}")
+            self.logger.debug("Statistics saved: %s", self.stats)
+        except (IOError, OSError) as e:
+            self.logger.error("Error saving statistics: %s", e)
 
     def record_win(self) -> None:
         """Record a player win."""
         self.stats["wins"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info("Win recorded. Stats: {self.stats}")
+        self.logger.info("Win recorded. Stats: %s", self.stats)
 
     def record_loss(self) -> None:
         """Record a player loss."""
         self.stats["losses"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info("Loss recorded. Stats: {self.stats}")
+        self.logger.info("Loss recorded. Stats: %s", self.stats)
 
     def record_tie(self) -> None:
         """Record a tie game."""
         self.stats["ties"] += 1
         self.stats["total_games"] += 1
         self.save_statistics()
-        self.logger.info("Tie recorded. Stats: {self.stats}")
+        self.logger.info("Tie recorded. Stats: %s", self.stats)
 
     def reset_statistics(self) -> None:
         """Reset all statistics to zero."""
@@ -95,7 +96,7 @@ class GameStatistics:
         return (self.stats["wins"] / self.stats["total_games"]) * 100
 
 
-class GameStatisticsWidget(QWidget):
+class GameStatisticsWidget(QWidget):  # pylint: disable=too-many-instance-attributes
     """Widget for displaying game statistics."""
 
     # Signals
@@ -156,23 +157,7 @@ class GameStatisticsWidget(QWidget):
 
         # Reset button
         self.reset_button = QPushButton()
-        self.reset_button.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-            QPushButton:pressed {
-                background-color: #a93226;
-            }
-        """)
+        self.reset_button.setStyleSheet(create_reset_button_style())
         self.reset_button.clicked.connect(self.reset_statistics)
         main_layout.addWidget(self.reset_button)
 
@@ -261,13 +246,15 @@ class GameStatisticsWidget(QWidget):
         else:
             color = "#e74c3c"  # Red
 
-        self.winrate_layout.value.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {color};")
+        self.winrate_layout.value.setStyleSheet(
+            f"font-size: 14px; font-weight: bold; color: {color};"
+        )
 
     def record_game_result(self, winner, human_player):
         """Record the result of a game."""
         if winner == "HUMAN_WIN":
             self.statistics.record_win()
-        elif winner == "TIE" or winner == "Draw":
+        elif winner in ("TIE", "Draw"):
             self.statistics.record_tie()
         elif winner == "ARM_WIN":
             self.statistics.record_loss()
@@ -279,7 +266,8 @@ class GameStatisticsWidget(QWidget):
                 self.statistics.record_loss()
 
         self.update_statistics_display()
-        self.logger.info("Game result recorded: winner={winner}, human_player={human_player}")
+        self.logger.info("Game result recorded: winner=%s, human_player=%s",
+                         winner, human_player)
 
     def reset_statistics(self):
         """Reset all statistics."""

@@ -1,6 +1,8 @@
 """
 Camera view module for the TicTacToe application.
 """
+# pylint: disable=no-name-in-module,broad-exception-caught,import-outside-toplevel
+# pylint: disable=access-member-before-definition,attribute-defined-outside-init,unused-import
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap

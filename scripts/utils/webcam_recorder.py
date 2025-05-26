@@ -267,7 +267,7 @@ def main():
     except Exception as e:
         logger.error("Chyba při načítání modelů: %s", e)
         return
-    logger.info(f"Inicializace kamery (index {CAM_INDEX})...")
+    logger.info("Inicializace kamery (index %d)...", CAM_INDEX)
     cap = cv2.VideoCapture(CAM_INDEX)
     if not cap.isOpened():
         logger.error("Nepodařilo se otevřít kameru.")
@@ -276,7 +276,7 @@ def main():
         logger.info("Vypínám autofocus...")
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
         time.sleep(2)
-        logger.info(f"  Autofocus aktuálně: {cap.get(cv2.CAP_PROP_AUTOFOCUS)}")
+        logger.info("  Autofocus aktuálně: %s", cap.get(cv2.CAP_PROP_AUTOFOCUS))
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps_cam = cap.get(cv2.CAP_PROP_FPS)
@@ -291,7 +291,7 @@ def main():
         session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_dir = os.path.join(OUTPUT_DIR, session_id)
         os.makedirs(session_dir, exist_ok=True)
-        logger.info(f"Session directory: {session_dir}")
+        logger.info("Session directory: %s", session_dir)
 
     print("\n--- Spuštěno snímání a detekce ---")
     print("Stiskněte 'Q' pro ukončení.")
@@ -299,8 +299,8 @@ def main():
         print("Stiskněte 'S' pro uložení snímku.")
     apply_correction = False  # Výchozí stav korekce
     print(
-        f"Korekce bodů mřížky (Homografie): {
-            'Zapnuto' if apply_correction else 'Vypnuto'} (Stiskni 'C' pro přepnutí)")
+        "Korekce bodů mřížky (Homografie): {} (Stiskni 'C' pro přepnutí)".format(
+            'Zapnuto' if apply_correction else 'Vypnuto'))
 
     while True:
         ret, frame = cap.read()
@@ -315,7 +315,7 @@ def main():
             pose_results = pose_model(
                 frame, verbose=False, conf=POSE_CONF_THRESHOLD)
         except Exception as e:
-            logger.error(f"Chyba během inference: {e}")
+            logger.error("Chyba během inference: %s", e)
             continue
         inference_time = time.time() - start_time
         try:
@@ -329,12 +329,11 @@ def main():
                 kpt_threshold=KEYPOINT_VISIBLE_THRESHOLD,
                 apply_correction=apply_correction)
         except Exception as e:
-            logger.error(f"Chyba během vykreslování: {e}")
+            logger.error("Chyba během vykreslování: %s", e)
             frame_with_preds = frame_display
         fps_display = 1.0 / inference_time if inference_time > 0 else 0
         cv2.putText(
-            frame_with_preds, f"FPS: {
-                fps_display:.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            frame_with_preds, "FPS: {:.1f}".format(fps_display), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         cv2.imshow('YOLOv8 Detection & Pose', frame_with_preds)
 
         key = cv2.waitKey(1) & 0xFF
@@ -347,15 +346,15 @@ def main():
                     frame_counter:06d}_preds.png")
             try:
                 cv2.imwrite(filename_pred, frame_with_preds)
-                logger.info(f"Snímek uložen: {filename_pred}")
+                logger.info("Snímek uložen: %s", filename_pred)
                 frame_counter += 1
             except Exception as e:
-                logger.error(f"Chyba při ukládání snímku: {e}")
+                logger.error("Chyba při ukládání snímku: %s", e)
         if key == ord('c') or key == ord('C'):
             apply_correction = not apply_correction
             print(
-                f"Korekce bodů mřížky (Homografie): {
-                    'Zapnuto' if apply_correction else 'Vypnuto'}")
+                "Korekce bodů mřížky (Homografie): {}".format(
+                    'Zapnuto' if apply_correction else 'Vypnuto'))
 
     cap.release()
     cv2.destroyAllWindows()
@@ -364,16 +363,16 @@ def main():
 
 if __name__ == "__main__":
     try:
-        logger.info(f"Python Version: {sys.version}")
-        logger.info(f"PyTorch Version: {torch.__version__}")
+        logger.info("Python Version: %s", sys.version)
+        logger.info("PyTorch Version: %s", torch.__version__)
         try:
             import torchvision
-            logger.info(f"Torchvision Version: {torchvision.__version__}")
+            logger.info("Torchvision Version: %s", torchvision.__version__)
         except ImportError:
             logger.warning("Torchvision není nainstalováno.")
         ultralytics_ver_str = ultralytics_version if 'ultralytics_version' in locals() else 'N/A'
-        logger.info(f"Ultralytics Version: {ultralytics_ver_str}")
-        logger.info(f"OpenCV Version: {cv2.__version__}")
+        logger.info("Ultralytics Version: %s", ultralytics_ver_str)
+        logger.info("OpenCV Version: %s", cv2.__version__)
     except Exception as e:
-        logger.error(f"Chyba při zjišťování verzí: {e}")
+        logger.error("Chyba při zjišťování verzí: %s", e)
     main()

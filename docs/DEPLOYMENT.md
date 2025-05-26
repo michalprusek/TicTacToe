@@ -96,17 +96,16 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-#### Download Model Weights
+#### Model Weights
 ```bash
-# Create weights directory
-mkdir -p weights
-
-# Download pre-trained models (replace with actual URLs)
-wget -O weights/best_detection.pt "https://example.com/models/best_detection.pt"
-wget -O weights/best_pose.pt "https://example.com/models/best_pose.pt"
+# Model weights should be present in weights/ directory
+# If missing, contact the development team for the trained models
 
 # Verify model files
 ls -la weights/
+# Should contain:
+# - best_detection.pt (symbol detection model)
+# - best_pose.pt (grid detection model)
 ```
 
 ### 3. Hardware Setup
@@ -124,11 +123,12 @@ sudo usermod -a -G tty $USER
 
 # Test robot connection
 python -c "
-import pyuarm
-arm = pyuarm.SwiftAPI()
-arm.connect()
-print(f'Connected: {arm.connected}')
-arm.disconnect()
+from app.main.arm_controller import ArmController
+arm = ArmController()
+connected = arm.connect()
+print(f'Connected: {connected}')
+if connected:
+    arm.disconnect()
 "
 ```
 
@@ -634,15 +634,15 @@ groups $USER  # Should include 'dialout' group
 
 # Test robot connection
 python -c "
-import pyuarm
-arm = pyuarm.SwiftAPI()
+from app.main.arm_controller import ArmController
+arm = ArmController()
 print('Connecting...')
-arm.connect()
-print(f'Connected: {arm.connected}')
-if arm.connected:
-    pos = arm.get_position()
+connected = arm.connect()
+print(f'Connected: {connected}')
+if connected:
+    pos = arm.get_current_position()
     print(f'Position: {pos}')
-arm.disconnect()
+    arm.disconnect()
 "
 
 # Check USB serial devices
@@ -660,9 +660,9 @@ python -c "
 import torch
 from ultralytics import YOLO
 try:
-    model = YOLO('weights/best_detection.pt')
+    detection_model = YOLO('weights/best_detection.pt')
     print('Detection model loaded successfully')
-    model = YOLO('weights/best_pose.pt')
+    pose_model = YOLO('weights/best_pose.pt') 
     print('Pose model loaded successfully')
 except Exception as e:
     print(f'Error: {e}')

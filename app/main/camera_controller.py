@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long,no-name-in-module,wrong-import-position,unnecessary-pass
+# pylint: disable=protected-access,broad-exception-caught,no-member,unused-import
 """
 Camera Controller module for TicTacToe application.
 This module handles camera integration, detection processing, and frame management.
@@ -5,19 +7,16 @@ Consolidates functionality from camera_manager.py.
 """
 
 import logging
-from PyQt5.QtCore import QObject, pyqtSignal
 
-import cv2
-import numpy as np
+import cv2  # pylint: disable=no-member
+from PyQt5.QtCore import QObject, pyqtSignal  # pylint: disable=no-name-in-module
 
 # Import required modules
 from app.main.path_utils import setup_project_path
-setup_project_path()
-
 from app.main.camera_thread import CameraThread
-from app.main.constants import DEFAULT_CAMERA_INDEX
-from app.main.game_utils import setup_logger
 from app.main.error_handler import ErrorHandler
+
+setup_project_path()
 
 
 class CameraController(QObject):
@@ -48,7 +47,7 @@ class CameraController(QObject):
 
     def _init_camera(self):
         """Initialize camera thread."""
-        self.logger.info("Creating camera thread with index {self.camera_index}.")
+        self.logger.info("Creating camera thread with index %s.", self.camera_index)
 
         self.camera_thread = CameraThread(camera_index=self.camera_index)
 
@@ -57,7 +56,7 @@ class CameraController(QObject):
         self.camera_thread.game_state_updated.connect(self._handle_game_state_updated)
         self.camera_thread.fps_updated.connect(self._handle_fps_updated)
 
-        self.logger.info("Camera thread for index {self.camera_index} created.")
+        self.logger.info("Camera thread for index %s created.", self.camera_index)
 
     def start(self):
         """Start the camera thread."""
@@ -92,7 +91,7 @@ class CameraController(QObject):
 
     def restart_camera(self, new_camera_index):
         """Restart camera with new index."""
-        self.logger.info("Restarting camera with index {new_camera_index}.")
+        self.logger.info("Restarting camera with index %s.", new_camera_index)
 
         # Stop current camera
         if self.camera_thread:
@@ -106,7 +105,7 @@ class CameraController(QObject):
         # Start new camera
         self.start()
 
-        self.logger.info("Camera restarted with index {new_camera_index}.")
+        self.logger.info("Camera restarted with index %s.", new_camera_index)
 
     def _handle_frame_ready(self, frame):
         """Handle frame ready signal from camera thread."""
@@ -160,7 +159,6 @@ class CameraController(QObject):
         """Update main camera view (placeholder for future implementation)."""
         # In this application, main window doesn't have direct CameraView
         # Camera view is in DebugWindow
-        pass
 
     def _handle_grid_warnings(self, game_state_obj):
         """Handle grid warnings from detection."""
@@ -175,7 +173,8 @@ class CameraController(QObject):
         # Check if game is paused due to incomplete grid
         grid_incomplete = False
         if hasattr(game_state_obj, 'is_game_paused_due_to_incomplete_grid'):
-            grid_incomplete = game_state_obj.is_game_paused_due_to_incomplete_grid
+            grid_incomplete = (
+                game_state_obj.is_game_paused_due_to_incomplete_grid)
 
         # Check if grid is actually incomplete (less than 16 points)
         grid_points_count = 0
@@ -199,7 +198,8 @@ class CameraController(QObject):
                 # Only emit warning if grid is actually incomplete
                 if is_grid_incomplete:
                     self.grid_warning.emit(grid_issue_message)
-                    self.logger.warning("Grid warning: {grid_issue_message}")
+                    self.logger.warning("Grid warning: %s",
+                                       grid_issue_message)
 
             # Emit grid incomplete signal for UI notification only if actually incomplete
             if is_grid_incomplete:
@@ -252,7 +252,7 @@ class CameraController(QObject):
         if self.camera_thread and hasattr(self.camera_thread, 'detection_thread'):
             if hasattr(self.camera_thread.detection_thread, 'set_detection_threshold'):
                 self.camera_thread.detection_thread.set_detection_threshold(threshold)
-                self.logger.info("Detection threshold set to {threshold}")
+                self.logger.info("Detection threshold set to %s", threshold)
 
     def get_detection_threshold(self):
         """Get current detection threshold."""
@@ -284,14 +284,17 @@ class CameraController(QObject):
         _, game_state = self._get_detection_data()
         if game_state:
             info['grid_valid'] = False
-            if hasattr(game_state, 'is_physical_grid_valid') and callable(game_state.is_physical_grid_valid):
+            has_valid_method = (hasattr(game_state, 'is_physical_grid_valid') and
+                              callable(game_state.is_physical_grid_valid))
+            if has_valid_method:
                 info['grid_valid'] = game_state.is_physical_grid_valid()
 
         return info
 
     # === Consolidated camera management functions from camera_manager.py ===
 
-    def setup_camera_direct(self, camera_index=None, frame_width=640, frame_height=480, disable_autofocus=True):
+    def setup_camera_direct(self, camera_index=None, frame_width=640,
+                           frame_height=480, disable_autofocus=True):
         """Direct camera setup without thread (consolidated from camera_manager.py)."""
         if camera_index is not None:
             self.camera_index = camera_index

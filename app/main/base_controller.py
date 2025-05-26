@@ -2,6 +2,7 @@
 Base controller class for common controller patterns.
 Consolidates repeated initialization and setup patterns.
 """
+# pylint: disable=no-name-in-module,unused-argument,wrong-import-order,unused-import
 
 import logging
 from PyQt5.QtCore import QObject

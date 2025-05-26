@@ -622,6 +622,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         frame: np.ndarray,  # pylint: disable=unused-argument
         ordered_kpts_uv: Optional[np.ndarray],
         homography: Optional[np.ndarray],
+        *,
         detected_symbols: List[Dict],
         class_id_to_player: Dict[int, str],
         timestamp: float

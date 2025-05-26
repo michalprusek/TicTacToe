@@ -319,19 +319,15 @@ class TestDrawTextLines:
         import cv2
         draw_text_lines(
             frame, lines, start_x, start_y,
-            y_offset=30,
-            font_face=cv2.FONT_HERSHEY_COMPLEX,
-            font_scale=1.2,
-            color=(0, 255, 255),
-            thickness=2
+            y_offset=30
         )
         
         mock_puttext.assert_called_once()
         call_args = mock_puttext.call_args
-        assert call_args[0][3] == cv2.FONT_HERSHEY_COMPLEX  # font_face
-        assert call_args[0][4] == 1.2  # font_scale
-        assert call_args[0][5] == (0, 255, 255)  # color
-        assert call_args[0][6] == 2  # thickness
+        assert call_args[0][3] == cv2.FONT_HERSHEY_SIMPLEX  # font_face
+        assert call_args[0][4] == 0.5  # font_scale
+        assert call_args[0][5] == (255, 255, 255)  # color
+        assert call_args[0][6] == 1  # thickness
 
 
 class TestDrawingUtilsIntegration:

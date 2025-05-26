@@ -5,17 +5,16 @@ Tests factory patterns without actual PyQt5 widget creation.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+import sys
 
-# Mock PyQt5 imports to avoid GUI dependencies
-mock_pyqt5 = MagicMock()
-with patch.dict('sys.modules', {
-    'PyQt5': mock_pyqt5,
-    'PyQt5.QtWidgets': mock_pyqt5.QtWidgets,
-    'PyQt5.QtCore': mock_pyqt5.QtCore,
-    'PyQt5.QtGui': mock_pyqt5.QtGui,
-    'app.main.style_manager': MagicMock()
-}):
-    from app.main.gui_factory import ButtonFactory, LayoutFactory, LabelFactory
+# Mock PyQt5 modules globally
+sys.modules['PyQt5'] = MagicMock()
+sys.modules['PyQt5.QtWidgets'] = MagicMock()
+sys.modules['PyQt5.QtCore'] = MagicMock()
+sys.modules['PyQt5.QtGui'] = MagicMock()
+sys.modules['app.main.style_manager'] = MagicMock()
+
+from app.main.gui_factory import ButtonFactory, LayoutFactory, LabelFactory
 
 
 class TestButtonFactoryMethods:

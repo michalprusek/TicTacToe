@@ -42,7 +42,7 @@ class ErrorHandler:
             def wrapper(*args, **kwargs):
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     ErrorHandler.log_error(logger, operation_name, e, log_traceback)
                     return default_return
             return wrapper

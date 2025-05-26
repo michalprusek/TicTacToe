@@ -1,115 +1,71 @@
 # Robot TicTacToe
 
-Aplikace pro hraní piškvorek s robotickým ramenem uArm Swift Pro. Systém používá počítačové vidění pro detekci herní desky a symbolů, umělou inteligenci pro herní strategii a robotické rameno pro fyzické umisťování symbolů na herní desku.
-
-## Funkce
-
-- Detekce herní desky a symbolů pomocí počítačového vidění
-- Ovládání robotického ramene uArm Swift Pro
-- Nastavitelná obtížnost AI protivníka
-- Grafické uživatelské rozhraní vytvořené pomocí PyQt5
-- Podpora pro ladění a vizualizaci detekce
+Aplikace pro hraní piškvorek s robotickým ramenem uArm Swift Pro pomocí počítačového vidění a AI.
 
 ## Požadavky
 
 - Python 3.8+
-- uArm Swift Pro s firmwarem 4.0+
-- Webkamera
-- Závislosti uvedené v `requirements.txt`
+- uArm Swift Pro (volitelné)
+- Webkamera (volitelné)
 
-## Instalace
+## Instalace a spuštění
 
-### Metoda 1: Přímá instalace ze zdrojových kódů
+### Bash (Linux/Mac)
 
-1. Klonujte repozitář:
-   ```bash
-   git clone https://github.com/michalprusek/TicTacToe.git
-   cd TicTacToe
-   ```
+```bash
+# Stáhnout z GitHub
+git clone https://github.com/michalprusek/TicTacToe.git
+cd TicTacToe
 
-2. Nainstalujte závislosti:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Nainstalovat závislosti
+pip install -r requirements.txt
 
-### Metoda 2: Instalace jako balíček
+# Spustit aplikaci
+python -m app.main.main_pyqt
 
-1. Klonujte repozitář a nainstalujte pomocí setup.py:
-   ```bash
-   git clone https://github.com/michalprusek/TicTacToe.git
-   cd TicTacToe
-   pip install -e .
-   ```
-
-2. Po instalaci můžete spustit aplikaci odkudkoliv:
-   ```bash
-   tictactoe-robot
-   # nebo pro kalibraci
-   tictactoe-calibrate
-   ```
-
-3. Nainstalujte uArm Python SDK:
-   ```
-   cd uArm-Python-SDK
-   python setup.py install
-   cd ..
-   ```
-
-## Spuštění aplikace
-
-Spusťte hlavní aplikaci s GUI:
-
+# nebo
+python run.py
 ```
+
+### PowerShell (Windows)
+
+```powershell
+# Stáhnout z GitHub
+git clone https://github.com/michalprusek/TicTacToe.git
+cd TicTacToe
+
+# Nainstalovat závislosti
+pip install -r requirements.txt
+
+# Spustit aplikaci
 python -m app.main.main_pyqt
 ```
 
-### Parametry příkazové řádky
+## Volitelné parametry
 
-- `--camera INDEX` - Index kamery, který se má použít (výchozí: 0)
-- `--debug` - Povolení režimu ladění s dalším protokolováním a vizualizací
-- `--difficulty LEVEL` - Počáteční úroveň obtížnosti (0-10, výchozí: 5)
-
-Příklad:
-```
+```bash
+# S volbou kamery a debug módem
 python -m app.main.main_pyqt --camera 1 --debug --difficulty 7
+
+# Kalibrace robota (pouze s uArm)
+python -m app.calibration.calibration
+
+# Spuštění testů
+pytest
+
+# coverage
+pytest --cov=app --cov-report=term-missing
+
+# spuštění lintingu
+pylint app
 ```
 
-## Testování
+## Funkce
 
-Spusťte testy:
-
-```
-python run_tests.py
-```
-
-Nebo s pokrytím kódu:
-
-```
-python run_tests.py --coverage
-```
-
-## Struktura projektu
-
-- `app/` - Hlavní aplikační balíček
-  - `main/` - Hlavní aplikační soubory
-  - `core/` - Základní komponenty a konfigurace
-  - `calibration/` - Kalibrační nástroje a soubory
-  - `config/` - Konfigurační soubory
-- `docs/` - Dokumentace
-- `tests/` - Testy
-- `utils/` - Pomocné nástroje
-- `weights/` - Váhy modelů pro detekci
-
-## Kalibrace robotického ramene
-
-Před prvním použitím je třeba kalibrovat robotické rameno:
-
-1. Ujistěte se, že rameno je připojeno a zapnuto
-2. Spusťte kalibrační nástroj:
-   ```
-   python -m app.calibration.calibration
-   ```
-3. Postupujte podle pokynů na obrazovce
+- Detekce herní desky pomocí počítačového vidění
+- AI protivník s nastavitelnou obtížností (1-10)
+- Ovládání robotického ramene uArm Swift Pro (volitelné)
+- PyQt5 grafické rozhraní
 
 ## Licence
 

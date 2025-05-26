@@ -52,21 +52,21 @@ class TestMinimaxStrategy:
         assert strategy._get_other_player(PLAYER_O) == PLAYER_X
 
     def test_get_available_moves_empty_board(self):
-        """Test _get_available_moves on empty board."""
-        strategy = MinimaxStrategy(player=PLAYER_X)
+        """Test get_available_moves on empty board."""
+        from app.core.minimax_algorithm import get_available_moves
         
         # Create empty 3x3 board
         board = [[EMPTY for _ in range(3)] for _ in range(3)]
         
-        moves = strategy._get_available_moves(board)
+        moves = get_available_moves(board)
         assert len(moves) == 9  # All positions should be available
         assert (0, 0) in moves
         assert (1, 1) in moves  
         assert (2, 2) in moves
 
     def test_get_available_moves_partial_board(self):
-        """Test _get_available_moves on partially filled board."""
-        strategy = MinimaxStrategy(player=PLAYER_X)
+        """Test get_available_moves on partially filled board."""
+        from app.core.minimax_algorithm import get_available_moves
         
         # Create board with some moves
         board = [
@@ -75,7 +75,7 @@ class TestMinimaxStrategy:
             [EMPTY, EMPTY, EMPTY]
         ]
         
-        moves = strategy._get_available_moves(board)
+        moves = get_available_moves(board)
         assert len(moves) == 7  # 7 empty positions
         assert (0, 0) not in moves  # Position (0,0) is taken by X
         assert (1, 1) not in moves  # Position (1,1) is taken by O

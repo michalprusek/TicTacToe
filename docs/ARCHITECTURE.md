@@ -204,16 +204,16 @@ arm_thread.command_completed.connect(
 
 #### Stage 1: Grid Detection (Pose Estimation)
 ```python
-# Input: Camera frame (1920x1080)
-# Model: YOLO pose estimation
+# Input: Camera frame (640x640 after preprocessing)
+# Model: YOLOv8 pose estimation (weights/best_pose.pt)
 # Output: 16 keypoints forming 4x4 grid
 grid_points = pose_model.predict(frame)
 ```
 
 #### Stage 2: Symbol Detection (Object Detection)
 ```python
-# Input: Same camera frame
-# Model: YOLO object detection
+# Input: Same camera frame (640x640)
+# Model: YOLOv8 object detection (weights/best_detection.pt)
 # Output: X/O symbols with bounding boxes and confidence
 symbols = detection_model.predict(frame)
 ```

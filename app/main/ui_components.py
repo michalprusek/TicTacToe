@@ -13,12 +13,12 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QGraphicsOpacityEffect
 )
-from app.main.game_utils import setup_logger
-from app.main.gui_factory import ButtonFactory, LayoutFactory, LabelFactory
 from PyQt5.QtCore import Qt, QPropertyAnimation
 from PyQt5.QtGui import QIcon
 
 from app.core.config import AppConfig
+from app.main.game_utils import setup_logger
+from app.main.shared_styles import create_button_style
 
 
 class StatusPanel(QWidget):
@@ -60,7 +60,7 @@ class StatusPanel(QWidget):
         self.setStyleSheet(style)
 
 
-class ControlPanel(QWidget):
+class ControlPanel(QWidget):  # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """Control panel widget for game controls"""
 
     def __init__(self, parent=None, config=None):
@@ -82,19 +82,7 @@ class ControlPanel(QWidget):
 
         # Reset button
         self.reset_button = QPushButton("Reset")
-        self.reset_button.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-        """)
+        self.reset_button.setStyleSheet(create_button_style("danger", "10px 20px"))
         layout.addWidget(self.reset_button)
 
         # Difficulty slider
@@ -138,53 +126,17 @@ class ControlPanel(QWidget):
 
         # Park button
         self.park_button = QPushButton("Park")
-        self.park_button.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
+        self.park_button.setStyleSheet(create_button_style("primary", "10px 20px"))
         layout.addWidget(self.park_button)
 
         # Calibrate button
         self.calibrate_button = QPushButton("Kalibrace")
-        self.calibrate_button.setStyleSheet("""
-            QPushButton {
-                background-color: #f39c12;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #d35400;
-            }
-        """)
+        self.calibrate_button.setStyleSheet(create_button_style("warning", "10px 20px"))
         layout.addWidget(self.calibrate_button)
 
         # Debug button
         self.debug_button = QPushButton("Debug")
-        self.debug_button.setStyleSheet("""
-            QPushButton {
-                background-color: #9b59b6;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #8e44ad;
-            }
-        """)
+        self.debug_button.setStyleSheet(create_button_style("purple", "10px 20px"))
         layout.addWidget(self.debug_button)
 
         # Track checkbox
@@ -213,23 +165,11 @@ class ControlPanel(QWidget):
 
         # Language button
         self.language_button = QPushButton("EN/CZ")
-        self.language_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1abc9c;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #16a085;
-            }
-        """)
+        self.language_button.setStyleSheet(create_button_style("teal", "10px 20px"))
         layout.addWidget(self.language_button)
 
 
-def setup_window_icon(window, config):
+def setup_window_icon(window, _config=None):
     """Set up the window icon"""
     icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
                             "resources", "app_icon.png")

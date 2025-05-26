@@ -1,12 +1,14 @@
 """
 Debug window module for TicTacToe application.
 """
+# pylint: disable=no-name-in-module,too-many-instance-attributes,too-many-statements
+# pylint: disable=broad-exception-caught,unused-variable,invalid-name,wrong-import-order
+# pylint: disable=line-too-long,unused-import,ungrouped-imports
 import logging
 from typing import Optional, List
 
 import cv2
 import numpy as np
-from app.main.game_utils import setup_logger
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QCheckBox, QSlider, QGroupBox
@@ -16,6 +18,7 @@ from PyQt5.QtGui import QImage, QPixmap
 
 from app.core.config import AppConfig
 from app.main.camera_view import CameraView
+from app.main.game_utils import setup_logger
 
 
 class DebugWindow(QMainWindow):
@@ -234,6 +237,7 @@ class DebugWindow(QMainWindow):
             if hasattr(self.parent().camera_thread, "cap") and self.parent().camera_thread.cap:
                 try:
                     # Nastavení autofocusu přímo v kameře
+                    # pylint: disable=no-member
                     self.parent().camera_thread.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0 if enabled else 1)
                 except Exception as e:
                     self.logger.error("Chyba při nastavení autofocusu: {e}")

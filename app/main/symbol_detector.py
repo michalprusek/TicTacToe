@@ -29,7 +29,7 @@ class SymbolDetector:
         # Class ID to label mapping
         # CRITICAL FIX: YOLO model has inverted labels - it detects X as O and O as X
         # Original mapping: {0: 'X', 1: 'O'}
-        # Corrected mapping to fix label inversion:
+        # Corrected mapping to fix label inversion:  # pylint: disable=line-too-long
         self.class_id_to_label = getattr(config, 'class_id_to_label', {0: 'O', 1: 'X'})  # Swapped!
         self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 1, 1: 2})  # Swapped! O=1, X=2
 

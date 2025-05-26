@@ -1,6 +1,8 @@
 """
 TicTacToe board widget module for the TicTacToe application.
 """
+# pylint: disable=no-name-in-module,line-too-long,too-many-instance-attributes,invalid-name
+# pylint: disable=unused-argument,unnecessary-pass,unused-import
 import logging
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import QTimer

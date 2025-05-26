@@ -3,13 +3,16 @@ UI Event Handlers module for TicTacToe application.
 This module handles user interface events and interactions.
 Consolidates functionality from event_handlers.py.
 """
+# pylint: disable=line-too-long,reimported,wrong-import-position,wrong-import-order
+# pylint: disable=ungrouped-imports,broad-exception-caught,protected-access,too-many-branches
+# pylint: disable=consider-using-with,too-many-nested-blocks,unused-import
 
 import logging
+import os
 import subprocess
-from PyQt5.QtCore import QObject, Qt, QTimer
-
-# Import required modules
 import sys
+
+from PyQt5.QtCore import QObject, QTimer  # pylint: disable=no-name-in-module
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
@@ -38,7 +41,7 @@ class UIEventHandlers(QObject):
 
     def handle_cell_clicked(self, row, col):
         """Handle cell click from board widget."""
-        self.logger.info("Cell clicked: ({row}, {col})")
+        self.logger.info("Cell clicked: (%s, %s)", row, col)
 
         # Delegate to game controller
         if hasattr(self.main_window, 'game_controller'):
@@ -64,7 +67,7 @@ class UIEventHandlers(QObject):
             # Set difficulty directly (0-10), which internally converts to probability (0.0-1.0)
             self.main_window.game_controller.strategy_selector.difficulty = value
             new_p = self.main_window.game_controller.strategy_selector.p
-            self.logger.info("Difficulty changed to {value}/10 -> p={new_p:.2f}")
+            self.logger.info("Difficulty changed to %s/10 -> p=%.2f", value, new_p)
 
             # Log strategy distribution for verification
             if value == 10:
@@ -163,7 +166,7 @@ class UIEventHandlers(QObject):
             self.logger.info("UI texts updated")
 
         except Exception as e:
-            self.logger.error("Error updating UI texts: {e}")
+            self.logger.error("Error updating UI texts: %s", e)
 
     def handle_calibrate_button_click(self):
         """Handle calibrate button click."""
@@ -181,14 +184,14 @@ class UIEventHandlers(QObject):
 
     def handle_camera_index_changed(self, new_index):
         """Handle camera index change."""
-        self.logger.info("Camera index changed to {new_index}")
+        self.logger.info("Camera index changed to %s", new_index)
 
         if hasattr(self.main_window, 'camera_controller'):
             self.main_window.camera_controller.restart_camera(new_index)
 
     def handle_detection_threshold_changed(self, threshold):
         """Handle detection threshold change."""
-        self.logger.info("Detection threshold changed to {threshold}")
+        self.logger.info("Detection threshold changed to %s", threshold)
 
         if hasattr(self.main_window, 'camera_controller'):
             self.main_window.camera_controller.set_detection_threshold(threshold)
@@ -231,7 +234,7 @@ class UIEventHandlers(QObject):
                     non_empty_symbols.append(f"({r},{c})={detected_board[r][c]}")
 
         if non_empty_symbols:
-            self.logger.info("🔍 YOLO DETECTION: {', '.join(non_empty_symbols)}")
+            self.logger.info("🔍 YOLO DETECTION: %s", ', '.join(non_empty_symbols))
         else:
             self.logger.debug("🔍 YOLO DETECTION: Empty board")
 
@@ -252,7 +255,7 @@ class UIEventHandlers(QObject):
                 expected_symbol = gc.expected_symbol
 
                 if detected_board[expected_row][expected_col] == expected_symbol:
-                    self.logger.info("✅ EXPECTED symbol {expected_symbol} detected at ({expected_row}, {expected_col})")
+                    self.logger.info("✅ EXPECTED symbol %s detected at (%s, %s)", expected_symbol, expected_row, expected_col)
 
                     # Successfully detected arm move - reset detection flags
                     gc.waiting_for_detection = False
@@ -277,7 +280,7 @@ class UIEventHandlers(QObject):
                     if not gc.game_over:
                         gc.status_changed.emit("your_turn", True)
                 else:
-                    self.logger.warning("❌ Expected {expected_symbol} at ({expected_row}, {expected_col}) but detected: {detected_board[expected_row][expected_col]}")
+                    self.logger.warning("❌ Expected %s at (%s, %s) but detected: %s", expected_symbol, expected_row, expected_col, detected_board[expected_row][expected_col])
 
                     # Reset detection flags
                     gc.waiting_for_detection = False
@@ -307,7 +310,7 @@ class UIEventHandlers(QObject):
 
         # Check if the script exists
         if not os.path.exists(calibration_script):
-            self.logger.error("Calibration script not found: {calibration_script}")
+            self.logger.error("Calibration script not found: %s", calibration_script)
             return
 
         # Launch the calibration script in a new process
@@ -315,11 +318,11 @@ class UIEventHandlers(QObject):
             subprocess.Popen([sys.executable, calibration_script])
             self.logger.info("Calibration script launched")
         except Exception as e:
-            self.logger.error("Failed to launch calibration script: {e}")
+            self.logger.error("Failed to launch calibration script: %s", e)
 
     def handle_track_grid_center(self):
         """Track grid center (consolidated from event_handlers.py)."""
-        if not self.tracking_enabled:
+        if not hasattr(self, 'tracking_enabled') or not self.tracking_enabled:
             return
 
         # Get latest game state from detection
@@ -348,7 +351,7 @@ class UIEventHandlers(QObject):
                                 # Send command to arm to track this position
                                 if hasattr(self.main_window, 'arm_controller'):
                                     # Track position command would go here
-                                    self.logger.debug("Tracking grid center at {center_cell}")
+                                    self.logger.debug("Tracking grid center at %s", center_cell)
 
     def update_camera_view_extended(self, frame):
         """Extended camera view update (consolidated from event_handlers.py)."""

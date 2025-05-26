@@ -1,18 +1,19 @@
 """
 Camera calibration module for TicTacToe robot arm.
 """
-# pylint: disable=line-too-long,invalid-name,global-variable-not-assigned,undefined-variable
-# pylint: disable=too-many-locals,too-many-return-statements,consider-using-f-string
-# pylint: disable=superfluous-parens,no-else-return,logging-too-many-args,no-member
-# pylint: disable=too-many-branches,too-many-statements,global-statement,broad-exception-caught
-# pylint: disable=too-many-nested-blocks,consider-using-in,unsubscriptable-object,wrong-import-order
-# pylint: disable=too-many-function-args,unspecified-encoding
-import logging
+# pylint: disable=line-too-long,superfluous-parens,invalid-name,too-many-locals
+# pylint: disable=too-many-function-args,no-else-return,consider-using-f-string
+# pylint: disable=too-many-return-statements,global-variable-not-assigned,global-statement
+# pylint: disable=no-member,consider-using-in,broad-exception-caught,too-many-nested-blocks
+# pylint: disable=unsubscriptable-object,unspecified-encoding,too-many-branches
+# pylint: disable=too-many-statements
 import json
+import logging
 import sys
-import cv2  # Přidáno pro OpenCV
+from typing import Optional, Dict, Tuple, List
+
+import cv2  # pylint: disable=no-member
 from pynput import keyboard
-from typing import Optional, Dict, Tuple, List  # Přidáno List
 import numpy as np
 import torch  # Přidáno pro YOLO
 from ultralytics import YOLO  # Přidáno pro YOLO
@@ -249,6 +250,7 @@ def calculate_transformation() -> Optional[np.ndarray]:
 
     # Výpočet perspektivní transformace (homografie) (3x3 matice)
     # Používá RANSAC pro robustnost vůči odlehlým hodnotám
+    # pylint: disable=no-member
     transform_matrix, inliers = cv2.findHomography(
         src_pts, dst_pts,
         method=cv2.RANSAC,

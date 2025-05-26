@@ -2,6 +2,7 @@
 Frame processing utilities for the TicTacToe application.
 Consolidates repeated frame processing patterns from multiple files.
 """
+# pylint: disable=no-name-in-module,no-member,no-else-return
 
 import cv2
 import numpy as np
@@ -61,10 +62,9 @@ class FrameConverter:
                 target_width, target_height,
                 Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
-        else:
-            return QPixmap.fromImage(qt_image).scaled(
-                target_width, target_height
-            )
+        return QPixmap.fromImage(qt_image).scaled(
+            target_width, target_height
+        )
 
     @staticmethod
     def resize_frame(frame: np.ndarray, scale_factor: float) -> np.ndarray:
@@ -82,4 +82,4 @@ class FrameConverter:
         new_height = int(height * scale_factor)
         new_width = int(width * scale_factor)
 
-        return cv2.resize(frame, (new_width, new_height))
+        return cv2.resize(frame, (new_width, new_height))  # pylint: disable=no-member

@@ -4,6 +4,12 @@ Game logic for TicTacToe game.
 import random
 import math
 from typing import List, Tuple
+from app.core.minimax_algorithm import (
+    get_available_moves as get_available_moves_shared,
+    get_optimal_move_with_heuristics,
+    minimax_maximize,
+    minimax_minimize
+)
 
 EMPTY = ' '
 PLAYER_X = 'X'
@@ -118,7 +124,7 @@ def get_other_player(player):
     return PLAYER_O if player == PLAYER_X else PLAYER_X
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def minimax(game_board, player_or_depth, is_maximizing_or_player=None,
             alpha_or_depth=None, beta=None, ai_player=None):
     """
@@ -158,43 +164,22 @@ def minimax(game_board, player_or_depth, is_maximizing_or_player=None,
     if winner == TIE:  # is_board_full check is implicit in check_winner
         return 0, None          # Draw
 
-    available_moves = get_available_moves(game_board)
+    available_moves = get_available_moves_shared(game_board)
 
-    # AI's turn (maximize score)
+    # Create a wrapper for recursive calls
+    def minimax_recursive(board_state, current_player, depth, alpha, beta, ai_player):
+        return minimax(board_state, depth, current_player == ai_player,
+                      alpha, beta, ai_player)
+
+    minimax_args = {
+        'board': game_board, 'available_moves': available_moves, 'depth': depth,
+        'alpha': alpha, 'beta': beta, 'ai_player': ai_player,
+        'minimax_func': minimax_recursive
+    }
+
     if is_maximizing_player:
-        best_score = -math.inf
-        best_move = None  # We only need score here
-        for move in available_moves:
-            r, c = move
-            game_board[r][c] = ai_player
-            # Use old format for recursive calls for consistency
-            score, _ = minimax(
-                game_board, depth + 1, False, alpha, beta, ai_player)
-            game_board[r][c] = EMPTY  # Undo move
-            if score > best_score:
-                best_score = score
-                best_move = move
-            alpha = max(alpha, score)
-            if beta <= alpha:
-                break  # Beta cut-off
-        return best_score, best_move
-    # Human's turn (minimize score from AI's perspective)
-    best_score = math.inf
-    best_move = None  # We only need score here
-    for move in available_moves:
-        r, c = move
-        game_board[r][c] = human_player
-        # Use old format for recursive calls for consistency
-        score, _ = minimax(
-            game_board, depth + 1, True, alpha, beta, ai_player)
-        game_board[r][c] = EMPTY  # Undo move
-        if score < best_score:
-            best_score = score
-            best_move = move
-        beta = min(beta, score)
-        if beta <= alpha:
-            break  # Alpha cut-off
-    return best_score, best_move
+        return minimax_maximize(**minimax_args)
+    return minimax_minimize(**minimax_args)
 
 
 def get_best_move(game_board, player):
@@ -204,18 +189,10 @@ def get_best_move(game_board, player):
     if is_board_full(game_board):
         return None
 
-    available_moves = get_available_moves(game_board)
-    if not available_moves:
-        return None  # Should be caught by is_board_full, but be safe
-
-    # Handle case where only one move is left (optimization)
-    if len(available_moves) == 1:
-        return available_moves[0]
-    # If it's the first move, play center or corner for speed
-    if len(available_moves) == 9:
-        return (1, 1)  # Center
-    if len(available_moves) == 8 and game_board[1][1] == EMPTY:
-        return (1, 1)  # Play center if available on second move
+    # Try heuristics first
+    heuristic_move = get_optimal_move_with_heuristics(game_board)
+    if heuristic_move:
+        return heuristic_move
 
     # Call minimax to find the best move
     _, best_move = minimax(

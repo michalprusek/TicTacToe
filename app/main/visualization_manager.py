@@ -1,7 +1,7 @@
 """
 Visualization manager module for the TicTacToe application.
 """
-# pylint: disable=no-member,broad-exception-caught
+# pylint: disable=no-member,broad-exception-caught,unexpected-keyword-arg
 import logging
 from typing import List, Dict, Optional
 
@@ -273,10 +273,7 @@ class VisualizationManager:
                 texts_to_draw,
                 text_x,
                 text_y,
-                y_offset=20,
-                font_scale=0.5,
-                color=(255, 255, 255),
-                thickness=1
+                y_offset=20
             )
 
             # Display the debug window

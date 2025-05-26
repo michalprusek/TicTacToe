@@ -6,10 +6,11 @@ import logging
 import time
 from typing import Tuple, Optional
 
+import cv2  # pylint: disable=no-member
 import numpy as np
-import cv2  # pylint: disable=import-error
 import torch
 from ultralytics import YOLO
+
 from app.main.game_utils import setup_logger
 
 from app.core.detector_constants import (

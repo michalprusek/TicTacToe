@@ -36,9 +36,9 @@ logger = logging.getLogger(__name__)
 
 def create_batches(input_dir: str, output_dir: str, batch_size: int):
     """Copies images from input_dir to numbered batch subdirs in output_dir."""
-    logger.info(f"Creating batches from '{input_dir}' to '{output_dir}'...")
+    logger.info("Creating batches from '%s' to '%s'...", input_dir, output_dir)
     if not os.path.isdir(input_dir):
-        logger.error(f"Input directory '{input_dir}' not found.")
+        logger.error("Input directory '%s' not found.", input_dir)
         return False
 
     os.makedirs(output_dir, exist_ok=True)
@@ -49,12 +49,12 @@ def create_batches(input_dir: str, output_dir: str, batch_size: int):
     ])
 
     if not image_files:
-        logger.warning(f"No image files found in '{input_dir}'.")
+        logger.warning("No image files found in '%s'.", input_dir)
         return False
 
     num_batches = (len(image_files) + batch_size - 1) // batch_size
     logger.info(
-        f"Found {len(image_files)} imgs, creating {num_batches} batches.")
+        "Found %d imgs, creating %d batches.", len(image_files), num_batches)
 
     for i in range(num_batches):
         batch_num = i + 1
@@ -66,14 +66,14 @@ def create_batches(input_dir: str, output_dir: str, batch_size: int):
         end_index = start_index + batch_size
         batch_files = image_files[start_index:end_index]
 
-        logger.info(f"Copying {len(batch_files)} files to '{batch_path}'...")
+        logger.info("Copying %d files to '%s'...", len(batch_files), batch_path)
         for filename in batch_files:
             src_path = os.path.join(input_dir, filename)
             dest_path = os.path.join(batch_path, filename)
             try:
                 shutil.copy2(src_path, dest_path)
             except Exception as e:
-                logger.error(f"Failed to copy {src_path} to {dest_path}: {e}")
+                logger.error("Failed to copy %s to %s: %s", src_path, dest_path, e)
 
     logger.info("Finished creating batches.")
     return True

@@ -1,7 +1,8 @@
-"""Drawing utility functions for the Tic Tac Toe application."""
+"""Drawing utilities for the TicTacToe application."""
+# pylint: disable=no-member,broad-exception-caught,too-many-arguments
 from typing import List, Tuple
 
-import cv2
+import cv2  # pylint: disable=no-member
 import numpy as np
 
 from app.core.constants import (
@@ -10,7 +11,7 @@ from app.core.constants import (
 )
 
 
-def draw_centered_text_message(
+def draw_centered_text_message(  # pylint: disable=too-many-arguments,too-many-locals
     frame: np.ndarray,
     message_lines: list[str],
     font_scale: float = 1.0,
@@ -66,7 +67,9 @@ def draw_centered_text_message(
     cv2.rectangle(frame, (rect_x1, rect_y1), (rect_x2, rect_y2), bg_color, -1)
 
     # Draw each line of text
-    current_y_baseline_for_draw = rect_y1 + padding + line_heights[0] - (line_heights[0] - cv2.getTextSize(message_lines[0], font_face, font_scale, font_thickness)[1]) // 2
+    text_size = cv2.getTextSize(message_lines[0], font_face, font_scale, font_thickness)[1]  # pylint: disable=no-member
+    current_y_baseline_for_draw = (rect_y1 + padding + line_heights[0] -
+                                   (line_heights[0] - text_size) // 2)
 
     for i, line in enumerate(message_lines):
         # Center each line horizontally within the background rectangle
@@ -79,7 +82,7 @@ def draw_centered_text_message(
             current_y_baseline_for_draw += line_heights[i+1]
 
 
-def draw_symbol_box(
+def draw_symbol_box(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
     frame: np.ndarray,
     box: List[int],  # [x1, y1, x2, y2]
     confidence: float,
@@ -128,7 +131,8 @@ def draw_symbol_box(
 
     # Format the display text (label and confidence)
     # Ensure confidence is a float for formatting
-    conf_float = float(confidence) if isinstance(confidence, (int, float, np.floating, np.integer)) else 0.0
+    valid_types = (int, float, np.floating, np.integer)
+    conf_float = float(confidence) if isinstance(confidence, valid_types) else 0.0
     display_text = f"{label}: {conf_float:.2f}"
 
     # Draw bounding box
@@ -197,11 +201,7 @@ def draw_text_lines(
     lines: list[str],
     start_x: int,
     start_y: int,
-    y_offset: int = 20,
-    font_face: int = cv2.FONT_HERSHEY_SIMPLEX,
-    font_scale: float = 0.5,
-    color: tuple[int, int, int] = (255, 255, 255),
-    thickness: int = 1
+    y_offset: int = 20
 ) -> None:
     """Draws multiple lines of text sequentially on a frame.
 
@@ -211,13 +211,15 @@ def draw_text_lines(
         start_x: The x-coordinate for the start of the text lines.
         start_y: The y-coordinate for the start of the first text line.
         y_offset: The vertical offset between consecutive lines of text.
-        font_face: OpenCV font type.
-        font_scale: Font scale factor.
-        color: Text color in BGR format.
-        thickness: Thickness of the lines used to draw the text.
     """
+    # Use default font parameters
+    font_face = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.5
+    color = (255, 255, 255)
+    thickness = 1
+
     current_y = start_y
     for line in lines:
-        cv2.putText(frame, line, (start_x, current_y),
+        cv2.putText(frame, line, (start_x, current_y),  # pylint: disable=no-member
                     font_face, font_scale, color, thickness)
         current_y += y_offset
