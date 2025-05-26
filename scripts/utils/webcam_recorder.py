@@ -167,7 +167,7 @@ def draw_predictions(
             pose_results[0].boxes.data) > 0:
         boxes_pose = pose_results[0].boxes
         keypoints_pose = pose_results[0].keypoints
-        vis_logger.debug(f"Found {len(boxes_pose.data)} raw pose instances.")
+        vis_logger.debug("Found %d raw pose instances.", len(boxes_pose.data))
 
         for i in range(len(boxes_pose.data)):  # Pro každou detekovanou mřížku
             box_pose = boxes_pose.data[i]
@@ -175,8 +175,7 @@ def draw_predictions(
 
             if conf_pose > pose_threshold:
                 vis_logger.debug(
-                    f"  Processing pose instance {i} (conf: {
-                        conf_pose:.2f})")
+                    "  Processing pose instance %d (conf: %.2f)", i, conf_pose)
                 kpts_data_raw = keypoints_pose.data[i].cpu().numpy()  # [16, 3]
 
                 corrected_kpts_xy = None  # Inicializace
@@ -251,11 +250,11 @@ def main():
     global logger
     if SAVE_FRAMES:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-        logger.info(f"Ukládání snímků: {OUTPUT_DIR}")
+        logger.info("Ukládání snímků: %s", OUTPUT_DIR)
     logger.info("Načítání modelů...")
     try:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        logger.info(f"Používám zařízení: {device}")
+        logger.info("Používám zařízení: %s", device)
         detect_model = YOLO(DETECT_MODEL_PATH)
         pose_model = YOLO(POSE_MODEL_PATH)
         detect_model.to(device)
@@ -263,10 +262,10 @@ def main():
         logger.info("Modely načteny.")
     except FileNotFoundError:
         logger.error(
-            f"!!!! Chyba: Model(y) nenalezen(y): {DETECT_MODEL_PATH}, {POSE_MODEL_PATH} !!!!")
+            "!!!! Chyba: Model(y) nenalezen(y): %s, %s !!!!", DETECT_MODEL_PATH, POSE_MODEL_PATH)
         return
     except Exception as e:
-        logger.error(f"Chyba při načítání modelů: {e}")
+        logger.error("Chyba při načítání modelů: %s", e)
         return
     logger.info(f"Inicializace kamery (index {CAM_INDEX})...")
     cap = cv2.VideoCapture(CAM_INDEX)

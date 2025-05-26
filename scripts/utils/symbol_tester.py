@@ -134,7 +134,7 @@ def load_calibration(filename: str) -> Optional[Dict]:
     try:
         with open(filename, 'r') as f:
             data = json.load(f)
-        logging.info(f"Kalibrace úspěšně načtena z {filename}")
+        logging.info("Kalibrace úspěšně načtena z %s", filename)
         # Ověření potřebných klíčů
         required_keys = [
             "perspective_transform_matrix_xy_to_uv",
@@ -149,15 +149,15 @@ def load_calibration(filename: str) -> Optional[Dict]:
             data["perspective_transform_matrix_xy_to_uv"])
         return data
     except FileNotFoundError:
-        logging.error(f"CHYBA: Kalibrační soubor '{filename}' nenalezen!")
+        logging.error("CHYBA: Kalibrační soubor '%s' nenalezen!", filename)
         logging.error("Spusťte nejprve calibration.py")
         return None
     except json.JSONDecodeError:
         logging.error(
-            f"CHYBA: Nepodařilo se zpracovat '{filename}'. Neplatný JSON?")
+            "CHYBA: Nepodařilo se zpracovat '%s'. Neplatný JSON?", filename)
         return None
     except Exception as e:
-        logging.error(f"CHYBA: Neočekávaná chyba při načítání kalibrace: {e}")
+        logging.error("CHYBA: Neočekávaná chyba při načítání kalibrace: %s", e)
         return None
 
 # --- Funkce pro výpočet inverzní transformace ---
@@ -199,20 +199,20 @@ def calculate_uv_to_xy_transform(
 
         num_inliers = np.sum(inliers) if inliers is not None else 0
         logging.info(
-            f"UV->XY transformace vypočtena s {num_inliers} / {len(raw_points)} inliery.")
+            "UV->XY transformace vypočtena s %d / %d inliery.", num_inliers, len(raw_points))
 
         if num_inliers < min_points:
             logging.warning(
-                f"Nízký počet inlierů ({num_inliers}) pro UV->XY transformaci.")
+                "Nízký počet inlierů (%d) pro UV->XY transformaci.", num_inliers)
 
         return transform_matrix
 
     except cv2.error as e:
-        logging.error(f"OpenCV chyba při výpočtu UV->XY transformace: {e}")
+        logging.error("OpenCV chyba při výpočtu UV->XY transformace: %s", e)
         return None
     except Exception as e:
         logging.exception(
-            f"Neočekávaná chyba při výpočtu UV->XY transformace: {e}")
+            "Neočekávaná chyba při výpočtu UV->XY transformace: %s", e)
         return None
 
 # --- Callback pro Klávesnici ---

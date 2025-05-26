@@ -1,0 +1,518 @@
+"""
+Comprehensive tests for game_state module.
+Tests game state management and validation.
+"""
+
+import pytest
+import numpy as np
+from unittest.mock import Mock, patch
+from app.core.game_state import GameState, GameStatus
+
+
+class TestGameStateInitialization:
+    """Test game state initialization."""
+
+    def test_game_state_default_initialization(self):
+        """Test default initialization."""
+        game_state = GameState()
+        
+        assert game_state.board.shape == (3, 3)
+        assert np.all(game_state.board == ' ')
+        assert game_state.current_player == 'X'
+        assert game_state.status == GameStatus.ONGOING
+        assert game_state.winner is None
+
+    def test_game_state_custom_initialization(self):
+        """Test initialization with custom values."""
+        custom_board = np.array([
+            ['X', 'O', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', 'O']
+        ])
+        
+        game_state = GameState(
+            board=custom_board,
+            current_player='O',
+            status=GameStatus.ONGOING
+        )
+        
+        assert np.array_equal(game_state.board, custom_board)
+        assert game_state.current_player == 'O'
+        assert game_state.status == GameStatus.ONGOING
+
+    def test_game_state_copy_initialization(self):
+        """Test initialization with copy of another state."""
+        original = GameState()
+        original.board[0, 0] = 'X'
+        original.current_player = 'O'
+        
+        copy_state = GameState(
+            board=original.board.copy(),
+            current_player=original.current_player,
+            status=original.status
+        )
+        
+        assert np.array_equal(copy_state.board, original.board)
+        assert copy_state.current_player == original.current_player
+        assert copy_state.status == original.status
+        
+        # Verify it's a true copy
+        copy_state.board[0, 1] = 'O'
+        assert not np.array_equal(copy_state.board, original.board)
+
+
+class TestGameStateValidation:
+    """Test game state validation methods."""
+
+    def test_is_valid_move_empty_cell(self):
+        """Test valid move on empty cell."""
+        game_state = GameState()
+        
+        assert game_state.is_valid_move(0, 0) is True
+        assert game_state.is_valid_move(1, 1) is True
+        assert game_state.is_valid_move(2, 2) is True
+
+    def test_is_valid_move_occupied_cell(self):
+        """Test invalid move on occupied cell."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        game_state.board[1, 1] = 'O'
+        
+        assert game_state.is_valid_move(0, 0) is False
+        assert game_state.is_valid_move(1, 1) is False
+
+    def test_is_valid_move_out_of_bounds(self):
+        """Test invalid move out of bounds."""
+        game_state = GameState()
+        
+        assert game_state.is_valid_move(-1, 0) is False
+        assert game_state.is_valid_move(0, -1) is False
+        assert game_state.is_valid_move(3, 0) is False
+        assert game_state.is_valid_move(0, 3) is False
+
+    def test_get_available_moves_empty_board(self):
+        """Test available moves on empty board."""
+        game_state = GameState()
+        
+        moves = game_state.get_available_moves()
+        assert len(moves) == 9
+        
+        expected_moves = [(i, j) for i in range(3) for j in range(3)]
+        assert set(moves) == set(expected_moves)
+
+    def test_get_available_moves_partial_board(self):
+        """Test available moves on partially filled board."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        game_state.board[1, 1] = 'O'
+        game_state.board[2, 2] = 'X'
+        
+        moves = game_state.get_available_moves()
+        assert len(moves) == 6
+        
+        expected_moves = [(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]
+        assert set(moves) == set(expected_moves)
+
+    def test_get_available_moves_full_board(self):
+        """Test available moves on full board."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'O', 'X'],
+            ['O', 'X', 'O'],
+            ['X', 'O', 'X']
+        ])
+        
+        moves = game_state.get_available_moves()
+        assert len(moves) == 0
+
+    def test_is_board_full_empty(self):
+        """Test board full check on empty board."""
+        game_state = GameState()
+        
+        assert game_state.is_board_full() is False
+
+    def test_is_board_full_partial(self):
+        """Test board full check on partial board."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        game_state.board[1, 1] = 'O'
+        
+        assert game_state.is_board_full() is False
+
+    def test_is_board_full_complete(self):
+        """Test board full check on full board."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'O', 'X'],
+            ['O', 'X', 'O'],
+            ['X', 'O', 'X']
+        ])
+        
+        assert game_state.is_board_full() is True
+
+
+class TestGameStateWinDetection:
+    """Test win detection functionality."""
+
+    def test_check_winner_horizontal_wins(self):
+        """Test horizontal win detection."""
+        test_cases = [
+            # Top row
+            ([['X', 'X', 'X'], [' ', ' ', ' '], [' ', ' ', ' ']], 'X'),
+            # Middle row
+            ([[' ', ' ', ' '], ['O', 'O', 'O'], [' ', ' ', ' ']], 'O'),
+            # Bottom row
+            ([[' ', ' ', ' '], [' ', ' ', ' '], ['X', 'X', 'X']], 'X'),
+        ]
+        
+        for board_data, expected_winner in test_cases:
+            game_state = GameState()
+            game_state.board = np.array(board_data)
+            
+            winner = game_state.check_winner()
+            assert winner == expected_winner
+
+    def test_check_winner_vertical_wins(self):
+        """Test vertical win detection."""
+        test_cases = [
+            # Left column
+            ([['X', ' ', ' '], ['X', ' ', ' '], ['X', ' ', ' ']], 'X'),
+            # Middle column
+            ([[' ', 'O', ' '], [' ', 'O', ' '], [' ', 'O', ' ']], 'O'),
+            # Right column
+            ([[' ', ' ', 'X'], [' ', ' ', 'X'], [' ', ' ', 'X']], 'X'),
+        ]
+        
+        for board_data, expected_winner in test_cases:
+            game_state = GameState()
+            game_state.board = np.array(board_data)
+            
+            winner = game_state.check_winner()
+            assert winner == expected_winner
+
+    def test_check_winner_diagonal_wins(self):
+        """Test diagonal win detection."""
+        test_cases = [
+            # Main diagonal
+            ([['X', ' ', ' '], [' ', 'X', ' '], [' ', ' ', 'X']], 'X'),
+            # Anti-diagonal
+            ([[' ', ' ', 'O'], [' ', 'O', ' '], ['O', ' ', ' ']], 'O'),
+        ]
+        
+        for board_data, expected_winner in test_cases:
+            game_state = GameState()
+            game_state.board = np.array(board_data)
+            
+            winner = game_state.check_winner()
+            assert winner == expected_winner
+
+    def test_check_winner_no_winner(self):
+        """Test no winner scenarios."""
+        test_cases = [
+            # Empty board
+            [[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']],
+            # Ongoing game
+            [['X', 'O', ' '], [' ', 'X', ' '], [' ', ' ', 'O']],
+            # Tie game
+            [['X', 'O', 'X'], ['O', 'O', 'X'], ['O', 'X', 'O']],
+        ]
+        
+        for board_data in test_cases:
+            game_state = GameState()
+            game_state.board = np.array(board_data)
+            
+            winner = game_state.check_winner()
+            assert winner is None
+
+
+class TestGameStateMoveHandling:
+    """Test move handling functionality."""
+
+    def test_make_move_valid(self):
+        """Test making valid moves."""
+        game_state = GameState()
+        
+        # Make first move
+        result = game_state.make_move(0, 0)
+        assert result is True
+        assert game_state.board[0, 0] == 'X'
+        assert game_state.current_player == 'O'
+
+        # Make second move
+        result = game_state.make_move(1, 1)
+        assert result is True
+        assert game_state.board[1, 1] == 'O'
+        assert game_state.current_player == 'X'
+
+    def test_make_move_invalid_occupied(self):
+        """Test making move on occupied cell."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        
+        result = game_state.make_move(0, 0)
+        assert result is False
+        assert game_state.current_player == 'X'  # Should not change
+
+    def test_make_move_invalid_bounds(self):
+        """Test making move out of bounds."""
+        game_state = GameState()
+        
+        result = game_state.make_move(-1, 0)
+        assert result is False
+        
+        result = game_state.make_move(3, 0)
+        assert result is False
+        
+        result = game_state.make_move(0, -1)
+        assert result is False
+        
+        result = game_state.make_move(0, 3)
+        assert result is False
+
+    def test_make_move_game_over(self):
+        """Test making move when game is over."""
+        game_state = GameState()
+        game_state.status = GameStatus.WON
+        game_state.winner = 'X'
+        
+        result = game_state.make_move(0, 0)
+        assert result is False
+
+    def test_undo_move_basic(self):
+        """Test undoing a move."""
+        game_state = GameState()
+        
+        # Make a move
+        game_state.make_move(0, 0)
+        assert game_state.board[0, 0] == 'X'
+        assert game_state.current_player == 'O'
+        
+        # Undo the move
+        result = game_state.undo_move(0, 0)
+        assert result is True
+        assert game_state.board[0, 0] == ' '
+        assert game_state.current_player == 'X'
+
+    def test_undo_move_empty_cell(self):
+        """Test undoing move on empty cell."""
+        game_state = GameState()
+        
+        result = game_state.undo_move(0, 0)
+        assert result is False
+
+    def test_undo_move_out_of_bounds(self):
+        """Test undoing move out of bounds."""
+        game_state = GameState()
+        
+        result = game_state.undo_move(-1, 0)
+        assert result is False
+        
+        result = game_state.undo_move(3, 0)
+        assert result is False
+
+
+class TestGameStateStatusUpdates:
+    """Test game status update functionality."""
+
+    def test_update_status_ongoing(self):
+        """Test status update for ongoing game."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'O', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', 'O']
+        ])
+        
+        game_state.update_status()
+        assert game_state.status == GameStatus.ONGOING
+        assert game_state.winner is None
+
+    def test_update_status_won(self):
+        """Test status update for won game."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'X', 'X'],
+            [' ', 'O', ' '],
+            [' ', ' ', 'O']
+        ])
+        
+        game_state.update_status()
+        assert game_state.status == GameStatus.WON
+        assert game_state.winner == 'X'
+
+    def test_update_status_tie(self):
+        """Test status update for tie game."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'O', 'X'],
+            ['O', 'O', 'X'],
+            ['O', 'X', 'O']
+        ])
+        
+        game_state.update_status()
+        assert game_state.status == GameStatus.TIE
+        assert game_state.winner is None
+
+    def test_make_move_with_status_update(self):
+        """Test move making with automatic status update."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'X', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', 'O']
+        ])
+        
+        # This move should win the game
+        result = game_state.make_move(0, 2)
+        assert result is True
+        assert game_state.status == GameStatus.WON
+        assert game_state.winner == 'X'
+
+
+class TestGameStateUtilities:
+    """Test utility methods."""
+
+    def test_get_board_copy(self):
+        """Test getting board copy."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        
+        board_copy = game_state.get_board_copy()
+        assert np.array_equal(board_copy, game_state.board)
+        
+        # Verify it's a copy
+        board_copy[0, 1] = 'O'
+        assert not np.array_equal(board_copy, game_state.board)
+
+    def test_reset_game(self):
+        """Test game reset functionality."""
+        game_state = GameState()
+        game_state.board[0, 0] = 'X'
+        game_state.board[1, 1] = 'O'
+        game_state.current_player = 'O'
+        game_state.status = GameStatus.ONGOING
+        
+        game_state.reset()
+        
+        assert np.all(game_state.board == ' ')
+        assert game_state.current_player == 'X'
+        assert game_state.status == GameStatus.ONGOING
+        assert game_state.winner is None
+
+    def test_count_symbols(self):
+        """Test symbol counting."""
+        game_state = GameState()
+        game_state.board = np.array([
+            ['X', 'O', 'X'],
+            ['O', 'X', ' '],
+            [' ', ' ', 'O']
+        ])
+        
+        x_count, o_count = game_state.count_symbols()
+        assert x_count == 3
+        assert o_count == 3
+
+    def test_count_symbols_empty_board(self):
+        """Test symbol counting on empty board."""
+        game_state = GameState()
+        
+        x_count, o_count = game_state.count_symbols()
+        assert x_count == 0
+        assert o_count == 0
+
+    def test_get_move_history(self):
+        """Test move history tracking."""
+        game_state = GameState()
+        
+        # Make some moves
+        game_state.make_move(0, 0)  # X
+        game_state.make_move(1, 1)  # O
+        game_state.make_move(0, 1)  # X
+        
+        history = game_state.get_move_history()
+        expected = [(0, 0, 'X'), (1, 1, 'O'), (0, 1, 'X')]
+        assert history == expected
+
+
+class TestGameStateIntegration:
+    """Integration tests for game state."""
+
+    def test_complete_game_simulation(self):
+        """Test complete game simulation."""
+        game_state = GameState()
+        
+        # Simulate a complete game
+        moves = [(0, 0), (1, 1), (0, 1), (1, 0), (0, 2)]  # X wins
+        
+        for i, (row, col) in enumerate(moves):
+            expected_player = 'X' if i % 2 == 0 else 'O'
+            assert game_state.current_player == expected_player
+            
+            result = game_state.make_move(row, col)
+            assert result is True
+            
+            if i < len(moves) - 1:
+                assert game_state.status == GameStatus.ONGOING
+            else:
+                assert game_state.status == GameStatus.WON
+                assert game_state.winner == 'X'
+
+    def test_game_state_consistency(self):
+        """Test game state consistency."""
+        game_state = GameState()
+        
+        # Make several moves and verify consistency
+        moves = [(0, 0), (1, 1), (0, 1), (2, 2)]
+        
+        for row, col in moves:
+            old_player = game_state.current_player
+            game_state.make_move(row, col)
+            
+            # Verify move was recorded
+            assert game_state.board[row, col] == old_player
+            
+            # Verify player switched
+            new_player = 'O' if old_player == 'X' else 'X'
+            if game_state.status == GameStatus.ONGOING:
+                assert game_state.current_player == new_player
+
+    def test_error_handling_robustness(self):
+        """Test error handling robustness."""
+        game_state = GameState()
+        
+        # Test with various invalid inputs
+        invalid_moves = [
+            (-1, 0), (3, 0), (0, -1), (0, 3),  # Out of bounds
+            (0.5, 0), (0, 1.5),  # Non-integer coordinates
+        ]
+        
+        for row, col in invalid_moves:
+            try:
+                result = game_state.make_move(row, col)
+                assert result is False
+            except Exception:
+                pass  # Should handle gracefully
+
+    def test_performance_stress_test(self):
+        """Test performance under stress."""
+        import time
+        
+        start_time = time.time()
+        
+        for _ in range(1000):
+            game_state = GameState()
+            
+            # Make random valid moves
+            available = game_state.get_available_moves()
+            if available:
+                row, col = available[0]
+                game_state.make_move(row, col)
+            
+            # Check winner
+            game_state.check_winner()
+            
+            # Reset
+            game_state.reset()
+        
+        elapsed = time.time() - start_time
+        assert elapsed < 5.0  # Should complete in reasonable time

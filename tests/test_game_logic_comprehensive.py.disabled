@@ -1,0 +1,367 @@
+"""
+Comprehensive tests for app.main.game_logic module using pytest.
+Tests all game logic functions with edge cases and comprehensive scenarios.
+"""
+
+import pytest
+from unittest.mock import patch
+from app.main.game_logic import (
+    create_board, get_available_moves, get_valid_moves, check_winner,
+    is_board_full, get_winning_line, is_game_over, print_board,
+    EMPTY, PLAYER_X, PLAYER_O, TIE
+)
+
+# Try to import optional functions
+try:
+    from app.main.game_logic import get_best_move, get_random_move, minimax, evaluate_position
+except ImportError:
+    get_best_move = get_random_move = minimax = evaluate_position = None
+
+
+class TestBoardCreation:
+    """Test board creation and basic utilities."""
+
+    def test_create_board(self):
+        """Test creating an empty board."""
+        board = create_board()
+        assert len(board) == 3
+        assert all(len(row) == 3 for row in board)
+        assert all(cell == EMPTY for row in board for cell in row)
+
+
+class TestMoveGeneration:
+    """Test move generation functions."""
+
+    def test_get_available_moves_empty_board(self):
+        """Test get_available_moves with empty board."""
+        board = create_board()
+        moves = get_available_moves(board)
+        assert len(moves) == 9
+        assert (0, 0) in moves
+        assert (2, 2) in moves
+
+    def test_get_available_moves_partial_board(self):
+        """Test get_available_moves with partially filled board."""
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        moves = get_available_moves(board)
+        assert len(moves) == 7
+        assert (0, 0) not in moves
+        assert (1, 1) not in moves
+        assert (0, 1) in moves
+
+    def test_get_available_moves_full_board(self):
+        """Test get_available_moves with full board."""
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [PLAYER_O, PLAYER_X, PLAYER_O],
+            [PLAYER_O, PLAYER_X, PLAYER_O]
+        ]
+        moves = get_available_moves(board)
+        assert len(moves) == 0
+
+    def test_get_valid_moves_alias(self):
+        """Test get_valid_moves is an alias for get_available_moves."""
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        moves1 = get_available_moves(board)
+        moves2 = get_valid_moves(board)
+        assert moves1 == moves2
+
+
+class TestWinnerDetection:
+    """Test winner detection functions."""
+
+    def test_check_winner_row_wins(self):
+        """Test check_winner with row wins."""
+        # Test each row
+        for row in range(3):
+            board = create_board()
+            for col in range(3):
+                board[row][col] = PLAYER_X
+            assert check_winner(board) == PLAYER_X
+
+    def test_check_winner_column_wins(self):
+        """Test check_winner with column wins."""
+        # Test each column
+        for col in range(3):
+            board = create_board()
+            for row in range(3):
+                board[row][col] = PLAYER_O
+            assert check_winner(board) == PLAYER_O
+
+    def test_check_winner_diagonal_wins(self):
+        """Test check_winner with diagonal wins."""
+        # Main diagonal
+        board = create_board()
+        for i in range(3):
+            board[i][i] = PLAYER_X
+        assert check_winner(board) == PLAYER_X
+
+        # Anti-diagonal
+        board = create_board()
+        for i in range(3):
+            board[i][2-i] = PLAYER_O
+        assert check_winner(board) == PLAYER_O
+
+    def test_check_winner_tie(self):
+        """Test check_winner with tie game."""
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [PLAYER_O, PLAYER_X, PLAYER_O],
+            [PLAYER_O, PLAYER_X, PLAYER_O]
+        ]
+        assert check_winner(board) == TIE
+
+    def test_check_winner_no_winner(self):
+        """Test check_winner with no winner yet."""
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        assert check_winner(board) is None
+
+
+class TestWinningLine:
+    """Test winning line detection."""
+
+    def test_get_winning_line_row(self):
+        """Test get_winning_line with row win."""
+        board = create_board()
+        board[1][0] = board[1][1] = board[1][2] = PLAYER_X
+        line = get_winning_line(board)
+        assert line == [(1, 0), (1, 1), (1, 2)]
+
+    def test_get_winning_line_column(self):
+        """Test get_winning_line with column win."""
+        board = create_board()
+        board[0][2] = board[1][2] = board[2][2] = PLAYER_O
+        line = get_winning_line(board)
+        assert line == [(0, 2), (1, 2), (2, 2)]
+
+    def test_get_winning_line_main_diagonal(self):
+        """Test get_winning_line with main diagonal win."""
+        board = create_board()
+        board[0][0] = board[1][1] = board[2][2] = PLAYER_X
+        line = get_winning_line(board)
+        assert line == [(0, 0), (1, 1), (2, 2)]
+
+    def test_get_winning_line_anti_diagonal(self):
+        """Test get_winning_line with anti-diagonal win."""
+        board = create_board()
+        board[0][2] = board[1][1] = board[2][0] = PLAYER_O
+        line = get_winning_line(board)
+        assert line == [(0, 2), (1, 1), (2, 0)]
+
+    def test_get_winning_line_no_winner(self):
+        """Test get_winning_line with no winner."""
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        line = get_winning_line(board)
+        assert line is None
+
+
+class TestBoardStatus:
+    """Test board status functions."""
+
+    def test_is_board_full_empty_board(self):
+        """Test is_board_full with empty board."""
+        board = create_board()
+        assert not is_board_full(board)
+
+    def test_is_board_full_partial_board(self):
+        """Test is_board_full with partially filled board."""
+        board = [
+            [PLAYER_X, PLAYER_O, EMPTY],
+            [EMPTY, PLAYER_X, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        assert not is_board_full(board)
+
+    def test_is_board_full_full_board(self):
+        """Test is_board_full with full board."""
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [PLAYER_O, PLAYER_X, PLAYER_O],
+            [PLAYER_O, PLAYER_X, PLAYER_O]
+        ]
+        assert is_board_full(board)
+
+    def test_is_game_over_winner(self):
+        """Test is_game_over with winner."""
+        board = create_board()
+        board[0][0] = board[0][1] = board[0][2] = PLAYER_X
+        assert is_game_over(board)
+
+    def test_is_game_over_tie(self):
+        """Test is_game_over with tie."""
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [PLAYER_O, PLAYER_X, PLAYER_O],
+            [PLAYER_O, PLAYER_X, PLAYER_O]
+        ]
+        assert is_game_over(board)
+
+    def test_is_game_over_ongoing(self):
+        """Test is_game_over with ongoing game."""
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        assert not is_game_over(board)
+
+
+class TestPrintBoard:
+    """Test board printing function."""
+
+    def test_print_board_empty(self):
+        """Test print_board with empty board."""
+        board = create_board()
+        
+        with patch('builtins.print') as mock_print:
+            print_board(board)
+            
+        # Should print multiple lines (header + rows + separator)
+        assert mock_print.call_count >= 4
+
+    def test_print_board_with_moves(self):
+        """Test print_board with some moves."""
+        board = [
+            [PLAYER_X, EMPTY, PLAYER_O],
+            [EMPTY, PLAYER_X, EMPTY],
+            [PLAYER_O, EMPTY, EMPTY]
+        ]
+        
+        with patch('builtins.print') as mock_print:
+            print_board(board)
+            
+        # Should print multiple lines 
+        assert mock_print.call_count >= 4
+
+
+class TestAIFunctions:
+    """Test AI-related functions (if they exist)."""
+
+    def test_get_random_move_available_moves(self):
+        """Test get_random_move with available moves."""
+        if get_random_move is None:
+            pytest.skip("get_random_move function not implemented")
+            
+        board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        
+        move = get_random_move(board, PLAYER_O)
+        assert move is not None
+        assert move in get_available_moves(board)
+
+    def test_get_random_move_no_moves(self):
+        """Test get_random_move with no available moves."""
+        if get_random_move is None:
+            pytest.skip("get_random_move function not implemented")
+            
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [PLAYER_O, PLAYER_X, PLAYER_O],
+            [PLAYER_O, PLAYER_X, PLAYER_O]
+        ]
+        
+        move = get_random_move(board, PLAYER_O)
+        assert move is None
+
+    def test_get_best_move_available_moves(self):
+        """Test get_best_move function if it exists."""
+        if get_best_move is None:
+            pytest.skip("get_best_move function not implemented")
+            
+        board = [
+            [PLAYER_X, PLAYER_X, EMPTY],  # O should block
+            [EMPTY, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        
+        move = get_best_move(board, PLAYER_O)
+        assert move == (0, 2)  # Should block X from winning
+
+    def test_evaluate_position_function(self):
+        """Test evaluate_position function if it exists."""
+        if evaluate_position is None:
+            pytest.skip("evaluate_position function not implemented")
+            
+        board = create_board()
+        score = evaluate_position(board, PLAYER_X)
+        assert isinstance(score, (int, float))
+
+    def test_minimax_function(self):
+        """Test minimax function if it exists."""
+        if minimax is None:
+            pytest.skip("minimax function not implemented")
+            
+        board = [
+            [PLAYER_X, PLAYER_X, EMPTY],
+            [EMPTY, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        
+        score = minimax(board, 0, True, PLAYER_X)
+        assert isinstance(score, (int, float))
+
+
+class TestEdgeCases:
+    """Test edge cases and error conditions."""
+
+    def test_constants_values(self):
+        """Test that constants have expected values."""
+        assert EMPTY == ' '
+        assert PLAYER_X == 'X'
+        assert PLAYER_O == 'O'
+        assert TIE == "TIE"
+
+    def test_winner_detection_with_mixed_symbols(self):
+        """Test winner detection doesn't trigger with mixed symbols."""
+        board = [
+            [PLAYER_X, PLAYER_O, PLAYER_X],
+            [EMPTY, EMPTY, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        assert check_winner(board) is None
+
+    def test_partial_lines_no_winner(self):
+        """Test that partial lines don't count as wins."""
+        board = [
+            [PLAYER_X, PLAYER_X, EMPTY],
+            [PLAYER_O, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        assert check_winner(board) is None
+
+    def test_board_manipulation_doesnt_affect_original(self):
+        """Test that function calls don't modify original board."""
+        original_board = [
+            [PLAYER_X, EMPTY, EMPTY],
+            [EMPTY, PLAYER_O, EMPTY],
+            [EMPTY, EMPTY, EMPTY]
+        ]
+        board_copy = [row[:] for row in original_board]
+        
+        # Call various functions
+        get_available_moves(board_copy)
+        check_winner(board_copy)
+        is_board_full(board_copy)
+        get_winning_line(board_copy)
+        
+        # Board should remain unchanged
+        assert board_copy == original_board

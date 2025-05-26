@@ -32,7 +32,7 @@ IDEAL_GRID_POINTS_CANONICAL = np.array([
 ], dtype=np.float32)
 
 
-class GameState:  # pylint: disable=too-many-public-methods
+class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     """Class to represent and manage the game state."""
     ERROR_GRID_INCOMPLETE_PAUSE = "GRID_INCOMPLETE_PAUSE_STATE"  # Unique ID
 

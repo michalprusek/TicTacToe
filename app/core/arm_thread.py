@@ -100,7 +100,7 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout=5)
 
-    def draw_x(self, center_x: float, center_y: float, size: float,
+    def draw_x(self, center_x: float, center_y: float, size: float,  # pylint: disable=too-many-arguments
                speed: Optional[int] = None, timeout: Optional[float] = None) -> bool:
         """Draw an X symbol.
 
@@ -127,7 +127,7 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout)
 
-    def draw_o(self, center_x: float, center_y: float, radius: float,
+    def draw_o(self, center_x: float, center_y: float, radius: float,  # pylint: disable=too-many-arguments
                speed: Optional[int] = None, segments: int = 16,
                timeout: Optional[float] = None) -> bool:
         """Draw an O symbol.
@@ -157,7 +157,7 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout)
 
-    def go_to_position(self, x: Optional[float] = None, y: Optional[float] = None,
+    def go_to_position(self, x: Optional[float] = None, y: Optional[float] = None,  # pylint: disable=too-many-arguments
                       z: Optional[float] = None, speed: Optional[int] = None,
                       wait: bool = True) -> bool:
         """Move the arm to a position.

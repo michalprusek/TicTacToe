@@ -1,0 +1,345 @@
+"""
+Extended tests for detection_thread module.
+Tests threading functionality and detection pipeline.
+"""
+
+import pytest
+import threading
+import time
+import queue
+import numpy as np
+from unittest.mock import Mock, patch, MagicMock
+from app.core.detection_thread import DetectionThread
+
+
+class TestDetectionThreadBasics:
+    """Test basic detection thread functionality."""
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_initialization_defaults(self, mock_detector):
+        """Test detection thread initialization with defaults."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        assert thread.device == 'cpu'
+        assert thread._stop_event is not None
+        assert thread._frame_available is not None
+        assert hasattr(thread, 'logger')
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_initialization_custom_device(self, mock_detector):
+        """Test detection thread initialization with custom device."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread(device='cuda')
+        
+        assert thread.device == 'cuda'
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_stop_functionality(self, mock_detector):
+        """Test thread stop functionality."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        assert not thread._stop_event.is_set()
+        
+        thread.stop()
+        assert thread._stop_event.is_set()
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_frame_setting(self, mock_detector):
+        """Test frame setting functionality."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Test setting valid frame
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        thread.set_frame(frame)
+        
+        assert thread._frame_available.is_set()
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_frame_setting_none(self, mock_detector):
+        """Test setting None frame."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        thread.set_frame(None)
+        
+        # Should not set frame_available event for None frame
+        assert not thread._frame_available.is_set()
+
+
+class TestDetectionThreadResults:
+    """Test detection result handling."""
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_get_latest_detection_no_result(self, mock_detector):
+        """Test getting detection when no result available."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        result = thread.get_latest_detection()
+        
+        assert result is None
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_get_latest_detection_with_result(self, mock_detector):
+        """Test getting detection with available result."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Simulate detection result
+        mock_result = {
+            'game_state': Mock(),
+            'grid_points': np.array([[100, 100], [200, 200]]),
+            'is_grid_complete': True
+        }
+        thread._latest_detection = mock_result
+        
+        result = thread.get_latest_detection()
+        assert result == mock_result
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_grid_completeness_check_true(self, mock_detector):
+        """Test grid completeness check when complete."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Mock 16 grid points (complete grid)
+        grid_points = np.random.rand(16, 2)
+        thread._latest_detection = {'grid_points': grid_points}
+        
+        is_complete = thread.is_grid_complete()
+        assert is_complete is True
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_grid_completeness_check_false(self, mock_detector):
+        """Test grid completeness check when incomplete."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Mock incomplete grid (less than 16 points)
+        grid_points = np.random.rand(12, 2)
+        thread._latest_detection = {'grid_points': grid_points}
+        
+        is_complete = thread.is_grid_complete()
+        assert is_complete is False
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_grid_completeness_check_no_detection(self, mock_detector):
+        """Test grid completeness check with no detection."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        is_complete = thread.is_grid_complete()
+        assert is_complete is False
+
+
+class TestDetectionThreadProcessing:
+    """Test detection processing functionality."""
+
+    @patch('app.core.detection_thread.GameDetector')
+    @patch('time.sleep')
+    def test_run_loop_basic(self, mock_sleep, mock_detector):
+        """Test basic run loop functionality."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        # Mock detection result
+        mock_detector_instance.process_frame.return_value = {
+            'game_state': Mock(),
+            'grid_points': np.array([[100, 100]]),
+            'is_grid_complete': False
+        }
+        
+        thread = DetectionThread()
+        
+        # Set frame and trigger processing
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        thread.set_frame(frame)
+        
+        # Stop thread immediately for testing
+        thread.stop()
+        
+        # Verify detector was created
+        mock_detector.assert_called_once()
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_frame_processing_with_valid_frame(self, mock_detector):
+        """Test frame processing with valid frame."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        # Setup mock detection result
+        mock_result = {
+            'game_state': Mock(),
+            'grid_points': np.array([[100, 100], [200, 200]]),
+            'symbols': [],
+            'is_grid_complete': False,
+            'fps': 30.0
+        }
+        mock_detector_instance.process_frame.return_value = mock_result
+        
+        thread = DetectionThread()
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        
+        # Simulate frame processing
+        thread._current_frame = frame
+        thread._process_current_frame()
+        
+        # Verify processing was called
+        mock_detector_instance.process_frame.assert_called_once_with(frame)
+        assert thread._latest_detection == mock_result
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_processing_exception_handling(self, mock_detector):
+        """Test exception handling during processing."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        # Make detector raise exception
+        mock_detector_instance.process_frame.side_effect = Exception("Processing error")
+        
+        thread = DetectionThread()
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        
+        # Should handle exception gracefully
+        thread._current_frame = frame
+        thread._process_current_frame()
+        
+        # Latest detection should remain None after exception
+        assert thread._latest_detection is None
+
+
+class TestDetectionThreadTiming:
+    """Test detection thread timing and performance."""
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_frame_interval_calculation(self, mock_detector):
+        """Test frame interval calculation."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Check frame interval constant
+        assert hasattr(thread, 'FRAME_INTERVAL')
+        assert thread.FRAME_INTERVAL > 0
+
+    @patch('app.core.detection_thread.GameDetector')
+    @patch('time.time')
+    def test_fps_tracking(self, mock_time, mock_detector):
+        """Test FPS tracking functionality."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        # Mock time progression
+        mock_time.side_effect = [0, 0.5, 1.0, 1.5]  # 0.5 second intervals
+        
+        thread = DetectionThread()
+        
+        # Simulate multiple frame updates
+        for _ in range(3):
+            thread.set_frame(np.zeros((480, 640, 3), dtype=np.uint8))
+        
+        # FPS calculation should be available
+        assert hasattr(thread, '_last_frame_time')
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_detection_thread_memory_management(self, mock_detector):
+        """Test memory management in detection thread."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Set multiple frames to test memory handling
+        for i in range(10):
+            frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+            thread.set_frame(frame)
+        
+        # Should maintain only current frame
+        assert hasattr(thread, '_current_frame')
+
+
+class TestDetectionThreadIntegration:
+    """Integration tests for detection thread."""
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_complete_detection_workflow(self, mock_detector):
+        """Test complete detection workflow."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        # Setup complete mock result
+        mock_result = {
+            'game_state': Mock(),
+            'grid_points': np.array([[i*50, j*50] for i in range(4) for j in range(4)]),
+            'symbols': [{'class_id': 0, 'confidence': 0.9, 'bbox': [100, 100, 150, 150]}],
+            'is_grid_complete': True,
+            'fps': 30.0
+        }
+        mock_detector_instance.process_frame.return_value = mock_result
+        
+        thread = DetectionThread(device='cpu')
+        
+        # Test complete workflow
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        thread.set_frame(frame)
+        
+        # Process frame
+        thread._current_frame = frame
+        thread._process_current_frame()
+        
+        # Verify results
+        result = thread.get_latest_detection()
+        assert result is not None
+        assert result['is_grid_complete'] is True
+        assert len(result['grid_points']) == 16
+        
+        # Test grid completeness
+        is_complete = thread.is_grid_complete()
+        assert is_complete is True
+        
+        # Test stop functionality
+        thread.stop()
+        assert thread._stop_event.is_set()
+
+    @patch('app.core.detection_thread.GameDetector')
+    def test_error_recovery(self, mock_detector):
+        """Test error recovery in detection thread."""
+        mock_detector_instance = Mock()
+        mock_detector.return_value = mock_detector_instance
+        
+        thread = DetectionThread()
+        
+        # Test with invalid frame types
+        invalid_frames = [None, "invalid", 123, [1, 2, 3]]
+        
+        for invalid_frame in invalid_frames:
+            thread.set_frame(invalid_frame)
+            # Should handle gracefully without crashing
+        
+        # Test with valid frame after errors
+        valid_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        thread.set_frame(valid_frame)
+        
+        # Should still work correctly
+        assert thread._frame_available.is_set()

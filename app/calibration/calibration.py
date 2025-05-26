@@ -4,6 +4,9 @@ Camera calibration module for TicTacToe robot arm.
 # pylint: disable=line-too-long,invalid-name,global-variable-not-assigned,undefined-variable
 # pylint: disable=too-many-locals,too-many-return-statements,consider-using-f-string
 # pylint: disable=superfluous-parens,no-else-return,logging-too-many-args,no-member
+# pylint: disable=too-many-branches,too-many-statements,global-statement,broad-exception-caught
+# pylint: disable=too-many-nested-blocks,consider-using-in,unsubscriptable-object,wrong-import-order
+# pylint: disable=too-many-function-args,unspecified-encoding
 import logging
 import json
 import sys

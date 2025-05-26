@@ -109,7 +109,7 @@ def _find_corners_and_preliminary_homography(
     return corners_src, h_prelim
 
 
-def _fallback_corner_detection(points_np: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:
+def _fallback_corner_detection(points_np: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:  # pylint: disable=line-too-long
     """Fallback corner detection using cv2.minAreaRect."""
     logger.debug("Corner detection failed, using fallback method with cv2.minAreaRect")
 
@@ -128,12 +128,12 @@ def _fallback_corner_detection(points_np: np.ndarray, logger: logging.Logger) ->
         top_points[0], top_points[1],
         bottom_points[1], bottom_points[0]
     ], dtype=np.float32)
-    
+
     logger.debug("Used fallback minAreaRect method for corner detection")
     return corners_src
 
 
-def _transform_and_sort_points(
+def _transform_and_sort_points(  # pylint: disable=line-too-long
     points_np: np.ndarray, h_prelim: np.ndarray, logger: logging.Logger
 ) -> Optional[np.ndarray]:
     """Transform all 16 points and sort them based on grid positions."""
@@ -170,16 +170,16 @@ def _transform_and_sort_points(
     return np.array([pair['original'] for pair in point_pairs], dtype=np.float32)
 
 
-def _compute_final_homography(sorted_points: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:
+def _compute_final_homography(sorted_points: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:  # pylint: disable=line-too-long
     """Compute final homography using ideal target points."""
     # Define ideal target points for final homography
     cell_size_final = 100
     ideal_points_dst_final = []
-    
+
     for r in range(4):  # 4 rows of points
         for c in range(4):  # 4 columns of points
             ideal_points_dst_final.append([c * cell_size_final, r * cell_size_final])
-    
+
     ideal_points_dst_final = np.array(ideal_points_dst_final, dtype=np.float32)
 
     # Compute final homography

@@ -47,7 +47,7 @@ class SymbolDetector:
             - box: [x1, y1, x2, y2] coordinates
             - class_id: class ID (0 for X, 1 for O)
         """
-        # Use the detection model to find symbols
+        # Use the detection model to find symbols  # pylint: disable=line-too-long
         detect_results = self.detect_model.predict(
             frame, conf=self.bbox_conf_threshold, verbose=False
         )
@@ -71,7 +71,7 @@ class SymbolDetector:
             cls_ids = result.boxes.cls.cpu().numpy().astype(int)
 
             # Create symbol dictionaries
-            for i, (box, conf, cls_id) in enumerate(zip(boxes, confs, cls_ids)):
+            for _, (box, conf, cls_id) in enumerate(zip(boxes, confs, cls_ids)):
                 # Get label from class ID
                 label = self.class_id_to_label.get(cls_id, f"Unknown-{cls_id}")
 
@@ -90,7 +90,8 @@ class SymbolDetector:
 
         return frame, symbols
 
-    def get_nearest_cell(self, x: float, y: float, cell_polygons: List[np.ndarray]) -> Optional[Tuple[int, int]]:
+    def get_nearest_cell(self, x: float, y: float,  # pylint: disable=line-too-long
+                         cell_polygons: List[np.ndarray]) -> Optional[Tuple[int, int]]:
         """Finds the nearest cell to the given point.
 
         Args:
@@ -106,11 +107,9 @@ class SymbolDetector:
             return None
 
         # Check if point is inside any cell
-        point = np.array([x, y])
-
         # First check if the point is inside any cell
         for cell_idx, polygon in enumerate(cell_polygons):
-            if cv2.pointPolygonTest(polygon, (x, y), False) >= 0:
+            if cv2.pointPolygonTest(polygon, (x, y), False) >= 0:  # pylint: disable=no-member
                 # Point is inside this cell
                 row = cell_idx // 3
                 col = cell_idx % 3

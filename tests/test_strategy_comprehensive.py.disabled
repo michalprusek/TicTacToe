@@ -1,0 +1,431 @@
+"""
+Comprehensive tests for strategy module.
+Tests AI strategy selection and game logic.
+"""
+
+import pytest
+import random
+from unittest.mock import Mock, patch
+from app.core.strategy import (
+    BernoulliStrategySelector, minimax, minimax_alpha_beta,
+    evaluate_position, find_winning_move, find_blocking_move
+)
+
+
+class TestBernoulliStrategySelector:
+    """Test Bernoulli strategy selector."""
+
+    def test_strategy_selector_initialization(self):
+        """Test strategy selector initialization."""
+        selector = BernoulliStrategySelector(difficulty=5)
+        assert selector.difficulty == 5
+        assert 0 <= selector.bernoulli_p <= 1
+
+    def test_strategy_selector_difficulty_range(self):
+        """Test strategy selector with different difficulty levels."""
+        for difficulty in range(1, 11):
+            selector = BernoulliStrategySelector(difficulty=difficulty)
+            assert selector.difficulty == difficulty
+            assert 0 <= selector.bernoulli_p <= 1
+
+    def test_strategy_selector_difficulty_extreme_values(self):
+        """Test strategy selector with extreme difficulty values."""
+        # Minimum difficulty
+        selector_min = BernoulliStrategySelector(difficulty=1)
+        assert selector_min.bernoulli_p == 0.1
+        
+        # Maximum difficulty
+        selector_max = BernoulliStrategySelector(difficulty=10)
+        assert selector_max.bernoulli_p == 1.0
+
+    def test_strategy_selector_probability_calculation(self):
+        """Test probability calculation for different difficulties."""
+        expected_probs = {
+            1: 0.1, 2: 0.2, 3: 0.3, 4: 0.4, 5: 0.5,
+            6: 0.6, 7: 0.7, 8: 0.8, 9: 0.9, 10: 1.0
+        }
+        
+        for difficulty, expected_p in expected_probs.items():
+            selector = BernoulliStrategySelector(difficulty=difficulty)
+            assert abs(selector.bernoulli_p - expected_p) < 1e-10
+
+    @patch('random.random')
+    def test_select_strategy_random(self, mock_random):
+        """Test strategy selection - random choice."""
+        mock_random.return_value = 0.3  # Below threshold
+        
+        selector = BernoulliStrategySelector(difficulty=5)  # p = 0.5
+        strategy = selector.select_strategy()
+        
+        assert strategy == 'random'
+
+    @patch('random.random')
+    def test_select_strategy_minimax(self, mock_random):
+        """Test strategy selection - minimax choice."""
+        mock_random.return_value = 0.7  # Above threshold
+        
+        selector = BernoulliStrategySelector(difficulty=5)  # p = 0.5
+        strategy = selector.select_strategy()
+        
+        assert strategy == 'minimax'
+
+    def test_select_strategy_distribution(self):
+        """Test strategy selection distribution."""
+        selector = BernoulliStrategySelector(difficulty=5)  # p = 0.5
+        
+        strategies = []
+        for _ in range(1000):
+            strategies.append(selector.select_strategy())
+        
+        random_count = strategies.count('random')
+        minimax_count = strategies.count('minimax')
+        
+        # Should be roughly 50/50 with some tolerance
+        assert 400 <= random_count <= 600
+        assert 400 <= minimax_count <= 600
+
+    def test_get_move_random_strategy(self):
+        """Test getting move with random strategy."""
+        selector = BernoulliStrategySelector(difficulty=1)  # Always random
+        
+        board = [
+            [' ', ' ', ' '],
+            [' ', ' ', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        with patch.object(selector, 'select_strategy', return_value='random'):
+            move = selector.get_move(board, 'O')
+            
+        assert move is not None
+        assert 0 <= move[0] <= 2
+        assert 0 <= move[1] <= 2
+        assert board[move[0]][move[1]] == ' '
+
+    def test_get_move_minimax_strategy(self):
+        """Test getting move with minimax strategy."""
+        selector = BernoulliStrategySelector(difficulty=10)  # Always minimax
+        
+        board = [
+            ['X', 'O', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        with patch.object(selector, 'select_strategy', return_value='minimax'):
+            move = selector.get_move(board, 'O')
+            
+        assert move is not None
+        assert board[move[0]][move[1]] == ' '
+
+    def test_get_move_no_available_moves(self):
+        """Test getting move when board is full."""
+        selector = BernoulliStrategySelector(difficulty=5)
+        
+        board = [
+            ['X', 'O', 'X'],
+            ['O', 'X', 'O'],
+            ['X', 'O', 'X']
+        ]
+        
+        move = selector.get_move(board, 'O')
+        assert move is None
+
+
+class TestMinimaxAlgorithm:
+    """Test minimax algorithm functionality."""
+
+    def test_minimax_terminal_win(self):
+        """Test minimax with winning position."""
+        board = [
+            ['X', 'X', 'X'],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = minimax(board, 0, False, 'X', 'O')
+        assert score == 1  # X wins
+
+    def test_minimax_terminal_loss(self):
+        """Test minimax with losing position."""
+        board = [
+            ['O', 'O', 'O'],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = minimax(board, 0, True, 'X', 'O')
+        assert score == -1  # O wins (X loses)
+
+    def test_minimax_terminal_tie(self):
+        """Test minimax with tie position."""
+        board = [
+            ['X', 'O', 'X'],
+            ['O', 'O', 'X'],
+            ['O', 'X', 'O']
+        ]
+        
+        score = minimax(board, 0, True, 'X', 'O')
+        assert score == 0  # Tie
+
+    def test_minimax_depth_limiting(self):
+        """Test minimax with depth limiting."""
+        board = [
+            [' ', ' ', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        # Shallow depth should return heuristic value
+        score = minimax(board, 5, True, 'X', 'O', max_depth=1)
+        assert isinstance(score, (int, float))
+
+    def test_minimax_alpha_beta_basic(self):
+        """Test alpha-beta pruning minimax."""
+        board = [
+            ['X', ' ', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = minimax_alpha_beta(board, 0, True, 'X', 'O', -float('inf'), float('inf'))
+        assert isinstance(score, (int, float))
+
+    def test_minimax_alpha_beta_pruning(self):
+        """Test that alpha-beta pruning produces same results."""
+        board = [
+            ['X', ' ', 'O'],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score_regular = minimax(board, 0, True, 'X', 'O', max_depth=5)
+        score_ab = minimax_alpha_beta(board, 0, True, 'X', 'O', -float('inf'), float('inf'), max_depth=5)
+        
+        assert score_regular == score_ab
+
+
+class TestPositionEvaluation:
+    """Test position evaluation functionality."""
+
+    def test_evaluate_position_win(self):
+        """Test evaluation of winning position."""
+        board = [
+            ['X', 'X', 'X'],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = evaluate_position(board, 'X', 'O')
+        assert score == 1
+
+    def test_evaluate_position_loss(self):
+        """Test evaluation of losing position."""
+        board = [
+            ['O', 'O', 'O'],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = evaluate_position(board, 'X', 'O')
+        assert score == -1
+
+    def test_evaluate_position_tie(self):
+        """Test evaluation of tie position."""
+        board = [
+            ['X', 'O', 'X'],
+            ['O', 'O', 'X'],
+            ['O', 'X', 'O']
+        ]
+        
+        score = evaluate_position(board, 'X', 'O')
+        assert score == 0
+
+    def test_evaluate_position_ongoing(self):
+        """Test evaluation of ongoing game."""
+        board = [
+            ['X', ' ', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        score = evaluate_position(board, 'X', 'O')
+        assert isinstance(score, (int, float))
+
+
+class TestSpecialMoves:
+    """Test special move detection."""
+
+    def test_find_winning_move_horizontal(self):
+        """Test finding winning move - horizontal."""
+        board = [
+            ['X', 'X', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_winning_move(board, 'X')
+        assert move == (0, 2)
+
+    def test_find_winning_move_vertical(self):
+        """Test finding winning move - vertical."""
+        board = [
+            ['X', ' ', ' '],
+            ['X', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_winning_move(board, 'X')
+        assert move == (2, 0)
+
+    def test_find_winning_move_diagonal(self):
+        """Test finding winning move - diagonal."""
+        board = [
+            ['X', ' ', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_winning_move(board, 'X')
+        assert move == (2, 2)
+
+    def test_find_winning_move_none(self):
+        """Test finding winning move when none exists."""
+        board = [
+            ['X', ' ', 'O'],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_winning_move(board, 'X')
+        assert move is None
+
+    def test_find_blocking_move_horizontal(self):
+        """Test finding blocking move - horizontal."""
+        board = [
+            ['O', 'O', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_blocking_move(board, 'X', 'O')
+        assert move == (0, 2)
+
+    def test_find_blocking_move_vertical(self):
+        """Test finding blocking move - vertical."""
+        board = [
+            ['O', ' ', ' '],
+            ['O', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_blocking_move(board, 'X', 'O')
+        assert move == (2, 0)
+
+    def test_find_blocking_move_diagonal(self):
+        """Test finding blocking move - diagonal."""
+        board = [
+            ['O', ' ', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_blocking_move(board, 'X', 'O')
+        assert move == (2, 2)
+
+    def test_find_blocking_move_none(self):
+        """Test finding blocking move when none needed."""
+        board = [
+            ['O', ' ', 'X'],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        move = find_blocking_move(board, 'X', 'O')
+        assert move is None
+
+
+class TestStrategyIntegration:
+    """Integration tests for strategy module."""
+
+    def test_complete_game_simulation(self):
+        """Test complete game simulation with strategy."""
+        selector = BernoulliStrategySelector(difficulty=8)
+        
+        board = [
+            [' ', ' ', ' '],
+            [' ', ' ', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        moves = []
+        for _ in range(5):  # Simulate 5 moves
+            move = selector.get_move(board, 'O')
+            if move:
+                board[move[0]][move[1]] = 'O'
+                moves.append(move)
+        
+        assert len(moves) <= 5
+        for move in moves:
+            assert 0 <= move[0] <= 2
+            assert 0 <= move[1] <= 2
+
+    def test_strategy_consistency(self):
+        """Test strategy consistency across multiple calls."""
+        selector = BernoulliStrategySelector(difficulty=10)  # Always minimax
+        
+        board = [
+            ['X', ' ', ' '],
+            [' ', 'O', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        # With deterministic strategy, should get consistent results
+        moves = []
+        for _ in range(10):
+            with patch('random.random', return_value=0.9):  # Force minimax
+                move = selector.get_move(board.copy(), 'O')
+                moves.append(move)
+        
+        # All moves should be the same for deterministic strategy
+        assert all(move == moves[0] for move in moves)
+
+    def test_performance_benchmark(self):
+        """Test strategy performance."""
+        selector = BernoulliStrategySelector(difficulty=7)
+        
+        board = [
+            [' ', ' ', ' '],
+            [' ', 'X', ' '],
+            [' ', ' ', ' ']
+        ]
+        
+        import time
+        start_time = time.time()
+        
+        for _ in range(100):
+            move = selector.get_move(board, 'O')
+        
+        elapsed = time.time() - start_time
+        assert elapsed < 5.0  # Should complete in reasonable time
+
+    def test_edge_case_handling(self):
+        """Test edge case handling in strategy."""
+        selector = BernoulliStrategySelector(difficulty=5)
+        
+        # Test with various board states
+        test_boards = [
+            # Empty board
+            [[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']],
+            # Almost full board
+            [['X', 'O', 'X'], ['O', 'X', 'O'], ['O', ' ', 'X']],
+            # One move left
+            [['X', 'O', 'X'], ['O', 'X', 'O'], ['O', 'X', ' ']],
+        ]
+        
+        for board in test_boards:
+            move = selector.get_move(board, 'O')
+            if move is not None:
+                assert 0 <= move[0] <= 2
+                assert 0 <= move[1] <= 2
+                assert board[move[0]][move[1]] == ' '

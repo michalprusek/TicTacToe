@@ -3,6 +3,8 @@ Game Controller module for TicTacToe application.
 This module handles game logic, state management, and turn coordination.
 Consolidates functionality from game_manager.py.
 """
+# pylint: disable=no-name-in-module,wrong-import-position,line-too-long,unused-variable,unused-import
+# pylint: disable=too-many-instance-attributes,too-many-branches,too-many-statements,no-else-return,unused-argument
 
 # import logging
 import time

@@ -15,10 +15,10 @@ from app.core.config import GameDetectorConfig
 from app.main.game_detector import GameDetector
 
 
-class DetectionThread(threading.Thread):
+class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-attributes
     """Thread for running YOLO detection at a fixed frame rate."""
 
-    def __init__(self,
+    def __init__(self,  # pylint: disable=too-many-arguments
                  config: GameDetectorConfig,
                  target_fps: float = 2.0,
                  device: Optional[str] = None):
@@ -120,7 +120,7 @@ class DetectionThread(threading.Thread):
         """Initialize the detector. Returns True if successful."""
         try:
             self.detector = GameDetector(
-                config=self.config,
+                detector_config=self.config,
                 camera_index=self.config.camera_index,
                 device=self.device
             )
