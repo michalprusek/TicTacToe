@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Utility functions for the TicTacToe application.
 """
@@ -13,7 +13,7 @@ class FPSCalculator:
         """Initializes the FPS calculator.
 
         Args:
-            buffer_size: The number of recent frame timestamps to store for averaging.
+            buffer_size: Number of recent timestamps to store for averaging.
         """
         if buffer_size <= 0:
             raise ValueError("Buffer size must be a positive integer.")
@@ -24,7 +24,8 @@ class FPSCalculator:
     def tick(self) -> None:
         """Records a new frame timestamp (or event)."""
         current_time = time.perf_counter()
-        if self._last_tick_time > 0:  # Ensure there's a previous tick to calculate duration
+        # Ensure there's a previous tick to calculate duration
+        if self._last_tick_time > 0:
             # Store duration between ticks for more accurate FPS
             duration = current_time - self._last_tick_time
             if duration > 0:  # Avoid division by zero if ticks are too close

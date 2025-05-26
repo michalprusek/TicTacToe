@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Camera thread module for the TicTacToe application.
 """
@@ -69,7 +69,8 @@ class CameraThread(QThread):
         # Pokus o vypnutí autofokusu (nemusí fungovat na všech kamerách)
         if self.config.disable_autofocus:
             self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-            self.logger.info("Autofocus status: %s", self.cap.get(cv2.CAP_PROP_AUTOFOCUS))
+            self.logger.info(
+                "Autofocus status: %s", self.cap.get(cv2.CAP_PROP_AUTOFOCUS))
 
         # Hlavní smyčka pro čtení snímků z kamery
         while self.running:
@@ -115,7 +116,8 @@ class CameraThread(QThread):
         self.running = False
         if self.detection_thread:
             self.detection_thread.stop()
-            # DetectionThread is a threading.Thread, not QThread, so we use join() instead of wait()
+            # DetectionThread is a threading.Thread, not QThread,
+            # so we use join() instead of wait()
             if self.detection_thread.is_alive():
                 self.detection_thread.join(timeout=1.0)
 

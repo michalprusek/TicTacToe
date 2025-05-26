@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Visualization manager module for the TicTacToe application.
 """
@@ -44,7 +44,8 @@ class VisualizationManager:
         fps: float,
         pose_kpts_uv: Optional[np.ndarray],
         *,
-        ordered_kpts_uv: Optional[np.ndarray],  # pylint: disable=unused-argument
+        # pylint: disable=unused-argument
+        ordered_kpts_uv: Optional[np.ndarray],
         cell_polygons: Optional[List[np.ndarray]],
         detected_symbols: List[Dict],
         homography: Optional[np.ndarray],  # pylint: disable=unused-argument
@@ -161,7 +162,8 @@ class VisualizationManager:
 
         # --- 4. Draw detected symbols
         if self.show_detections and detected_symbols:
-            self.logger.debug("Drawing %s detected symbols", len(detected_symbols))
+            self.logger.debug(
+                "Drawing %s detected symbols", len(detected_symbols))
             for det_info in detected_symbols:
                 try:
                     # Check if det_info is a dictionary with expected keys
@@ -223,7 +225,8 @@ class VisualizationManager:
 
         return result_frame
 
-    def draw_debug_info(self, frame: np.ndarray, fps: float, game_state=None) -> None:
+    def draw_debug_info(
+            self, frame: np.ndarray, fps: float, game_state=None) -> None:
         """Draws debug information in a separate window.
 
         Args:

@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Refactored game detector module for the TicTacToe application.
 """
@@ -20,7 +20,9 @@ from app.core.game_state import GameState
 from app.core.utils import FPSCalculator
 from app.main.game_state_manager import GameStateManager
 from app.main.game_utils import setup_logger
-from app.main.grid_detector import GridDetector  # pylint: disable=no-name-in-module
+from app.main.grid_detector import (
+    GridDetector  # pylint: disable=no-name-in-module
+)
 from app.main.symbol_detector import SymbolDetector
 from app.main.visualization_manager import VisualizationManager
 
@@ -99,7 +101,8 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
         """Loads the YOLO models for detection and pose estimation."""
         try:
             # Load detection model for X and O symbols
-            self.logger.info("Loading detection model from %s", self.detect_model_path)
+            self.logger.info(
+                "Loading detection model from %s", self.detect_model_path)
             try:
                 self.detect_model = YOLO(self.detect_model_path)
                 self.detect_model.to(self.device)
@@ -113,7 +116,8 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
                 )
 
             # Load pose model for grid detection
-            self.logger.info("Loading pose model from %s", self.pose_model_path)
+            self.logger.info(
+                "Loading pose model from %s", self.pose_model_path)
             try:
                 self.pose_model = YOLO(self.pose_model_path)
                 self.pose_model.to(self.device)
@@ -234,13 +238,16 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
 
                     # Print board state if valid
                     if current_game_state and current_game_state.is_valid():
-                        # Logging happens within game_state.update_from_detection
+                        # Logging
+                        # happens within game_state.update_from_detection
                         pass
                     else:
-                        self.logger.debug("Waiting for valid grid detection...")
+                        self.logger.debug(
+                            "Waiting for valid grid detection...")
 
                 except Exception as exc:
-                    self.logger.exception("Error during frame processing: %s", exc)
+                    self.logger.exception(
+                        "Error during frame processing: %s", exc)
 
                 # Check for key press to exit
                 key = cv2.waitKey(1) & 0xFF

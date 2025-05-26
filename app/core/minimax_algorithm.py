@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Shared minimax algorithm implementation for TicTacToe.
 This module contains the common minimax logic to avoid code duplication.
@@ -63,7 +63,8 @@ def evaluate_board(board: List[List[str]], ai_player: str) -> int:
     return 0  # Draw or game continues
 
 
-def minimax_maximize(board: List[List[str]], available_moves: List[Tuple[int, int]],
+def minimax_maximize(board: List[List[str]],
+                     available_moves: List[Tuple[int, int]],
                      depth: int, *, alpha: float, beta: float, ai_player: str,
                      minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
     """Handle maximizing player logic in minimax."""
@@ -75,7 +76,8 @@ def minimax_maximize(board: List[List[str]], available_moves: List[Tuple[int, in
         r, c = move
         board[r][c] = ai_player
         score, _ = minimax_func(
-            board, human_player, depth + 1, alpha=alpha, beta=beta, ai_player=ai_player
+            board, human_player, depth + 1, alpha=alpha, beta=beta,
+            ai_player=ai_player
         )
         board[r][c] = EMPTY  # Undo move
 
@@ -90,7 +92,8 @@ def minimax_maximize(board: List[List[str]], available_moves: List[Tuple[int, in
     return best_score, best_move
 
 
-def minimax_minimize(board: List[List[str]], available_moves: List[Tuple[int, int]],
+def minimax_minimize(board: List[List[str]],
+                     available_moves: List[Tuple[int, int]],
                      depth: int, *, alpha: float, beta: float, ai_player: str,
                      minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
     """Handle minimizing player logic in minimax."""
@@ -102,7 +105,8 @@ def minimax_minimize(board: List[List[str]], available_moves: List[Tuple[int, in
         r, c = move
         board[r][c] = human_player
         score, _ = minimax_func(
-            board, ai_player, depth + 1, alpha=alpha, beta=beta, ai_player=ai_player
+            board, ai_player, depth + 1, alpha=alpha, beta=beta,
+            ai_player=ai_player
         )
         board[r][c] = EMPTY  # Undo move
 
@@ -117,7 +121,8 @@ def minimax_minimize(board: List[List[str]], available_moves: List[Tuple[int, in
     return best_score, best_move
 
 
-def get_optimal_move_with_heuristics(board: List[List[str]]) -> Optional[Tuple[int, int]]:
+def get_optimal_move_with_heuristics(
+        board: List[List[str]]) -> Optional[Tuple[int, int]]:
     """Get optimal move with common heuristics applied."""
     available_moves = get_available_moves(board)
     if not available_moves:

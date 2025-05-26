@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 TicTacToe board widget module for the TicTacToe application.
 """
@@ -83,7 +83,8 @@ class TicTacToeBoard(QWidget):
             3 * self.cell_size,
             2 * self.cell_size)
 
-        # Draw X and O - use _display_board (from camera detection) if available, otherwise self.board
+        # Draw X and O - use
+        # _display_board (from camera detection) if available, otherwise self.board
         display_board = getattr(self, '_display_board', self.board)
         for r in range(3):
             for c in range(3):
@@ -216,7 +217,8 @@ class TicTacToeBoard(QWidget):
                     if self._display_board[r][c] != board[r][c] and board[r][c] != game_logic.EMPTY:
                         changes.append((r, c))
 
-        # Store display board separately from game state - this is what gets drawn!
+        # Store display board separately from game
+        # state - this is what gets drawn!
         self._display_board = [row[:] for row in board]  # Deep copy for display
 
         # Debug log the board update

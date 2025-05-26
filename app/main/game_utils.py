@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Shared utility functions for the TicTacToe application.
 Consolidates duplicated utility functions from multiple files.
@@ -11,7 +11,8 @@ from typing import List
 from typing import Union
 
 
-def convert_board_1d_to_2d(board_1d: Union[List, Any]) -> Union[List[List], Any]:
+def convert_board_1d_to_2d(
+        board_1d: Union[List, Any]) -> Union[List[List], Any]:
     """
     Convert 1D board representation to 2D.
 

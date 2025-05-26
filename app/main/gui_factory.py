@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 GUI Factory for standardized widget and layout creation.
 Consolidates repeated GUI creation patterns from multiple files.
@@ -62,7 +62,8 @@ class ButtonFactory:
         return button
 
     @staticmethod
-    def create_danger_button(text: str, click_handler: Callable) -> QPushButton:
+    def create_danger_button(
+            text: str, click_handler: Callable) -> QPushButton:
         """Create danger/warning button with red styling."""
         return ButtonFactory.create_button(
             text, "danger", click_handler,
@@ -74,7 +75,8 @@ class LayoutFactory:
     """Factory for creating standardized layouts."""
 
     @staticmethod
-    def create_vbox_layout(spacing: int = 5, margins: tuple = (5, 5, 5, 5)) -> QVBoxLayout:
+    def create_vbox_layout(
+            spacing: int = 5, margins: tuple = (5, 5, 5, 5)) -> QVBoxLayout:
         """
         Create vertical box layout with standard spacing and margins.
 
@@ -91,7 +93,8 @@ class LayoutFactory:
         return layout
 
     @staticmethod
-    def create_hbox_layout(spacing: int = 5, margins: tuple = (5, 5, 5, 5)) -> QHBoxLayout:
+    def create_hbox_layout(
+            spacing: int = 5, margins: tuple = (5, 5, 5, 5)) -> QHBoxLayout:
         """Create horizontal box layout with standard spacing and margins."""
         layout = QHBoxLayout()
         layout.setSpacing(spacing)
@@ -99,7 +102,8 @@ class LayoutFactory:
         return layout
 
     @staticmethod
-    def create_button_row(buttons: List[QPushButton], spacing: int = 10) -> QHBoxLayout:
+    def create_button_row(
+            buttons: List[QPushButton], spacing: int = 10) -> QHBoxLayout:
         """Create horizontal layout with buttons."""
         layout = LayoutFactory.create_hbox_layout(spacing)
         for button in buttons:
@@ -108,7 +112,8 @@ class LayoutFactory:
         return layout
 
     @staticmethod
-    def create_label_value_row(label_text: str, value_widget: QWidget) -> QHBoxLayout:
+    def create_label_value_row(
+            label_text: str, value_widget: QWidget) -> QHBoxLayout:
         """Create horizontal row with label and value widget."""
         layout = LayoutFactory.create_hbox_layout()
 
@@ -125,7 +130,8 @@ class LabelFactory:
     """Factory for creating standardized labels."""
 
     @staticmethod
-    def create_status_label(text: str = "", status_type: str = "default") -> QLabel:
+    def create_status_label(
+            text: str = "", status_type: str = "default") -> QLabel:
         """Create status label with standardized styling."""
         label = QLabel(text)
         StyleManager.style_status_label(label, status_type)

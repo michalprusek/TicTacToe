@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 UI Event Handlers module for TicTacToe application.
 This module handles user interface events and interactions.
@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import QTimer
 
 from app.core.arm_thread import ArmCommand
@@ -64,18 +65,23 @@ class UIEventHandlers(QObject):
         """Handle difficulty slider change."""
         # Update strategy selector
         if hasattr(self.main_window, 'game_controller') and self.main_window.game_controller.strategy_selector:
-            # Set difficulty directly (0-10), which internally converts to probability (0.0-1.0)
+            # Set difficulty directly (0-10),
+            # which internally converts to probability (0.0-1.0)
             self.main_window.game_controller.strategy_selector.difficulty = value
             new_p = self.main_window.game_controller.strategy_selector.p
-            self.logger.info("Difficulty changed to %s/10 -> p=%.2f", value, new_p)
+            self.logger.info(
+                "Difficulty changed to %s/10 -> p=%.2f", value, new_p)
 
             # Log strategy distribution for verification
             if value == 10:
-                self.logger.info("Difficulty 10: AI will always use optimal strategy (minimax)")
+                self.logger.info(
+                    "Difficulty 10: AI will always use optimal strategy (minimax)")
             elif value == 1:
-                self.logger.info("Difficulty 1: AI will mostly use random strategy")
+                self.logger.info(
+                    "Difficulty 1: AI will mostly use random strategy")
             else:
-                self.logger.info("Difficulty %d: AI will use optimal strategy %.0f%% of the time", value, new_p * 100)
+                self.logger.info(
+                    "Difficulty %d: AI will use optimal strategy %.0f%% of the time", value, new_p * 100)
 
     def change_language(self):
         """Handle language change button click."""
@@ -228,7 +234,8 @@ class UIEventHandlers(QObject):
                     non_empty_symbols.append(f"({r},{c})={detected_board[r][c]}")
 
         if non_empty_symbols:
-            self.logger.info("🔍 YOLO DETECTION: %s", ', '.join(non_empty_symbols))
+            self.logger.info(
+                "🔍 YOLO DETECTION: %s", ', '.join(non_empty_symbols))
         else:
             self.logger.debug("🔍 YOLO DETECTION: Empty board")
 
@@ -249,7 +256,8 @@ class UIEventHandlers(QObject):
                 expected_symbol = gc.expected_symbol
 
                 if detected_board[expected_row][expected_col] == expected_symbol:
-                    self.logger.info("✅ EXPECTED symbol %s detected at (%s, %s)", expected_symbol, expected_row, expected_col)
+                    self.logger.info(
+                        "✅ EXPECTED symbol %s detected at (%s, %s)", expected_symbol, expected_row, expected_col)
 
                     # Successfully detected arm move - reset detection flags
                     gc.waiting_for_detection = False
@@ -267,14 +275,17 @@ class UIEventHandlers(QObject):
                     if hasattr(self.main_window, 'board_widget'):
                         self.main_window.board_widget.board = [row[:] for row in detected_board]
                         self.main_window.board_widget.update()
-                        self.logger.info("GUI updated with detected board state")
+                        self.logger.info(
+                            "GUI updated with detected board state")
 
-                    # Check for game end, then continue to human turn if game not over
+                    # Check for game end, then continue
+                    # to human turn if game not over
                     gc._check_game_end()
                     if not gc.game_over:
                         gc.status_changed.emit("your_turn", True)
                 else:
-                    self.logger.warning("❌ Expected %s at (%s, %s) but detected: %s", expected_symbol, expected_row, expected_col, detected_board[expected_row][expected_col])
+                    self.logger.warning(
+                        "❌ Expected %s at (%s, %s) but detected: %s", expected_symbol, expected_row, expected_col, detected_board[expected_row][expected_col])
 
                     # Reset detection flags
                     gc.waiting_for_detection = False
@@ -304,7 +315,8 @@ class UIEventHandlers(QObject):
 
         # Check if the script exists
         if not os.path.exists(calibration_script):
-            self.logger.error("Calibration script not found: %s", calibration_script)
+            self.logger.error(
+                "Calibration script not found: %s", calibration_script)
             return
 
         # Launch the calibration script in a new process
@@ -345,7 +357,8 @@ class UIEventHandlers(QObject):
                                 # Send command to arm to track this position
                                 if hasattr(self.main_window, 'arm_controller'):
                                     # Track position command would go here
-                                    self.logger.debug("Tracking grid center at %s", center_cell)
+                                    self.logger.debug(
+                                        "Tracking grid center at %s", center_cell)
 
     def update_camera_view_extended(self, frame):
         """Extended camera view update (consolidated from event_handlers.py)."""

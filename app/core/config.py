@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Configuration module for the TicTacToe application.
 """
@@ -45,12 +45,14 @@ class GameDetectorConfig:  # pylint: disable=too-many-instance-attributes
     device: Optional[str] = None
 
     # Visualization settings
-    show_game_state_on_frame: bool = True  # Show game state information on frame
+    show_game_state_on_frame: bool = True  # Show game state information
 
     # Ideal grid keypoints for visualization (4x4 grid in a 0-3 range)
-    ideal_grid_keypoints_4x4: np.ndarray = field(default_factory=lambda: np.array([
-        [x, y] for y in range(4) for x in range(4)
-    ], dtype=np.float32))
+    ideal_grid_keypoints_4x4: np.ndarray = field(
+        default_factory=lambda: np.array([
+            [x, y] for y in range(4) for x in range(4)
+        ], dtype=np.float32)
+    )
 
     # Calibration file
     calibration_file: str = "hand_eye_calibration.json"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Main entry point for the PyQt-based TicTacToe application.
 """

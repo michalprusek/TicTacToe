@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Game Statistics module for TicTacToe application.
 Handles tracking and persistence of game wins, losses, and ties.
@@ -47,7 +47,8 @@ class GameStatistics:
                             self.stats[key] = loaded_stats[key]
                     self.logger.info("Statistics loaded: %s", self.stats)
             else:
-                self.logger.info("No statistics file found, starting with empty stats")
+                self.logger.info(
+                    "No statistics file found, starting with empty stats")
         except (IOError, json.JSONDecodeError, ValueError) as e:
             self.logger.error("Error loading statistics: %s", e)
             # Keep default stats on error

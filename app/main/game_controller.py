@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Game Controller module for TicTacToe application.
 This module handles game logic, state management, and turn coordination.
@@ -9,7 +9,9 @@ import random
 import time
 
 from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import QTimer
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import pyqtSignal
 
 from app.core.strategy import BernoulliStrategySelector
@@ -152,8 +154,9 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 return
 
         # Human player intends to move - wait for camera detection
-        self.logger.info("Player (%s) intends to move to (%s,%s). Waiting for detection.",
-                         self.human_player, row, col)
+        self.logger.info(
+            "Player (%s) intends to move to (%s,%s). Waiting for detection.",
+            self.human_player, row, col)
         self.status_changed.emit("waiting_detection", True)
 
     def handle_detected_game_state(self, detected_board_from_camera):
@@ -164,30 +167,35 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
         detected_board = convert_board_1d_to_2d(detected_board_from_camera)
         if not detected_board:
-            self.logger.warning("Failed to convert detected board to 2D format.")
+            self.logger.warning(
+                "Failed to convert detected board to 2D format.")
             return
 
         # CRITICAL FIX: Update authoritative board state from camera detection
         self.authoritative_board = [row[:] for row in detected_board]  # Deep copy
-        self.logger.debug("Updated authoritative board from camera: %s", self.authoritative_board)
+        self.logger.debug(
+            "Updated authoritative board from camera: %s", self.authoritative_board)
 
         # Update board widget with detected board state
         if hasattr(self.main_window, 'board_widget') and self.main_window.board_widget:
             self.main_window.board_widget.update_board(detected_board, None, highlight_changes=True)
-            self.logger.debug("Updated GUI board with detected state: %s", detected_board)
+            self.logger.debug(
+                "Updated GUI board with detected state: %s", detected_board)
 
         # Handle game over state
         if self.game_over:
             is_empty_now = all(cell == game_logic.EMPTY for row in detected_board for cell in row)
             if is_empty_now:
-                self.logger.info("Detected empty board after game end - resetting for new game.")
+                self.logger.info(
+                    "Detected empty board after game end - resetting for new game.")
                 self.reset_game()
             return
 
         # Check for new moves and game progression
         self._process_detected_board(detected_board)
 
-    def _process_detected_board(self, detected_board):  # pylint: disable=too-many-branches,too-many-statements
+    def _process_detected_board(
+            self, detected_board):  # pylint: disable=too-many-branches,too-many-statements
         """Process the detected board for game logic."""
         # Count symbols for potential debugging
         self._get_board_symbol_counts(detected_board)
@@ -196,7 +204,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         if not self.game_over:
             should_play, arm_symbol_to_play = self._should_arm_play_now(detected_board)
             if should_play and arm_symbol_to_play:
-                self.logger.info("DECISION: Arm should play with symbol %s.", arm_symbol_to_play)
+                self.logger.info(
+                    "DECISION: Arm should play with symbol %s.", arm_symbol_to_play)
                 self.ai_player = arm_symbol_to_play
                 self.current_turn = self.ai_player
                 self.status_changed.emit("arm_moving", True)
@@ -206,7 +215,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 self.status_changed.emit("arm_turn", True)
                 print(f"DEBUG: Emitting arm_turn - current_turn={self.current_turn}, "
                       f"ai_player={self.ai_player}")
-                self.logger.debug("Arm is on turn, but conditions for playing are not met.")
+                self.logger.debug(
+                    "Arm is on turn, but conditions for playing are not met.")
             elif (self.current_turn == self.human_player and not self.arm_move_in_progress
                   and not self.waiting_for_detection):
                 self.status_changed.emit("your_turn", True)
@@ -215,9 +225,10 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""
-        self.logger.debug("Checking if arm should play. InProgress: %s, Cooldown: %s",
-                          self.arm_move_in_progress,
-                          time.time() - self.last_arm_move_time < self.arm_move_cooldown)
+        self.logger.debug(
+            "Checking if arm should play. InProgress: %s, Cooldown: %s",
+            self.arm_move_in_progress,
+            time.time() - self.last_arm_move_time < self.arm_move_cooldown)
 
         if (self.game_over or self.arm_move_in_progress or
                 (time.time() - self.last_arm_move_time < self.arm_move_cooldown)):
@@ -228,7 +239,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Count symbols to determine turn
         x_count, o_count, total_count = self._get_board_symbol_counts(current_board_state)
 
-        # Arm plays when odd number of total symbols (human played, now arm's turn)
+        # Arm plays when odd number of
+        # total symbols (human played, now arm's turn)
         if total_count % 2 == 1:
             # Determine which symbol arm should play
             if x_count > o_count:
@@ -244,18 +256,21 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         self.logger.info("Starting arm move with symbol: %s", symbol_to_play)
 
         if self.game_over or self.arm_move_in_progress:
-            self.logger.warning("Arm move interrupted: game ended or arm already in progress.")
+            self.logger.warning(
+                "Arm move interrupted: game ended or arm already in progress.")
             return False
 
         # CRITICAL FIX: Use authoritative board state from camera detection
         current_board_for_strategy = self.authoritative_board
 
         if not current_board_for_strategy:
-            self.logger.error("Cannot get authoritative board state for strategy.")
+            self.logger.error(
+                "Cannot get authoritative board state for strategy.")
             return False
 
         # Log the board state being used for strategy
-        self.logger.info("Using authoritative board for strategy: %s", current_board_for_strategy)
+        self.logger.info(
+            "Using authoritative board for strategy: %s", current_board_for_strategy)
 
         # Set flags BEFORE starting movement
         self.arm_move_in_progress = True
@@ -270,7 +285,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             return False
 
         row, col = move
-        self.logger.info("Strategy selected move: (%s,%s) with symbol %s", row, col, symbol_to_play)
+        self.logger.info(
+            "Strategy selected move: (%s,%s) with symbol %s", row, col, symbol_to_play)
 
         # Store move for detection verification
         self.ai_move_row, self.ai_move_col = row, col
@@ -280,19 +296,22 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
         # Execute arm drawing
         if self.arm_controller and self.arm_controller.draw_ai_symbol(row, col, symbol_to_play):
-            self.logger.info("Symbol %s successfully sent for drawing at (%s,%s). "
-                             "Waiting for detection.", symbol_to_play, row, col)
+            self.logger.info(
+                "Symbol %s successfully sent for drawing at (%s,%s). "
+                "Waiting for detection.", symbol_to_play, row, col)
             self.waiting_for_detection = True
             return True
 
-        self.logger.error("Failed to start drawing symbol %s at (%s,%s).", symbol_to_play, row, col)
+        self.logger.error(
+            "Failed to start drawing symbol %s at (%s,%s).", symbol_to_play, row, col)
         self.arm_move_in_progress = False
         self.waiting_for_detection = False
         self.current_turn = self.human_player
         self.status_changed.emit("your_turn", True)
         return False
 
-    def update_game_state(self):  # pylint: disable=too-many-branches,too-many-statements
+    def update_game_state(
+            self):  # pylint: disable=too-many-branches,too-many-statements
         """Update game state machine (called by timer)."""
         if self.game_over:
             return
@@ -308,7 +327,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                                     self.ai_move_retry_count, self.max_retry_count)
 
                 if self.ai_move_retry_count >= self.max_retry_count:
-                    self.logger.error("Max retries reached. Giving up on arm move.")
+                    self.logger.error(
+                        "Max retries reached. Giving up on arm move.")
                     self.waiting_for_detection = False
                     self.arm_move_in_progress = False
                     self.current_turn = self.human_player
@@ -321,7 +341,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Check for game end
         self._check_game_end()
 
-    def _check_game_end(self):  # pylint: disable=too-many-branches,too-many-statements
+    def _check_game_end(
+            self):  # pylint: disable=too-many-branches,too-many-statements
         """Check if the game has ended."""
         # CRITICAL FIX: Use authoritative board state for game end check
         board_to_check = self.authoritative_board
@@ -347,14 +368,17 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 print(f"DEBUG: Determining winner - total_count={total_count}, "
                       f"game_logic_winner={game_logic_winner}")
                 if total_count % 2 == 0:
-                    # Even count - arm (AI) won, but we show it from human perspective
+                    # Even count - arm (AI) won,
+                    # but we show it from human perspective
                     self.winner = "ARM_WIN"
-                    self.logger.info("ARM_WIN determined (even count: %s)", total_count)
+                    self.logger.info(
+                        "ARM_WIN determined (even count: %s)", total_count)
                     print(f"DEBUG: Set winner to ARM_WIN (even count {total_count})")
                 else:
                     # Odd count - human won
                     self.winner = "HUMAN_WIN"
-                    self.logger.info("HUMAN_WIN determined (odd count: %s)", total_count)
+                    self.logger.info(
+                        "HUMAN_WIN determined (odd count: %s)", total_count)
                     print(f"DEBUG: Set winner to HUMAN_WIN (odd count {total_count})")
 
         if self.winner:
@@ -366,8 +390,9 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             if 'total_count' not in locals():
                 x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
 
-            self.logger.info("GAME END! Winner: %s. Move count: %s. Total symbols: %s",
-                             self.winner, self.move_counter, total_count)
+            self.logger.info(
+                "GAME END! Winner: %s. Move count: %s. Total symbols: %s",
+                self.winner, self.move_counter, total_count)
 
             # Show game end notification
             self._show_game_end_notification()
@@ -381,7 +406,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
                 # Draw winning line if AI won
                 if self.winner == "ARM_WIN" and self.arm_controller:
-                    self.logger.info("AI (arm) won! Planning to draw winning line.")
+                    self.logger.info(
+                        "AI (arm) won! Planning to draw winning line.")
                     QTimer.singleShot(1500, self.arm_controller.draw_winning_line)
 
             if self.winner == game_logic.TIE:
@@ -399,7 +425,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         elif self.move_counter >= 9:
             self.game_over = True
             self.winner = game_logic.TIE
-            self.logger.info("GAME END! Draw. Move count: %s", self.move_counter)
+            self.logger.info(
+                "GAME END! Draw. Move count: %s", self.move_counter)
             self.arm_move_in_progress = False
             self.waiting_for_detection = False
             self._show_game_end_notification()
@@ -464,7 +491,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 self.current_turn = self.human_player
                 self.status_changed.emit("your_turn", True)
 
-    def make_arm_move_with_detection_timeout(self, symbol_to_play, cell_centers=None):
+    def make_arm_move_with_detection_timeout(
+            self, symbol_to_play, cell_centers=None):
         """Arm move with detection timeout (consolidated from game_manager.py)."""
         if self.game_over or self.current_turn != self.ai_player:
             return False
@@ -498,7 +526,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Send arm command if available
         if self.arm_controller and cell_centers and len(cell_centers) == 9:
             # cell_index = row * 3 + col  # Available for future use
-            # cell_center = cell_centers[cell_index]  # Available for future use
+            # cell_center = cell_centers[cell_index]
+            # # Available for future use
 
             if symbol_to_play == game_logic.PLAYER_X:
                 # Send DRAW_X command
@@ -523,8 +552,9 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         self.ai_move_retry_count += 1
 
         if self.ai_move_retry_count >= self.max_retry_count:
-            self.logger.warning("Detection timeout for move at (%s, %s) - symbol NOT added to GUI",
-                                _row, _col)
+            self.logger.warning(
+                "Detection timeout for move at (%s, %s) - symbol NOT added to GUI",
+                _row, _col)
             self.logger.info("GUI will only show what YOLO actually detects")
 
             # Reset flags

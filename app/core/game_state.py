@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Game state module for the TicTacToe application.
 """
@@ -36,7 +36,8 @@ IDEAL_GRID_POINTS_CANONICAL = np.array([
 ], dtype=np.float32)
 
 
-class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
+# pylint: disable=too-many-public-methods,too-many-instance-attributes
+class GameState:
     """Class to represent and manage the game state."""
     ERROR_GRID_INCOMPLETE_PAUSE = "GRID_INCOMPLETE_PAUSE_STATE"  # Unique ID
 
@@ -115,12 +116,13 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         """Reset the list of changed cells for the current turn."""
         self._changed_cells_this_turn = []
 
+    # pylint: disable=too-many-branches
     def is_physical_grid_valid(self) -> bool:
         """Check if the detected physical grid is valid."""
         return self._is_valid_grid
 
     def is_game_paused_due_to_incomplete_grid(self) -> bool:
-        """Check if the game is paused because the grid is not fully visible."""
+        """Check if the game is paused because grid is not fully visible."""
         return self.game_paused_due_to_incomplete_grid
 
     def is_valid(self) -> bool:
@@ -290,7 +292,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
                 )
             else:
                 self.logger.info(
-                    "Cell (%d,%d) already occupied by %s. Symbol %s not placed.",
+                    "Cell (%d,%d) occupied by %s. Symbol %s not placed.",
                     row, col, self._board_state[row][col], player
                 )
             # else:
@@ -307,7 +309,8 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
     def _convert_symbols_to_expected_format(
             self,
             detected_symbols: List[Dict],
-            class_id_to_player: Dict[int, str]  # pylint: disable=unused-argument
+            # pylint: disable=unused-argument
+            class_id_to_player: Dict[int, str]
     ) -> List[Dict]:
         """Convert symbols from detector format to expected format.
 
@@ -394,7 +397,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
     def _process_symbol_placement(
             self, symbol_info: Dict, homography: np.ndarray, cell_size: int
     ) -> Optional[Tuple[int, int]]:
-        """Process individual symbol placement and return changed cell if any."""
+        """Process symbol placement and return changed cell if any."""
         symbol_center_uv = symbol_info.get('center_uv')
         player = symbol_info.get('player')
 
@@ -409,7 +412,8 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
             [[[symbol_center_uv[0], symbol_center_uv[1]]]],
             dtype=np.float32
         )
-        symbol_center_norm_final = cv2.perspectiveTransform(  # pylint: disable=no-member
+        # pylint: disable=no-member
+        symbol_center_norm_final = cv2.perspectiveTransform(
             symbol_center_img, homography
         )
         nx, ny = symbol_center_norm_final[0][0]
@@ -621,7 +625,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         """
         return self._cell_centers_uv_transformed
 
-    def update_from_detection(  # pylint: disable=too-many-arguments,too-many-branches
+    def update_from_detection(  # pylint: disable=too-many-arguments
         self,
         frame: np.ndarray,  # pylint: disable=unused-argument
         ordered_kpts_uv: Optional[np.ndarray],
@@ -799,7 +803,8 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
                 self.winner = self._board_state[r1][c1]
                 self.winning_line_indices = line_indices
                 self.logger.info(
-                    "Winner: %s, Line: %s", self.winner, self.winning_line_indices
+                    "Winner: %s, Line: %s", self.winner,
+                    self.winning_line_indices
                 )
                 return
 
@@ -868,7 +873,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
                         p_bl_idx, p_br_idx
                     )
                     raise ValueError(
-                        "Invalid grid point indices for cell center calculation"
+                        "Invalid grid indices for cell calculation"
                     )
 
                 # Get the four corner points of the cell
@@ -904,8 +909,10 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         """
         if (self._grid_points is None or
                 len(self._grid_points) != GRID_POINTS_COUNT):
-            points_count = (len(self._grid_points) if self._grid_points is not None
-                            else 'None')
+            points_count = (
+                len(self._grid_points) if self._grid_points is not None
+                else 'None'
+            )
             self.logger.debug(
                 "Not enough grid points for transformation. Points: %s",
                 points_count
@@ -921,7 +928,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
                     cell_centers, dtype=np.float32
                 )
                 self.logger.info(
-                    "Computed %d cell centers for game logic from _grid_points.",
+                    "Computed %d cell centers for game logic.",
                     len(self._cell_centers_uv_transformed)
                 )
 
@@ -947,13 +954,13 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
             return False
         except IndexError as e:
             self.logger.error(
-                "IndexError computing logic cell centers from _grid_points: %s",
+                "IndexError computing cell centers: %s",
                 e, exc_info=True
             )
             return False
         except (TypeError, AttributeError) as e:
             self.logger.error(
-                "Error computing logic cell centers from _grid_points: %s - %s",
+                "Error computing cell centers: %s - %s",
                 type(e).__name__, e, exc_info=True
             )
             return False

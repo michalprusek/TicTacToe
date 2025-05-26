@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Grid utility functions for the TicTacToe application.
 """
@@ -40,7 +40,8 @@ def robust_sort_grid_points(
         points_np = np.array(all_16_points, dtype=np.float32)
 
         # Step 1: Find 4 corner points and get preliminary homography
-        corners_src, h_prelim = _find_corners_and_preliminary_homography(points_np, logger)
+        corners_src, h_prelim = _find_corners_and_preliminary_homography(
+            points_np, logger)
         if corners_src is None or h_prelim is None:
             return None, None
 
@@ -54,7 +55,7 @@ def robust_sort_grid_points(
         if h_final is None:
             return None, None
 
-        logger.debug("Successfully computed robust grid sorting and homography")
+        logger.debug("Successfully computed robust grid sorting")
         return sorted_points, h_final
 
     except (ValueError, TypeError, RuntimeError) as e:
@@ -88,7 +89,7 @@ def _find_corners_and_preliminary_homography(
             points_np[tl_idx], points_np[tr_idx],
             points_np[br_idx], points_np[bl_idx]
         ], dtype=np.float32)
-        logger.debug("Successfully found 4 unique corner points using sum/diff heuristics")
+        logger.debug("Found 4 unique corner points using heuristics")
 
     if corners_src is None:
         return None, None
@@ -102,7 +103,8 @@ def _find_corners_and_preliminary_homography(
 
     # Compute preliminary homography
     h_prelim, _ = cv2.findHomography(  # pylint: disable=no-member
-        corners_src, corners_dst_prelim, cv2.RANSAC  # pylint: disable=no-member
+        corners_src, corners_dst_prelim,
+        cv2.RANSAC  # pylint: disable=no-member
     )
     if h_prelim is None:
         logger.warning("Failed to compute preliminary homography")
@@ -111,9 +113,11 @@ def _find_corners_and_preliminary_homography(
     return corners_src, h_prelim
 
 
-def _fallback_corner_detection(points_np: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:  # pylint: disable=line-too-long
+# pylint: disable=line-too-long
+def _fallback_corner_detection(
+        points_np: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:
     """Fallback corner detection using cv2.minAreaRect."""
-    logger.debug("Corner detection failed, using fallback method with cv2.minAreaRect")
+    logger.debug("Corner detection failed, using fallback method")
 
     # Find minimal bounding rectangle of all 16 points
     rect = cv2.minAreaRect(points_np)  # pylint: disable=no-member
@@ -140,7 +144,8 @@ def _transform_and_sort_points(  # pylint: disable=line-too-long
 ) -> Optional[np.ndarray]:
     """Transform all 16 points and sort them based on grid positions."""
     # Transform all 16 original Grid Points using h_prelim
-    transformed_16_points = cv2.perspectiveTransform(  # pylint: disable=no-member
+    # pylint: disable=no-member
+    transformed_16_points = cv2.perspectiveTransform(
         points_np.reshape(-1, 1, 2), h_prelim
     ).reshape(-1, 2)
 
@@ -169,10 +174,14 @@ def _transform_and_sort_points(  # pylint: disable=line-too-long
     point_pairs.sort(key=lambda pair: get_grid_indices(pair['transformed']))
 
     # Extract sorted original points
-    return np.array([pair['original'] for pair in point_pairs], dtype=np.float32)
+    return np.array([pair['original'] for pair in point_pairs],
+                    dtype=np.float32)
 
 
-def _compute_final_homography(sorted_points: np.ndarray, logger: logging.Logger) -> Optional[np.ndarray]:  # pylint: disable=line-too-long
+# pylint: disable=line-too-long
+def _compute_final_homography(
+        sorted_points: np.ndarray,
+        logger: logging.Logger) -> Optional[np.ndarray]:
     """Compute final homography using ideal target points."""
     # Define ideal target points for final homography
     cell_size_final = 100
@@ -180,7 +189,8 @@ def _compute_final_homography(sorted_points: np.ndarray, logger: logging.Logger)
 
     for r in range(4):  # 4 rows of points
         for c in range(4):  # 4 columns of points
-            ideal_points_dst_final.append([c * cell_size_final, r * cell_size_final])
+            ideal_points_dst_final.append(
+                [c * cell_size_final, r * cell_size_final])
 
     ideal_points_dst_final = np.array(ideal_points_dst_final, dtype=np.float32)
 

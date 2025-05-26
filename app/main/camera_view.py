@@ -1,9 +1,12 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Camera view module for the TicTacToe application.
 """
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import Qt
+# pylint: disable=no-name-in-module,unused-import
 from PyQt5.QtGui import QImage
+# pylint: disable=no-name-in-module,unused-import
 from PyQt5.QtGui import QPixmap
 
 # pylint: disable=no-name-in-module,broad-exception-caught,import-outside-toplevel
@@ -48,7 +51,8 @@ class CameraView(QLabel):
                     self.camera_active = True
                     print("🎥 Debug window: Camera stream started successfully")
 
-                # Debug logging for camera stream (every 60 frames = ~2 seconds)
+                # Debug logging for camera stream
+                # (every 60 frames = ~2 seconds)
                 if hasattr(self, '_frame_count'):
                     self._frame_count += 1
                 else:

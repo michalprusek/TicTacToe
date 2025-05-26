@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Main GUI module for TicTacToe application.
 This module contains the main window setup, layout, and basic UI components.
@@ -321,7 +321,8 @@ class TicTacToeApp(QMainWindow):
 
         # Force emit current arm connection status after GUI is connected
         current_arm_status = self.arm_controller.is_arm_available()
-        self.logger.info("Forcing arm connection status emit: %s", current_arm_status)
+        self.logger.info(
+            "Forcing arm connection status emit: %s", current_arm_status)
         self._handle_arm_connection_changed(current_arm_status)
 
         # Connect arm controller to game controller
@@ -371,7 +372,8 @@ class TicTacToeApp(QMainWindow):
         human_player = self.game_controller.human_player
         self.statistics_widget.record_game_result(winner, human_player)
         # Show game end notification is already handled by status_manager
-        self.logger.info("Game ended: winner=%s, recorded in statistics", winner)
+        self.logger.info(
+            "Game ended: winner=%s, recorded in statistics", winner)
 
     def _handle_statistics_reset(self):
         """Handle statistics reset request."""

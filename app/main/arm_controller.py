@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Robotic arm controller for TicTacToe game.
 """
@@ -33,11 +33,10 @@ except ImportError:
     print("uArm library not available")
     SwiftAPI = None
 
-POSITION_TOLERANCE = 5.0          # Tolerance for position checks (mm)
-# Multiplier for travel speed (faster than drawing)
-TRAVEL_SPEED_MULTIPLIER = 1.5
-OPTIMIZED_SEGMENTS = 16           # Reduced segments for O drawing (faster)
-CORNER_SAFETY_MARGIN = 2.0        # Extra margin for corners to avoid confusion
+POSITION_TOLERANCE = 5.0  # Tolerance for position checks (mm)
+TRAVEL_SPEED_MULTIPLIER = 1.5  # Multiplier for travel speed
+OPTIMIZED_SEGMENTS = 16  # Reduced segments for O drawing (faster)
+CORNER_SAFETY_MARGIN = 2.0  # Extra margin for corners to avoid confusion
 
 
 class ArmController:
@@ -343,9 +342,11 @@ class ArmController:
                 z=neutral_pos["z"],
                 speed=travel_speed,
                 wait=True):
-            self.logger.warning("Failed to return to neutral position after drawing X.")
+            self.logger.warning(
+                "Failed to return to neutral position after drawing X.")
 
-        self.logger.info("Finished drawing X and returned to neutral position.")
+        self.logger.info(
+            "Finished drawing X and returned to neutral position.")
         return True
 
     def draw_o(
@@ -425,9 +426,11 @@ class ArmController:
                 z=neutral_pos["z"],
                 speed=travel_speed,
                 wait=True):
-            self.logger.warning("Failed to return to neutral position after drawing O.")
+            self.logger.warning(
+                "Failed to return to neutral position after drawing O.")
 
-        self.logger.info("Finished drawing O and returned to neutral position.")
+        self.logger.info(
+            "Finished drawing O and returned to neutral position.")
         return True
 
     def park(self, x: float = -150, y: float = -150,

@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Grid detector module for the TicTacToe application.
 """
@@ -98,7 +98,8 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
 
         return frame, keypoints
 
-    def sort_grid_points(self, keypoints: np.ndarray) -> np.ndarray:  # pylint: disable=too-many-locals
+    def sort_grid_points(
+            self, keypoints: np.ndarray) -> np.ndarray:  # pylint: disable=too-many-locals
         """Sorts the grid points into a consistent order.
 
         Args:
@@ -111,13 +112,15 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
         valid_points = keypoints[np.sum(np.abs(keypoints), axis=1) > 0]
 
         if len(valid_points) < 4:
-            self.logger.debug("Not enough valid points to sort grid: %s", len(valid_points))
+            self.logger.debug(
+                "Not enough valid points to sort grid: %s", len(valid_points))
             return keypoints
 
         # Sort points for 4x4 grid layout (row by row, left to right)
         # This is CRITICAL for correct cell center calculation!
 
-        self.logger.debug("🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
+        self.logger.debug(
+            "🔧 Sorting {len(valid_points)} grid points into 4x4 layout")
 
         # Sort by Y coordinate first (top to bottom)
         y_sorted_indices = np.argsort(valid_points[:, 1])
@@ -142,7 +145,8 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
                     sorted_valid_points.extend(row_sorted)
                     current_idx += row_size
 
-                    self.logger.debug("  Row {row}: {row_size} points sorted by X")
+                    self.logger.debug(
+                        "  Row {row}: {row_size} points sorted by X")
 
             sorted_valid_points = np.array(sorted_valid_points)
         else:
@@ -177,8 +181,10 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
                               valid_count, MIN_POINTS_FOR_HOMOGRAPHY)
             return False
 
-        # Check if points form a reasonable grid (distances between adjacent points)
-        # This is a simplified check - in a real implementation, you would do more validation
+        # Check if points form a
+        # reasonable grid (distances between adjacent points)
+        # This is a simplified check - in
+        # a real implementation, you would do more validation
 
         # Calculate distances between all pairs of points
         distances = []
@@ -192,13 +198,15 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
             std_dev = np.std(distances)
             mean_dist = np.mean(distances)
             if std_dev / mean_dist > GRID_DIST_STD_DEV_THRESHOLD:
-                self.logger.debug("Grid point distances too variable: std/mean = %.2",
-                                  std_dev / mean_dist)
+                self.logger.debug(
+                    "Grid point distances too variable: std/mean = %.2f",
+                    std_dev / mean_dist)
                 return False
 
         return True
 
-    def compute_homography(self, keypoints: np.ndarray) -> Optional[np.ndarray]:
+    def compute_homography(
+            self, keypoints: np.ndarray) -> Optional[np.ndarray]:
         """Computes the homography matrix from ideal grid to image coordinates.
 
         Args:
@@ -263,7 +271,8 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
 
                 if time_since_valid > self.grid_lost_threshold_seconds:
                     # Grid has been lost for too long
-                    self.logger.info("Grid lost after %.2f seconds", time_since_valid)
+                    self.logger.info(
+                        "Grid lost after %.2f seconds", time_since_valid)
                     self.last_valid_grid_time = None
                     grid_status_changed = True
                 else:

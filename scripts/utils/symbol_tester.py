@@ -175,8 +175,8 @@ def calculate_uv_to_xy_transform(
     min_points = 4  # Stejné minimum jako pro kalibraci
     if len(raw_points) < min_points:
         logging.error(
-            f"Nedostatek bodů ({
-                len(raw_points)} < {min_points}) v kalibraci pro výpočet UV->XY.")
+            f"Nedostatek bodů ({len(raw_points)} < {min_points}) "
+            f"v kalibraci pro výpočet UV->XY.")
         return None
 
     # Zdrojové body: UV souřadnice obrazu
@@ -409,9 +409,8 @@ def main():
             symbol = draw_request
             target_x, target_y = center_cell_xy
             logger.info(
-                f"Přijat požadavek na kreslení '{symbol}' na XY: ({
-                    target_x:.1f}, {
-                    target_y:.1f})")
+                f"Přijat požadavek na kreslení '{symbol}' na XY: "
+                f"({target_x:.1f}, {target_y:.1f})")
             draw_success = False
             if symbol == 'X':
                 draw_success = controller.draw_x(
@@ -434,10 +433,8 @@ def main():
         if draw_request and center_cell_uv:
             symbol_visual = draw_request  # Přejmenováno pro jasnost
             # Zjistíme velikost textu pro centrování
-            (text_w, text_h), baseline = cv2.getTextSize(symbol_visual,
-                                                         SYMBOL_FONT,
-                                                         SYMBOL_SCALE,
-                                                         SYMBOL_THICKNESS)
+            (text_w, text_h), _ = cv2.getTextSize(
+                symbol_visual, SYMBOL_FONT, SYMBOL_SCALE, SYMBOL_THICKNESS)
             # Vypočítáme pozici levého dolního rohu textu pro centrování
             org_x = center_cell_uv[0] - text_w // 2
             org_y = center_cell_uv[1] + text_h // 2

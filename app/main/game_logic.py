@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Game logic for TicTacToe game.
 """
@@ -7,7 +7,9 @@ import random
 from typing import List
 from typing import Tuple
 
-from app.core.minimax_algorithm import get_available_moves as get_available_moves_shared
+from app.core.minimax_algorithm import (
+    get_available_moves as get_available_moves_shared
+)
 from app.core.minimax_algorithm import get_optimal_move_with_heuristics
 from app.core.minimax_algorithm import minimax_maximize
 from app.core.minimax_algorithm import minimax_minimize
@@ -112,7 +114,8 @@ def print_board(game_board):
 # --- AI Strategies ---
 
 
-def get_random_move(game_board, player=None):  # pylint: disable=unused-argument
+def get_random_move(
+        game_board, player=None):  # pylint: disable=unused-argument
     """Chooses a random valid move."""
     available_moves = get_available_moves(game_board)
     if not available_moves:
@@ -125,9 +128,9 @@ def get_other_player(player):
     return PLAYER_O if player == PLAYER_X else PLAYER_X
 
 
-# pylint: disable=too-many-arguments,too-many-locals
-def minimax(game_board, player_or_depth, *,
-            is_maximizing_or_player=None, alpha_or_depth=None, beta=None, ai_player=None):
+# pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
+def minimax(game_board, player_or_depth, is_maximizing_or_player=None,
+            alpha_or_depth=None, beta=None, ai_player=None):
     """
     Minimax algorithm with Alpha-Beta Pruning.
     Supports both old and new parameter formats for backward compatibility:
@@ -168,13 +171,16 @@ def minimax(game_board, player_or_depth, *,
     available_moves = get_available_moves_shared(game_board)
 
     # Create a wrapper for recursive calls
-    def minimax_recursive(board_state, current_player, depth, *, alpha, beta, ai_player):
-        return minimax(board_state, depth, is_maximizing_or_player=current_player == ai_player,
-                       alpha_or_depth=alpha, beta=beta, ai_player=ai_player)
+    def minimax_recursive(board_state, current_player, depth, *, alpha, beta,
+                          ai_player):
+        return minimax(
+            board_state, depth,
+            is_maximizing_or_player=current_player == ai_player,
+            alpha_or_depth=alpha, beta=beta, ai_player=ai_player)
 
     minimax_args = {
-        'board': game_board, 'available_moves': available_moves, 'depth': depth,
-        'alpha': alpha, 'beta': beta, 'ai_player': ai_player,
+        'board': game_board, 'available_moves': available_moves,
+        'depth': depth, 'alpha': alpha, 'beta': beta, 'ai_player': ai_player,
         'minimax_func': minimax_recursive
     }
 

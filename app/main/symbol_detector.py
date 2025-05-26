@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Symbol detector module for the TicTacToe application.
 """
@@ -31,13 +31,16 @@ class SymbolDetector:
         self.bbox_conf_threshold = getattr(config, 'bbox_conf_threshold', 0.5)
 
         # Class ID to label mapping
-        # CRITICAL FIX: YOLO model has inverted labels - it detects X as O and O as X
+        # CRITICAL FIX: YOLO model has inverted labels -
+        # it detects X as O and O as X
         # Original mapping: {0: 'X', 1: 'O'}
-        # Corrected mapping to fix label inversion:  # pylint: disable=line-too-long
+        # Corrected mapping to fix
+        # label inversion: # pylint: disable=line-too-long
         self.class_id_to_label = getattr(config, 'class_id_to_label', {0: 'O', 1: 'X'})  # Swapped!
         self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 1, 1: 2})  # Swapped! O=1, X=2
 
-    def detect_symbols(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
+    def detect_symbols(
+            self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
         """Detects X and O symbols in the frame.
 
         Args:
@@ -51,7 +54,8 @@ class SymbolDetector:
             - box: [x1, y1, x2, y2] coordinates
             - class_id: class ID (0 for X, 1 for O)
         """
-        # Use the detection model to find symbols  # pylint: disable=line-too-long
+        # Use the detection model
+        # to find symbols # pylint: disable=line-too-long
         detect_results = self.detect_model.predict(
             frame, conf=self.bbox_conf_threshold, verbose=False
         )
@@ -107,7 +111,8 @@ class SymbolDetector:
             Tuple of (row, col) for the nearest cell, or None if no cell is found
         """
         if not cell_polygons:
-            self.logger.warning("No cell polygons provided to get_nearest_cell")
+            self.logger.warning(
+                "No cell polygons provided to get_nearest_cell")
             return None
 
         # Check if point is inside any cell
@@ -137,12 +142,14 @@ class SymbolDetector:
                 nearest_cell_coords = (row, col)
 
         if nearest_cell_coords:
-            self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1f",
-                              x, y, nearest_cell_coords[0], nearest_cell_coords[1],
-                              np.sqrt(min_distance_sq))
+            self.logger.debug(
+                "Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1f",
+                x, y, nearest_cell_coords[0], nearest_cell_coords[1],
+                np.sqrt(min_distance_sq))
         else:
-            self.logger.warning("Could not determine nearest cell for point (%.1f, %.1f)",
-                                x, y)
+            self.logger.warning(
+                "Could not determine nearest cell for point (%.1f, %.1f)",
+                x, y)
 
         return nearest_cell_coords
 
@@ -176,6 +183,7 @@ class SymbolDetector:
                 row, col = cell_coords
                 label = symbol['label']
                 assigned_symbols.append((row, col, label))
-                self.logger.debug("Assigned %s to cell (%s, %s)", label, row, col)
+                self.logger.debug(
+                    "Assigned %s to cell (%s, %s)", label, row, col)
 
         return assigned_symbols

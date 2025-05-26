@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Centralized error handling utilities for the TicTacToe application.
 Consolidates repeated error handling patterns from multiple files.
@@ -51,7 +51,8 @@ class ErrorHandler:
         return decorator
 
     @staticmethod
-    def camera_operation_handler(logger: logging.Logger, operation: str) -> Callable:
+    def camera_operation_handler(
+            logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for camera operations."""
         return ErrorHandler.safe_operation(
             logger, f"camera {operation}",
@@ -60,7 +61,8 @@ class ErrorHandler:
         )
 
     @staticmethod
-    def arm_operation_handler(logger: logging.Logger, operation: str) -> Callable:
+    def arm_operation_handler(
+            logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for arm operations."""
         return ErrorHandler.safe_operation(
             logger, f"arm {operation}",
@@ -69,7 +71,8 @@ class ErrorHandler:
         )
 
     @staticmethod
-    def gui_operation_handler(logger: logging.Logger, operation: str) -> Callable:
+    def gui_operation_handler(
+            logger: logging.Logger, operation: str) -> Callable:
         """Specialized decorator for GUI operations."""
         return ErrorHandler.safe_operation(
             logger, f"GUI {operation}",

@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Frame processing utilities for the TicTacToe application.
 Consolidates repeated frame processing patterns from multiple files.

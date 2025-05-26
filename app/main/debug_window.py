@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Debug window module for TicTacToe application.
 """
@@ -215,7 +215,8 @@ class DebugWindow(QMainWindow):
                 if hasattr(detection_thread, "detector") and detection_thread.detector:
                     if hasattr(detection_thread.detector, "game_state") and detection_thread.detector.game_state:
                         detection_thread.detector.game_state.symbol_confidence_threshold = conf
-                        self.logger.info("Updated symbol confidence threshold in game state to {conf:.2f}")
+                        self.logger.info(
+                            "Updated symbol confidence threshold in game state to {conf:.2f}")
 
     @pyqtSlot()
     def handle_refresh_clicked(self):
@@ -226,7 +227,8 @@ class DebugWindow(QMainWindow):
             if hasattr(self.parent(), "handle_camera_changed") and callable(self.parent().handle_camera_changed):
                 # Získáme aktuální kameru
                 current_index = self.camera_combo.currentIndex()
-                # Restartujeme kameru pomocí volání handle_camera_changed s aktuálním indexem
+                # Restartujeme kameru pomocí
+                # volání handle_camera_changed s aktuálním indexem
                 self.parent().handle_camera_changed(current_index)
                 # Aktualizujeme status
                 self.status_label.setText(f"Kamera {current_index} obnovena")
@@ -302,7 +304,8 @@ class DebugWindow(QMainWindow):
     def update_board_state(self, board_state: List[List[str]]):
         """Update the board state label."""
         if board_state:
-            # Convert board state to string representation with proper formatting
+            # Convert board state to
+            # string representation with proper formatting
             board_str = ""
             for row in board_state:
                 row_str = " | ".join([cell if cell else " " for cell in row])

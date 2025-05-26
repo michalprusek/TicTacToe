@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """Drawing utilities for the TicTacToe application."""
 # pylint: disable=no-member,broad-exception-caught,too-many-arguments
 from typing import List
@@ -61,7 +61,8 @@ def draw_centered_text_message(  # pylint: disable=too-many-arguments,too-many-l
     rect_x1 = (frame.shape[1] - rect_width) // 2
     rect_y1 = int((frame.shape[0] - rect_height) * y_offset_percentage)
 
-    # Ensure rect_y1 is not negative if text block is too tall for y_offset_percentage
+    # Ensure rect_y1 is not negative if
+    # text block is too tall for y_offset_percentage
     rect_y1 = max(0, rect_y1)
 
     rect_x2 = rect_x1 + rect_width
@@ -86,7 +87,8 @@ def draw_centered_text_message(  # pylint: disable=too-many-arguments,too-many-l
             current_y_baseline_for_draw += line_heights[i + 1]
 
 
-def draw_symbol_box(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
+# pylint: disable=too-many-arguments,too-many-locals,unused-argument
+def draw_symbol_box(
     frame: np.ndarray,
     box: List[int],  # [x1, y1, x2, y2]
     confidence: float,

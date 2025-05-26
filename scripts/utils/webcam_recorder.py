@@ -282,8 +282,8 @@ def main():
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps_cam = cap.get(cv2.CAP_PROP_FPS)
     logger.info(
-        f"Rozlišení kamery: {frame_width}x{frame_height}, FPS: {
-            fps_cam:.2f}")
+        f"Rozlišení kamery: {frame_width}x{frame_height}, "
+        f"FPS: {fps_cam:.2f}")
 
     frame_counter = 0
     session_id = None
@@ -343,8 +343,7 @@ def main():
             break
         if SAVE_FRAMES and (key == ord('s') or key == ord('S')):
             filename_pred = os.path.join(
-                session_dir, f"frame_{
-                    frame_counter:06d}_preds.png")
+                session_dir, f"frame_{frame_counter:06d}_preds.png")
             try:
                 cv2.imwrite(filename_pred, frame_with_preds)
                 logger.info("Snímek uložen: %s", filename_pred)
@@ -371,7 +370,11 @@ if __name__ == "__main__":
             logger.info("Torchvision Version: %s", torchvision.__version__)
         except ImportError:
             logger.warning("Torchvision není nainstalováno.")
-        ultralytics_ver_str = ultralytics_version if 'ultralytics_version' in locals() else 'N/A'
+        try:
+            import ultralytics
+            ultralytics_ver_str = ultralytics.__version__
+        except ImportError:
+            ultralytics_ver_str = 'N/A'
         logger.info("Ultralytics Version: %s", ultralytics_ver_str)
         logger.info("OpenCV Version: %s", cv2.__version__)
     except Exception as e:

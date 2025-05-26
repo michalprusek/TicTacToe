@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 UI components for the TicTacToe application.
 """
@@ -179,7 +179,8 @@ def setup_window_icon(window, _config=None):
         window.setWindowIcon(QIcon(icon_path))
 
 
-def create_fade_animation(widget, start_value=0.0, end_value=1.0, duration=500):
+def create_fade_animation(
+        widget, start_value=0.0, end_value=1.0, duration=500):
     """Create a fade animation for a widget"""
     opacity_effect = QGraphicsOpacityEffect(widget)
     widget.setGraphicsEffect(opacity_effect)

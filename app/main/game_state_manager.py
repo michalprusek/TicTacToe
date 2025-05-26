@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Game state manager module for the TicTacToe application.
 """
@@ -59,7 +59,8 @@ class GameStateManager:
         """
         # If grid status changed significantly, reset game state
         if grid_status_changed:
-            self.logger.info("Grid status changed significantly, resetting game state")
+            self.logger.info(
+                "Grid status changed significantly, resetting game state")
             self.game_state.reset_game()
 
         # Always reset changed cells for the current detection cycle
@@ -155,7 +156,8 @@ class GameStateManager:
             return self.game_state._grid_points
         return None
 
-    def get_cell_center(self, row: int, col: int) -> Optional[Tuple[float, float]]:
+    def get_cell_center(
+            self, row: int, col: int) -> Optional[Tuple[float, float]]:
         """Gets the center coordinates of a cell.
 
         Args:

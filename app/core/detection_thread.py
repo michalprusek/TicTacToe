@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Detection thread module for TicTacToe application.
 """
@@ -18,7 +18,8 @@ from app.core.game_state import GameState
 from app.main.game_detector import GameDetector
 
 
-class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes
+class DetectionThread(threading.Thread):
     """Thread for running YOLO detection at a fixed frame rate."""
 
     def __init__(self,  # pylint: disable=too-many-arguments
@@ -86,14 +87,16 @@ class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-at
         with self.frame_lock:
             self.latest_frame = frame.copy()
 
-    def get_latest_result(self) -> Tuple[Optional[np.ndarray], Optional[GameState]]:
+    def get_latest_result(
+            self) -> Tuple[Optional[np.ndarray], Optional[GameState]]:
         """Get the latest detection result.
 
         Returns:
             Tuple of (processed_frame, game_state)
         """
         with self.result_lock:
-            if self.latest_result is not None and self.latest_game_state is not None:
+            if (self.latest_result is not None and
+                    self.latest_game_state is not None):
                 return self.latest_result.copy(), self.latest_game_state
             return None, None
 
@@ -171,7 +174,8 @@ class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-at
         self._configure_detector_settings()
 
         # Run detection
-        processed_frame, game_state = self.detector.process_frame(frame, inference_start)
+        processed_frame, game_state = self.detector.process_frame(
+            frame, inference_start)
         inference_time = time.time() - inference_start
         self.last_inference_time = inference_time
 
@@ -197,9 +201,11 @@ class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-at
 
         # Configure confidence thresholds
         if hasattr(self.detector.config, "bbox_conf_threshold"):
-            self.detector.config.bbox_conf_threshold = self.confidence_threshold
+            self.detector.config.bbox_conf_threshold = (
+                self.confidence_threshold)
         if hasattr(self.detector.config, "pose_conf_threshold"):
-            self.detector.config.pose_conf_threshold = self.confidence_threshold
+            self.detector.config.pose_conf_threshold = (
+                self.confidence_threshold)
 
         # Fallback for general confidence threshold
         if (not hasattr(self.detector.config, "bbox_conf_threshold") and
@@ -207,7 +213,8 @@ class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-at
                 hasattr(self.detector, "confidence_threshold")):
             self.detector.confidence_threshold = self.confidence_threshold
 
-    def _update_results(self, processed_frame: np.ndarray, game_state: GameState):
+    def _update_results(
+            self, processed_frame: np.ndarray, game_state: GameState):
         """Update the latest detection results."""
         with self.result_lock:
             self.latest_result = processed_frame
@@ -257,7 +264,8 @@ class DetectionThread(threading.Thread):  # pylint: disable=too-many-instance-at
 
             with open(calibration_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                self.logger.info("Loaded calibration data from %s", calibration_file)
+                self.logger.info(
+                    "Loaded calibration data from %s", calibration_file)
                 return data
         except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
             self.logger.warning("Could not load calibration data: %s", e)

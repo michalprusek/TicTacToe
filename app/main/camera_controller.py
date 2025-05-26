@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 # pylint: disable=line-too-long,no-name-in-module,wrong-import-position,unnecessary-pass
 # pylint: disable=protected-access,broad-exception-caught,no-member,unused-import
 """
@@ -50,7 +50,8 @@ class CameraController(QObject):
 
     def _init_camera(self):
         """Initialize camera thread."""
-        self.logger.info("Creating camera thread with index %s.", self.camera_index)
+        self.logger.info(
+            "Creating camera thread with index %s.", self.camera_index)
 
         self.camera_thread = CameraThread(camera_index=self.camera_index)
 
@@ -59,7 +60,8 @@ class CameraController(QObject):
         self.camera_thread.game_state_updated.connect(self._handle_game_state_updated)
         self.camera_thread.fps_updated.connect(self._handle_fps_updated)
 
-        self.logger.info("Camera thread for index %s created.", self.camera_index)
+        self.logger.info(
+            "Camera thread for index %s created.", self.camera_index)
 
     def start(self):
         """Start the camera thread."""
@@ -204,7 +206,8 @@ class CameraController(QObject):
                     self.logger.warning("Grid warning: %s",
                                         grid_issue_message)
 
-            # Emit grid incomplete signal for UI notification only if actually incomplete
+            # Emit grid incomplete signal for
+            # UI notification only if actually incomplete
             if is_grid_incomplete:
                 self.grid_incomplete.emit(True)
         else:
@@ -223,7 +226,8 @@ class CameraController(QObject):
         if hasattr(self.main_window, 'debug_window') and self.main_window.debug_window:
             self._update_debug_window_safe(processed_frame, raw_frame, game_state_obj)
 
-    def _update_debug_window_safe(self, processed_frame, raw_frame, game_state_obj):
+    def _update_debug_window_safe(
+            self, processed_frame, raw_frame, game_state_obj):
         """Safely update debug window with error handling."""
         try:
             # Update camera view in debug window
@@ -306,7 +310,8 @@ class CameraController(QObject):
             cap = cv2.VideoCapture(self.camera_index)
 
             if not cap.isOpened():
-                self.logger.error("Failed to open camera %s", self.camera_index)
+                self.logger.error(
+                    "Failed to open camera %s", self.camera_index)
                 return False
 
             # Set camera resolution

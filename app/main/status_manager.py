@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Status Manager module for TicTacToe application.
 This module handles status updates, language management, and UI state.
@@ -8,12 +8,19 @@ Refactored from pyqt_gui.py to separate concerns.
 # import logging  # unused
 import time
 
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import QObject
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import Qt
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import QTimer
+# pylint: disable=no-name-in-module
 from PyQt5.QtCore import pyqtSignal
+# pylint: disable=no-name-in-module
 from PyQt5.QtWidgets import QLabel
+# pylint: disable=no-name-in-module
 from PyQt5.QtWidgets import QVBoxLayout
+# pylint: disable=no-name-in-module
 from PyQt5.QtWidgets import QWidget
 
 from app.main.game_utils import convert_board_1d_to_2d
@@ -75,6 +82,7 @@ LANG_EN = {
 }
 
 
+# pylint: disable=too-many-instance-attributes
 class StatusManager(QObject):
     """Manages status updates, language, and UI state."""
 
@@ -178,6 +186,7 @@ class StatusManager(QObject):
             elif message_key_or_text == "draw":
                 self.set_status_style_safe("draw", self._get_status_style("draw"))
                 # Show draw notification popup
+                # pylint: disable=import-outside-toplevel
                 from app.main import game_logic
                 QTimer.singleShot(1000, lambda: self.show_game_end_notification(game_logic.TIE))
             elif message_key_or_text == "new_game_detected":
@@ -235,14 +244,18 @@ class StatusManager(QObject):
             return 0, 0, 0
 
         # Import game_logic here to avoid circular imports
+        # pylint: disable=import-outside-toplevel
         from app.main import game_logic
         x_count = sum(row.count(game_logic.PLAYER_X) for row in board_2d)
         o_count = sum(row.count(game_logic.PLAYER_O) for row in board_2d)
         return x_count, o_count, x_count + o_count
 
+    # pylint: disable=too-many-statements
     def show_game_end_notification(self, winner):
         """Show game end notification."""
+        # pylint: disable=import-outside-toplevel
         from PyQt5.QtCore import QPropertyAnimation
+        # pylint: disable=import-outside-toplevel
         from PyQt5.QtWidgets import QGraphicsOpacityEffect
 
         # Prevent multiple notifications
@@ -265,6 +278,7 @@ class StatusManager(QObject):
         layout.setSpacing(10)
 
         # Determine message and color based on winner
+        # pylint: disable=import-outside-toplevel
         from app.main import game_logic
         print(f"DEBUG: show_game_end_notification called with winner='{winner}'")  # Debug
 

@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Strategy module for TicTacToe game AI.
 """
@@ -28,7 +28,7 @@ class Strategy(ABC):  # pylint: disable=too-few-public-methods
 
     def __init__(self, player: str):
         self.player = player
-        # Note: Keep f-string for logger name setup as it's evaluated once at init
+        # Note: Keep f-string for logger name setup
         logger_name = f"{__name__}.{self.__class__.__name__}"
         self.logger = logging.getLogger(logger_name)
 
@@ -55,18 +55,21 @@ class RandomStrategy(Strategy):  # pylint: disable=too-few-public-methods
 
 
 class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
-    """A strategy that uses the minimax algorithm with alpha-beta pruning for optimal play."""
+    """A strategy that uses the minimax algorithm with alpha-beta pruning."""
 
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
-        """Suggest the optimal move using minimax algorithm with alpha-beta pruning."""
+        """Suggest the optimal move using minimax algorithm."""
         self.logger.debug(
-            "MinimaxStrategy: Suggesting move for board:\n%s", game_state.board_to_string()
+            "MinimaxStrategy: Suggesting move for board:\n%s",
+            game_state.board_to_string()
         )
 
         board = game_state.board
         # Check if game is finished
-        winner = game_state.check_winner() if hasattr(game_state, 'check_winner') else None
-        is_full = game_state.is_board_full() if hasattr(game_state, 'is_board_full') else False
+        winner = (game_state.check_winner()
+                  if hasattr(game_state, 'check_winner') else None)
+        is_full = (game_state.is_board_full()
+                   if hasattr(game_state, 'is_board_full') else False)
 
         if winner or is_full:
             self.logger.debug("MinimaxStrategy: Game already finished.")
@@ -79,14 +82,17 @@ class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
         best_move = self._get_best_move(board_copy, self.player)
 
         if best_move:
-            self.logger.debug("MinimaxStrategy: Selected optimal move: %s", best_move)
+            self.logger.debug(
+                "MinimaxStrategy: Selected optimal move: %s", best_move)
         else:
             self.logger.warning("MinimaxStrategy: No valid move found")
 
         return best_move
 
-    def _get_best_move(self, board: List[List[str]], player: str) -> Optional[Tuple[int, int]]:
-        """Find the best move using minimax algorithm with alpha-beta pruning."""
+    def _get_best_move(
+            self, board: List[List[str]], player: str
+    ) -> Optional[Tuple[int, int]]:
+        """Find the best move using minimax with alpha-beta pruning."""
         if self._is_board_full(board):
             return None
 
@@ -101,8 +107,9 @@ class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
         )
         return best_move
 
-    def _minimax(self, board: List[List[str]], current_player: str, depth: int,  # pylint: disable=too-many-arguments
-                 *, alpha: float, beta: float,
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def _minimax(self, board: List[List[str]], current_player: str, depth: int,
+                 alpha: float, beta: float,
                  ai_player: str) -> Tuple[float, Optional[Tuple[int, int]]]:
         """
         Minimax algorithm with alpha-beta pruning.
@@ -192,15 +199,18 @@ class StrategySelector(ABC):  # pylint: disable=too-few-public-methods
         raise NotImplementedError
 
 
-class FixedStrategySelector(StrategySelector):  # pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods
+class FixedStrategySelector(StrategySelector):
     """Selects a fixed strategy."""
 
     def __init__(self, strategy_type: str = 'minimax'):
         self.strategy_type = strategy_type
         if strategy_type.lower() not in ['minimax', 'random']:
-            raise ValueError(f"Invalid fixed strategy type specified: {strategy_type}")
+            raise ValueError(f"Invalid strategy type: {strategy_type}")
         self.logger = logging.getLogger(__name__)
-        self.logger.debug("Initialized FixedStrategySelector with type: %s", self.strategy_type)
+        self.logger.debug(
+            "Initialized FixedStrategySelector with type: %s",
+            self.strategy_type)
 
     def select_strategy(self) -> str:
         return self.strategy_type.lower()
@@ -220,7 +230,8 @@ class BernoulliStrategySelector(StrategySelector):
         else:
             self._p = max(0.0, min(1.0, p))
 
-        self.logger.debug("Initialized BernoulliStrategySelector with p=%.2f", self._p)
+        self.logger.debug(
+            "Initialized BernoulliStrategySelector with p=%.2f", self._p)
 
     @property
     def p(self) -> float:
@@ -258,8 +269,9 @@ class BernoulliStrategySelector(StrategySelector):
         # If random_value >= p, select random (random play)
         selected_strategy = 'minimax' if random_value < self._p else 'random'
 
-        self.logger.info("🎯 STRATEGY SELECTION: p=%.2f, random=%.3f, selected='%s'",
-                         self._p, random_value, selected_strategy)
+        self.logger.info(
+            "🎯 STRATEGY SELECTION: p=%.2f, random=%.3f, selected='%s'",
+            self._p, random_value, selected_strategy)
 
         return selected_strategy
 
@@ -275,7 +287,9 @@ class BernoulliStrategySelector(StrategySelector):
             A move (row, col) tuple
         """
         # pylint: disable=import-outside-toplevel
-        from app.main import game_logic  # Import here to avoid circular imports
+        from app.main import (
+            game_logic  # Import here to avoid circular imports
+        )
 
         strategy = self.select_strategy()
 

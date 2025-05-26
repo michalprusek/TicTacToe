@@ -1,11 +1,13 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Camera calibration module for TicTacToe robot arm.
 """
 # pylint: disable=line-too-long,superfluous-parens,invalid-name,too-many-locals
 # pylint: disable=too-many-function-args,no-else-return,consider-using-f-string
-# pylint: disable=too-many-return-statements,global-variable-not-assigned,global-statement
-# pylint: disable=no-member,consider-using-in,broad-exception-caught,too-many-nested-blocks
+# pylint: disable=too-many-return-statements,global-variable-not-assigned
+# pylint: disable=global-statement
+# pylint: disable=no-member,consider-using-in,broad-exception-caught
+# pylint: disable=too-many-nested-blocks
 # pylint: disable=unsubscriptable-object,unspecified-encoding,too-many-branches
 # pylint: disable=too-many-statements
 import json
@@ -132,7 +134,7 @@ def correct_grid_points_homography(
     min_req_points = max(4, min_points_for_ransac)
     if num_valid < min_req_points:
         correction_logger.warning(
-            "Nedostatek validních bodů (%d < %d) pro Homografii mřížky. Nelze opravit.",
+            "Nedostatek bodů (%d < %d) pro Homografii. Nelze opravit.",
             num_valid, min_req_points
         )
         return None
@@ -141,8 +143,9 @@ def correct_grid_points_homography(
                               dtype=np.float32)
     valid_ideal_pts = ideal_grid_all[valid_indices]
     try:
-        homography_matrix, ransac_mask = cv2.findHomography(  # pylint: disable=no-member
-            valid_ideal_pts, valid_predicted_pts, method=cv2.RANSAC,  # pylint: disable=no-member
+        # pylint: disable=no-member
+        homography_matrix, ransac_mask = cv2.findHomography(
+            valid_ideal_pts, valid_predicted_pts, method=cv2.RANSAC,
             ransacReprojThreshold=10.0)
         if homography_matrix is None:
             correction_logger.warning("RANSAC selhal při hledání "
@@ -641,7 +644,8 @@ def calibration_main():
             print("-> Pohyb na CÍL: X=%.1f Y=%.1f Z=%.1f" % (target_x, target_y, target_z))
             print("   Aktuální pozice před pohybem: X=%.1f Y=%.1f Z=%.1f" % (current_target_pos['x'], current_target_pos['y'], current_target_pos['z']))
 
-            # Pošleme příkaz k pohybu s explicitní rychlostí a wait=True pro okamžitou odezvu
+            # Pošleme příkaz k pohybu s
+            # explicitní rychlostí a wait=True pro okamžitou odezvu
             move_ok = controller.go_to_position(x=target_x, y=target_y,
                                                 z=target_z, speed=ARM_SPEED, wait=True)
             print(f"   Výsledek pohybu: {'ÚSPĚCH' if move_ok else 'SELHÁNÍ'}")

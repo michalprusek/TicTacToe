@@ -1,4 +1,4 @@
-# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """
 Arm control thread module for TicTacToe application.
 """
@@ -104,8 +104,10 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout=5)
 
-    def draw_x(self, center_x: float, center_y: float, size: float,  # pylint: disable=too-many-arguments
-               *, speed: Optional[int] = None, timeout: Optional[float] = None) -> bool:
+    # pylint: disable=too-many-arguments
+    def draw_x(self, center_x: float, center_y: float, size: float,
+               *, speed: Optional[int] = None,
+               timeout: Optional[float] = None) -> bool:
         """Draw an X symbol.
 
         Args:
@@ -131,7 +133,8 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout)
 
-    def draw_o(self, center_x: float, center_y: float, radius: float,  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
+    def draw_o(self, center_x: float, center_y: float, radius: float,
                *, speed: Optional[int] = None, segments: int = 16,
                timeout: Optional[float] = None) -> bool:
         """Draw an O symbol.
@@ -161,8 +164,11 @@ class ArmThread(threading.Thread):
         self.command_queue.put(command)
         return command.wait_for_completion(timeout)
 
-    def go_to_position(self, x: Optional[float] = None, y: Optional[float] = None,  # pylint: disable=too-many-arguments
-                       *, z: Optional[float] = None, speed: Optional[int] = None,
+    # pylint: disable=too-many-arguments
+    def go_to_position(self, x: Optional[float] = None,
+                       y: Optional[float] = None,
+                       *, z: Optional[float] = None,
+                       speed: Optional[int] = None,
                        wait: bool = True) -> bool:
         """Move the arm to a position.
 
@@ -194,7 +200,8 @@ class ArmThread(threading.Thread):
         # For non-waiting commands, return True immediately
         return True
 
-    def get_position(self, cached: bool = True) -> Optional[Tuple[float, float, float]]:
+    def get_position(
+            self, cached: bool = True) -> Optional[Tuple[float, float, float]]:
         """Get the current position of the arm.
 
         Args:
@@ -224,7 +231,8 @@ class ArmThread(threading.Thread):
         # Main command processing loop
         while self.running:
             try:
-                # Get command from queue with timeout to allow checking running flag
+                # Get command from queue with
+                # timeout to allow checking running flag
                 try:
                     command = self.command_queue.get(timeout=0.1)
                 except queue.Empty:
@@ -277,7 +285,8 @@ class ArmThread(threading.Thread):
                     command.mark_completed(result is not None, result)
 
                 else:
-                    self.logger.warning("Unknown command type: %s", command.command_type)
+                    self.logger.warning(
+                        "Unknown command type: %s", command.command_type)
                     command.mark_completed(False)
 
                 # Mark task as done in the queue
@@ -305,7 +314,8 @@ class ArmThread(threading.Thread):
                         self.command_queue.task_done()
                     except queue.Empty:
                         break
-                self.logger.info("🛑 Cleared arm command queue and stopped current moves")
+                self.logger.info(
+                    "🛑 Cleared arm command queue and stopped current moves")
             except (ConnectionError, RuntimeError) as e:
                 self.logger.error("Error stopping current arm move: %s", e)
 

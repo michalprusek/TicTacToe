@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review
 """Setup script for TicTacToe robotic application."""
 
 from setuptools import setup, find_packages
@@ -7,13 +8,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+    requirements = [
+        line.strip() for line in fh
+        if line.strip() and not line.startswith("#")
+    ]
 
 setup(
     name="robotic-tictactoe",
     version="1.0.0",
     author="TicTacToe Robot Team",
-    description="Robotic TicTacToe application with computer vision and AI strategy",
+    description="Robotic TicTacToe application with computer vision and AI",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
