@@ -1,19 +1,24 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Game Controller module for TicTacToe application.
 This module handles game logic, state management, and turn coordination.
 Consolidates functionality from game_manager.py.
 """
 
-import time
 import random
+import time
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
 
-from app.main.path_utils import setup_project_path
-from app.main import game_logic
 from app.core.strategy import BernoulliStrategySelector
+from app.main import game_logic
 from app.main.constants import DEFAULT_DIFFICULTY
-from app.main.game_utils import setup_logger, convert_board_1d_to_2d, get_board_symbol_counts
+from app.main.game_utils import convert_board_1d_to_2d
+from app.main.game_utils import get_board_symbol_counts
+from app.main.game_utils import setup_logger
+from app.main.path_utils import setup_project_path
 
 # Setup project path
 setup_project_path()
@@ -66,7 +71,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         self.strategy_selector = BernoulliStrategySelector(difficulty=difficulty)
         self.logger.info(
             "Strategy selector initialized with difficulty %s (p=%.2f)",
-            difficulty, difficulty/10.0
+            difficulty, difficulty / 10.0
         )
 
         # Arm controller reference (set by main window)
@@ -132,7 +137,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         """Handle cell click from the board widget."""
         if self.game_over or self.current_turn != self.human_player:
             self.logger.warning("Click ignored: game_over=%s, current_turn=%s",
-                               self.game_over, self.current_turn)
+                                self.game_over, self.current_turn)
             return
 
         if self.arm_move_in_progress or self.waiting_for_detection:
@@ -211,8 +216,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""
         self.logger.debug("Checking if arm should play. InProgress: %s, Cooldown: %s",
-                         self.arm_move_in_progress,
-                         time.time() - self.last_arm_move_time < self.arm_move_cooldown)
+                          self.arm_move_in_progress,
+                          time.time() - self.last_arm_move_time < self.arm_move_cooldown)
 
         if (self.game_over or self.arm_move_in_progress or
                 (time.time() - self.last_arm_move_time < self.arm_move_cooldown)):
@@ -276,7 +281,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Execute arm drawing
         if self.arm_controller and self.arm_controller.draw_ai_symbol(row, col, symbol_to_play):
             self.logger.info("Symbol %s successfully sent for drawing at (%s,%s). "
-                            "Waiting for detection.", symbol_to_play, row, col)
+                             "Waiting for detection.", symbol_to_play, row, col)
             self.waiting_for_detection = True
             return True
 
@@ -300,7 +305,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             if self.detection_wait_time >= self.max_detection_wait_time:
                 self.ai_move_retry_count += 1
                 self.logger.warning("Detection timeout. Retry %s/%s",
-                                   self.ai_move_retry_count, self.max_retry_count)
+                                    self.ai_move_retry_count, self.max_retry_count)
 
                 if self.ai_move_retry_count >= self.max_retry_count:
                     self.logger.error("Max retries reached. Giving up on arm move.")
@@ -330,7 +335,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             # Get symbol count for logging and winner determination
             x_count, o_count, total_count = self._get_board_symbol_counts(board_to_check)
             self.logger.info("Symbol count at game end: X=%d, O=%d, Total=%d",
-                            x_count, o_count, total_count)
+                             x_count, o_count, total_count)
 
             # For TIE, keep it as is
             if game_logic_winner == game_logic.TIE:
@@ -419,7 +424,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         total_count = x_count + o_count
 
         self.logger.debug("Board symbol counts: X=%s, O=%s, Total=%s",
-                         x_count, o_count, total_count)
+                          x_count, o_count, total_count)
         return x_count, o_count, total_count
 
     # === Consolidated game management functions from game_manager.py ===
@@ -469,7 +474,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         for r in range(3):
             for c in range(3):
                 has_board_widget = (hasattr(self.main_window, 'board_widget') and
-                                  self.main_window.board_widget)
+                                    self.main_window.board_widget)
                 if has_board_widget:
                     if self.main_window.board_widget.board[r][c] == game_logic.EMPTY:
                         valid_moves.append((r, c))
@@ -519,7 +524,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
         if self.ai_move_retry_count >= self.max_retry_count:
             self.logger.warning("Detection timeout for move at (%s, %s) - symbol NOT added to GUI",
-                               _row, _col)
+                                _row, _col)
             self.logger.info("GUI will only show what YOLO actually detects")
 
             # Reset flags

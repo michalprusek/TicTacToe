@@ -1,10 +1,14 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Arm control thread module for TicTacToe application.
 """
 import logging
-import threading
 import queue
-from typing import Optional, Tuple, Dict, Any
+import threading
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 from app.main.arm_controller import ArmController
 
@@ -158,8 +162,8 @@ class ArmThread(threading.Thread):
         return command.wait_for_completion(timeout)
 
     def go_to_position(self, x: Optional[float] = None, y: Optional[float] = None,  # pylint: disable=too-many-arguments
-                      *, z: Optional[float] = None, speed: Optional[int] = None,
-                      wait: bool = True) -> bool:
+                       *, z: Optional[float] = None, speed: Optional[int] = None,
+                       wait: bool = True) -> bool:
         """Move the arm to a position.
 
         Args:
@@ -251,8 +255,8 @@ class ArmThread(threading.Thread):
                         command.params['center_x'],
                         command.params['center_y'],
                         command.params['radius'],
-                        command.params.get('speed'),
-                        command.params.get('segments', 16)
+                        speed=command.params.get('speed'),
+                        segments=command.params.get('segments', 16)
                     )
                     command.mark_completed(success)
 

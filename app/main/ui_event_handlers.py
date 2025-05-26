@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 UI Event Handlers module for TicTacToe application.
 This module handles user interface events and interactions.
@@ -12,17 +13,18 @@ import os
 import subprocess
 import sys
 
-from PyQt5.QtCore import QObject, QTimer  # pylint: disable=no-name-in-module
-import os
+from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QTimer
+
+from app.core.arm_thread import ArmCommand
+from app.main import game_logic
+from app.main.debug_window import DebugWindow
+from app.main.game_utils import setup_logger
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-from app.main.debug_window import DebugWindow
-from app.main import game_logic
-from app.core.arm_thread import ArmCommand
-from app.main.game_utils import setup_logger
 
 
 class UIEventHandlers(QObject):
@@ -36,8 +38,6 @@ class UIEventHandlers(QObject):
 
         # Debug window reference
         self.debug_window = None
-
-
 
     def handle_cell_clicked(self, row, col):
         """Handle cell click from board widget."""
@@ -75,7 +75,7 @@ class UIEventHandlers(QObject):
             elif value == 1:
                 self.logger.info("Difficulty 1: AI will mostly use random strategy")
             else:
-                self.logger.info("Difficulty %d: AI will use optimal strategy %.0f%% of the time", value, new_p*100)
+                self.logger.info("Difficulty %d: AI will use optimal strategy %.0f%% of the time", value, new_p * 100)
 
     def change_language(self):
         """Handle language change button click."""
@@ -133,8 +133,6 @@ class UIEventHandlers(QObject):
 
         self.logger.info("Debug window shown")
 
-
-
     def _update_ui_texts(self):
         """Update UI texts after language change."""
         try:
@@ -148,8 +146,6 @@ class UIEventHandlers(QObject):
                 self.main_window.debug_button.setText(
                     self.main_window.status_manager.tr("debug")
                 )
-
-
 
             if hasattr(self.main_window, 'difficulty_label'):
                 self.main_window.difficulty_label.setText(
@@ -208,8 +204,6 @@ class UIEventHandlers(QObject):
         if self.debug_window:
             self.debug_window.close()
 
-
-
     def set_difficulty(self, difficulty):
         """Set difficulty value."""
         if hasattr(self.main_window, 'difficulty_slider'):
@@ -222,7 +216,7 @@ class UIEventHandlers(QObject):
         """Extended detected game state handling (consolidated from event_handlers.py)."""
         # Convert flat list back to 2D board
         detected_board = [
-            [flat_board[i*3 + j] for j in range(3)]
+            [flat_board[i * 3 + j] for j in range(3)]
             for i in range(3)
         ]
 
@@ -244,11 +238,11 @@ class UIEventHandlers(QObject):
 
         # If we're waiting for detection after arm move
         if (hasattr(self.main_window, 'game_controller') and
-            self.main_window.game_controller.waiting_for_detection):
+                self.main_window.game_controller.waiting_for_detection):
 
             gc = self.main_window.game_controller
             if (gc.ai_move_row is not None and gc.ai_move_col is not None and
-                gc.expected_symbol is not None):
+                    gc.expected_symbol is not None):
 
                 expected_row = gc.ai_move_row
                 expected_col = gc.ai_move_col
@@ -327,7 +321,7 @@ class UIEventHandlers(QObject):
 
         # Get latest game state from detection
         if (hasattr(self.main_window, 'camera_controller') and
-            hasattr(self.main_window.camera_controller, 'camera_thread')):
+                hasattr(self.main_window.camera_controller, 'camera_thread')):
 
             camera_thread = self.main_window.camera_controller.camera_thread
             if hasattr(camera_thread, 'detection_thread'):
@@ -338,7 +332,7 @@ class UIEventHandlers(QObject):
                     if (game_state and hasattr(game_state, 'is_valid') and
                         game_state.is_valid() and
                         hasattr(game_state, 'is_physical_grid_valid') and
-                        game_state.is_physical_grid_valid()):
+                            game_state.is_physical_grid_valid()):
 
                         # Get cell centers
                         if hasattr(game_state, 'get_cell_centers_uv_transformed'):

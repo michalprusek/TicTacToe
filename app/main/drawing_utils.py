@@ -1,19 +1,23 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """Drawing utilities for the TicTacToe application."""
 # pylint: disable=no-member,broad-exception-caught,too-many-arguments
-from typing import List, Tuple
+from typing import List
+from typing import Tuple
 
 import cv2  # pylint: disable=no-member
 import numpy as np
 
-from app.core.constants import (
-    MESSAGE_TEXT_COLOR, MESSAGE_BG_COLOR, PLAYER_X_COLOR, PLAYER_O_COLOR,
-    SYMBOL_CONFIDENCE_THRESHOLD_TEXT_COLOR
-)
+from app.core.constants import MESSAGE_BG_COLOR
+from app.core.constants import MESSAGE_TEXT_COLOR
+from app.core.constants import PLAYER_O_COLOR
+from app.core.constants import PLAYER_X_COLOR
+from app.core.constants import SYMBOL_CONFIDENCE_THRESHOLD_TEXT_COLOR
 
 
 def draw_centered_text_message(  # pylint: disable=too-many-arguments,too-many-locals
     frame: np.ndarray,
     message_lines: list[str],
+    *,
     font_scale: float = 1.0,
     text_color: tuple[int, int, int] = MESSAGE_TEXT_COLOR,
     bg_color: tuple[int, int, int] = MESSAGE_BG_COLOR,
@@ -79,7 +83,7 @@ def draw_centered_text_message(  # pylint: disable=too-many-arguments,too-many-l
             font_face, font_scale, text_color, font_thickness
         )
         if i < len(message_lines) - 1:
-            current_y_baseline_for_draw += line_heights[i+1]
+            current_y_baseline_for_draw += line_heights[i + 1]
 
 
 def draw_symbol_box(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
@@ -88,6 +92,7 @@ def draw_symbol_box(  # pylint: disable=too-many-arguments,too-many-locals,unuse
     confidence: float,
     class_id: int,
     label: str,
+    *,
     player_x_color: Tuple[int, int, int] = PLAYER_X_COLOR,
     player_o_color: Tuple[int, int, int] = PLAYER_O_COLOR,
     text_color: Tuple[int, int, int] = SYMBOL_CONFIDENCE_THRESHOLD_TEXT_COLOR,

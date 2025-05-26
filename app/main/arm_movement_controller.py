@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Arm Movement Controller module for TicTacToe application.
 This module provides centralized robotic arm control and movement coordination.
@@ -10,22 +11,28 @@ Refactored from pyqt_gui.py to consolidate arm control logic.
 # pylint: disable=wrong-import-order,unused-import,no-name-in-module,import-outside-toplevel
 # pylint: disable=raise-missing-from
 
-import logging
-import numpy as np
 import json
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer  # pylint: disable=no-name-in-module
+import logging
+
+import numpy as np
+from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
+
+from app.core.arm_thread import ArmThread
+from app.main import game_logic
+from app.main.arm_controller import ArmController
+from app.main.constants import DEFAULT_DRAW_Z
+from app.main.constants import DEFAULT_SAFE_Z
+from app.main.constants import DRAWING_SPEED
+from app.main.constants import MAX_SPEED
+from app.main.game_utils import setup_logger
 
 # Import required modules
 from app.main.path_utils import setup_project_path
+
 setup_project_path()
 
-from app.main.arm_controller import ArmController
-from app.core.arm_thread import ArmThread
-from app.main import game_logic
-from app.main.constants import (
-    DEFAULT_SAFE_Z, DEFAULT_DRAW_Z, DRAWING_SPEED, MAX_SPEED
-)
-from app.main.game_utils import setup_logger
 DEFAULT_SYMBOL_SIZE = 15.0
 
 
@@ -131,7 +138,7 @@ class ArmMovementController(QObject):
 
         # Store connection status - signal will be emitted from GUI after connections are made
         self._initial_connection_status = arm_connection_successful
-        self.logger.info("Arm initialization complete. Connection status: {arm_connection_successful}")
+        self.logger.info("Arm initialization complete. Connection status: %s", arm_connection_successful)
 
     def is_arm_available(self):
         """Check if arm is available for use."""
@@ -236,7 +243,7 @@ class ArmMovementController(QObject):
                 return False
 
         except Exception as e:
-            self.logger.error("Error drawing symbol: {e}")
+            self.logger.error("Error drawing symbol: %s", e)
             self.arm_move_completed.emit(False)
             return False
 
@@ -288,7 +295,7 @@ class ArmMovementController(QObject):
             return True
 
         except Exception as e:
-            self.logger.error("Error drawing winning line: {e}")
+            self.logger.error("Error drawing winning line: %s", e)
             raise
 
     def _unified_arm_command(self, command, *args, **kwargs):
@@ -334,16 +341,16 @@ class ArmMovementController(QObject):
             if not success:
                 raise RuntimeError(f"Arm command '{command}' failed to execute")
 
-            self.logger.info("Arm command '{command}' executed successfully")
+            self.logger.info("Arm command '%s' executed successfully", command)
             return success
 
         except Exception as e:
-            self.logger.error("Error executing arm command '{command}': {e}")
+            self.logger.error("Error executing arm command '%s': %s", command, e)
             raise
 
     def _get_cell_coordinates_from_yolo(self, row, col):
         """Get cell coordinates from YOLO detection with improved interpolation."""
-        self.logger.info("🔍 COORDINATE TRANSFORMATION DEBUG for cell ({row},{col}):")
+        self.logger.info("🔍 COORDINATE TRANSFORMATION DEBUG for cell (%d,%d):", row, col)
 
         # Get current detection state
         if hasattr(self.main_window, 'camera_controller'):
@@ -380,9 +387,9 @@ class ArmMovementController(QObject):
 
                     # Calculate expected center for verification
                     expected_center_u = (grid_points[p_tl_idx][0] + grid_points[p_tr_idx][0] +
-                                       grid_points[p_bl_idx][0] + grid_points[p_br_idx][0]) / 4
+                                         grid_points[p_bl_idx][0] + grid_points[p_br_idx][0]) / 4
                     expected_center_v = (grid_points[p_tl_idx][1] + grid_points[p_tr_idx][1] +
-                                       grid_points[p_bl_idx][1] + grid_points[p_br_idx][1]) / 4
+                                         grid_points[p_bl_idx][1] + grid_points[p_br_idx][1]) / 4
                     self.logger.info("    Expected center: ({expected_center_u:.1f},{expected_center_v:.1f})")
                     self.logger.info("    Actual center:   ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
 

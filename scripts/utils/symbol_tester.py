@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 # test_symbols.py
 import logging
 import sys  # Vrácen import pro sys.exit(1)

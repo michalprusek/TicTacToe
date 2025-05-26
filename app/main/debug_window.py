@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Debug window module for TicTacToe application.
 """
@@ -5,16 +6,25 @@ Debug window module for TicTacToe application.
 # pylint: disable=broad-exception-caught,unused-variable,invalid-name,wrong-import-order
 # pylint: disable=line-too-long,unused-import,ungrouped-imports
 import logging
-from typing import Optional, List
+from typing import List
+from typing import Optional
 
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QComboBox, QCheckBox, QSlider, QGroupBox
-)
-from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QCheckBox
+from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QGroupBox
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QSlider
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 
 from app.core.config import AppConfig
 from app.main.camera_view import CameraView

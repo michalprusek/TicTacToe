@@ -1,10 +1,14 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Shared utility functions for the TicTacToe application.
 Consolidates duplicated utility functions from multiple files.
 """
 
 import logging
-from typing import List, Union, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Union
 
 
 def convert_board_1d_to_2d(board_1d: Union[List, Any]) -> Union[List[List], Any]:

@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Comprehensive tests for app.core.utils module using pytest.
 Tests FPSCalculator class with all scenarios including edge cases.

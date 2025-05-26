@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Simple tests for GUI Factory module.
 Tests factory patterns without actual PyQt5 widget creation.

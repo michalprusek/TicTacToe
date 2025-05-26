@@ -1,24 +1,26 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 UI components for the TicTacToe application.
 """
 # pylint: disable=no-name-in-module
 import os
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QSlider,
-    QPushButton,
-    QCheckBox,
-    QGraphicsOpacityEffect
-)
-from PyQt5.QtCore import Qt, QPropertyAnimation
+
+from PyQt5.QtCore import QPropertyAnimation
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QCheckBox
+from PyQt5.QtWidgets import QGraphicsOpacityEffect
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QSlider
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 
 from app.core.config import AppConfig
 from app.main.game_utils import setup_logger
 from app.main.shared_styles import create_button_style
+from app.main.shared_styles import create_reset_button_style
 
 
 class StatusPanel(QWidget):
@@ -82,7 +84,7 @@ class ControlPanel(QWidget):  # pylint: disable=too-many-instance-attributes,too
 
         # Reset button
         self.reset_button = QPushButton("Reset")
-        self.reset_button.setStyleSheet(create_button_style("danger", "10px 20px"))
+        self.reset_button.setStyleSheet(create_reset_button_style())
         layout.addWidget(self.reset_button)
 
         # Difficulty slider
@@ -126,17 +128,17 @@ class ControlPanel(QWidget):  # pylint: disable=too-many-instance-attributes,too
 
         # Park button
         self.park_button = QPushButton("Park")
-        self.park_button.setStyleSheet(create_button_style("primary", "10px 20px"))
+        self.park_button.setStyleSheet(create_button_style())
         layout.addWidget(self.park_button)
 
         # Calibrate button
         self.calibrate_button = QPushButton("Kalibrace")
-        self.calibrate_button.setStyleSheet(create_button_style("warning", "10px 20px"))
+        self.calibrate_button.setStyleSheet(create_button_style())
         layout.addWidget(self.calibrate_button)
 
         # Debug button
         self.debug_button = QPushButton("Debug")
-        self.debug_button.setStyleSheet(create_button_style("purple", "10px 20px"))
+        self.debug_button.setStyleSheet(create_button_style())
         layout.addWidget(self.debug_button)
 
         # Track checkbox
@@ -165,14 +167,14 @@ class ControlPanel(QWidget):  # pylint: disable=too-many-instance-attributes,too
 
         # Language button
         self.language_button = QPushButton("EN/CZ")
-        self.language_button.setStyleSheet(create_button_style("teal", "10px 20px"))
+        self.language_button.setStyleSheet(create_button_style())
         layout.addWidget(self.language_button)
 
 
 def setup_window_icon(window, _config=None):
     """Set up the window icon"""
     icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                            "resources", "app_icon.png")
+                             "resources", "app_icon.png")
     if os.path.exists(icon_path):
         window.setWindowIcon(QIcon(icon_path))
 

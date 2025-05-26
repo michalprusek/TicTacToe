@@ -1,15 +1,25 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Status Manager module for TicTacToe application.
 This module handles status updates, language management, and UI state.
 Refactored from pyqt_gui.py to separate concerns.
 """
 
-import logging
+# import logging  # unused
 import time
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
-from app.main.game_utils import convert_board_1d_to_2d, get_board_symbol_counts, setup_logger
-from app.main.gui_factory import LabelFactory, LayoutFactory
+
+from PyQt5.QtCore import QObject
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
+
+from app.main.game_utils import convert_board_1d_to_2d
+from app.main.game_utils import setup_logger
+
+# from app.main.gui_factory import LabelFactory, LayoutFactory  # unused
 
 # Language dictionaries
 LANG_CS = {
@@ -22,15 +32,19 @@ LANG_CS = {
     "grid_not_visible": "⚠️ MŘÍŽKA NENÍ VIDITELNÁ!", "grid_visible": "✅ MŘÍŽKA VIDITELNÁ",
     "move_to_neutral": "PŘESUN DO NEUTRÁLNÍ POZICE", "new_game_detected": "NOVÁ HRA DETEKOVÁNA",
     "move_success": "Ruka v neutrální pozici", "move_failed": "Nepodařilo se přesunout ruku",
-    "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...", "detection_failed": "Detekce tahu selhala.",
+    "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...",
+    "detection_failed": "Detekce tahu selhala.",
     "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})", "language": "Jazyk",
     "debug_tooltip": "Otevřít ladící okno", "loss": "PROHRA",
-    "game_instructions": "Klikněte na políčko pro umístění vašeho symbolu nebo použijte fyzickou herní desku",
-    "grid_incomplete_notification": "Umístěte celou hrací plochu do záběru kamery tak, aby byly viditelné všechny průsečíky mřížky.",
+    "game_instructions": "Klikněte na políčko pro umístění vašeho symbolu "
+                         "nebo použijte fyzickou herní desku",
+    "grid_incomplete_notification": "Umístěte celou hrací plochu do záběru kamery "
+    "tak, aby byly viditelné všechny průsečíky mřížky.",
     "grid_incomplete_title": "⚠️ NEÚPLNÁ DETEKCE HRACÍ PLOCHY",
     "new_game_instruction": "Pro novou hru vymažte hrací plochu nebo stiskněte Reset.",
     "arm_connected": "✅ RUKA PŘIPOJENA", "arm_disconnected": "❌ RUKA ODPOJENA",
-    "arm_connection_notification": "Robotická ruka není připojena. Hra bude v režimu pouze s kamerou.",
+    "arm_connection_notification": "Robotická ruka není připojena. "
+    "Hra bude v režimu pouze s kamerou.",
     "arm_disconnection_title": "⚠️ RUKA ODPOJENA"
 }
 
@@ -44,15 +58,19 @@ LANG_EN = {
     "grid_not_visible": "⚠️ GRID NOT VISIBLE!", "grid_visible": "✅ GRID VISIBLE",
     "move_to_neutral": "MOVING TO NEUTRAL POSITION", "new_game_detected": "NEW GAME DETECTED",
     "move_success": "Arm in neutral position", "move_failed": "Failed to move arm",
-    "waiting_for_symbol": "⏳ Waiting for symbol {} detection...", "detection_failed": "Symbol detection failed.",
+    "waiting_for_symbol": "⏳ Waiting for symbol {} detection...",
+    "detection_failed": "Symbol detection failed.",
     "detection_attempt": "Waiting for symbol detection... (attempt {}/{})", "language": "Language",
     "debug_tooltip": "Open debug window", "loss": "LOSS",
-    "game_instructions": "Click on a cell to place your symbol or use the physical game board",
-    "grid_incomplete_notification": "Please position the entire game board within the camera view so all grid points are visible.",
+    "game_instructions": "Click on a cell to place your symbol "
+                         "or use the physical game board",
+    "grid_incomplete_notification": "Please position the entire game board within "
+                                   "the camera view so all grid points are visible.",
     "grid_incomplete_title": "⚠️ INCOMPLETE GAME BOARD DETECTION",
     "new_game_instruction": "To start a new game, clear the game board or press Reset.",
     "arm_connected": "✅ ARM CONNECTED", "arm_disconnected": "❌ ARM DISCONNECTED",
-    "arm_connection_notification": "Robotic arm is not connected. Game will run in camera-only mode.",
+    "arm_connection_notification": "Robotic arm is not connected. "
+    "Game will run in camera-only mode.",
     "arm_disconnection_title": "⚠️ ARM DISCONNECTED"
 }
 
@@ -139,15 +157,15 @@ class StatusManager(QObject):
             elif hasattr(self.main_window, 'board_widget'):
                 board_for_status = self.main_window.board_widget.board
 
-            x_count, o_count, total_symbols = self._get_board_symbol_counts(board_for_status)
+            _ = self._get_board_symbol_counts(board_for_status)  # unused variables
 
             status_text_to_show = message.upper()
-            style_key = "default"
+            # style_key = "default"  # unused
 
             # Set style based on message type
             if message_key_or_text == "your_turn":
                 self.set_status_style_safe("player", self._get_status_style("player"))
-            elif message_key_or_text == "arm_turn" or message_key_or_text == "arm_moving":
+            elif message_key_or_text in ("arm_turn", "arm_moving"):
                 self.set_status_style_safe("ai", self._get_status_style("ai"))
             elif message_key_or_text == "win":
                 self.set_status_style_safe("win", self._get_status_style("win"))
@@ -199,10 +217,10 @@ class StatusManager(QObject):
             "win": f"background-color: #27ae60; {base_style}",     # Green for win
             "loss": f"background-color: #e74c3c; {base_style}",    # Red for loss
             "draw": f"background-color: #f39c12; {base_style}",    # Orange for draw
-            "new_game": f"background-color: #9b59b6; {base_style}", # Purple for new game
+            "new_game": f"background-color: #9b59b6; {base_style}",  # Purple for new game
             "error": f"background-color: #e74c3c; {base_style}",   # Red for error
-            "success": f"background-color: #27ae60; {base_style}", # Green for success
-            "warning": f"background-color: #f39c12; {base_style}", # Orange for warning
+            "success": f"background-color: #27ae60; {base_style}",  # Green for success
+            "warning": f"background-color: #f39c12; {base_style}",  # Orange for warning
         }
 
         return styles.get(style_type, styles["default"])
@@ -224,8 +242,8 @@ class StatusManager(QObject):
 
     def show_game_end_notification(self, winner):
         """Show game end notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect
         from PyQt5.QtCore import QPropertyAnimation
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
 
         # Prevent multiple notifications
         if hasattr(self.main_window, '_celebration_triggered'):
@@ -302,17 +320,18 @@ class StatusManager(QObject):
 
         # Store reference and auto-hide after 4 seconds
         self.main_window._active_notification = notification_widget
-        QTimer.singleShot(4000, lambda: self._hide_notification())
+        QTimer.singleShot(4000, self._hide_notification)
 
     def _hide_notification(self):
         """Hide the active notification."""
-        if hasattr(self.main_window, '_active_notification') and self.main_window._active_notification:
+        if (hasattr(self.main_window, '_active_notification') and
+                self.main_window._active_notification):
             self.main_window._active_notification.hide()
 
     def show_grid_incomplete_notification(self):
         """Show grid incomplete notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect
         from PyQt5.QtCore import QPropertyAnimation
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
 
         # Hide any existing notification first
         self._hide_notification()
@@ -379,9 +398,6 @@ class StatusManager(QObject):
 
     def show_arm_disconnected_notification(self):
         """Show arm disconnected notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect
-        from PyQt5.QtCore import QPropertyAnimation
-
         # Hide any existing notification first
         self._hide_notification()
 
@@ -433,7 +449,7 @@ class StatusManager(QObject):
 
         # Store reference and auto-hide after 8 seconds for arm notification
         self.main_window._active_notification = notification_widget
-        QTimer.singleShot(8000, lambda: self._hide_notification())
+        QTimer.singleShot(8000, self._hide_notification)
 
     def hide_arm_disconnected_notification(self):
         """Hide arm disconnected notification."""

@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Frame processing utilities for the TicTacToe application.
 Consolidates repeated frame processing patterns from multiple files.
@@ -6,8 +7,9 @@ Consolidates repeated frame processing patterns from multiple files.
 
 import cv2
 import numpy as np
-from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QPixmap
 
 
 class FrameConverter:
@@ -42,7 +44,7 @@ class FrameConverter:
 
     @staticmethod
     def frame_to_pixmap(frame: np.ndarray, target_width: int,
-                       target_height: int, keep_aspect: bool = True) -> QPixmap:
+                        target_height: int, keep_aspect: bool = True) -> QPixmap:
         """
         Convert frame to scaled QPixmap.
 

@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Camera calibration module for TicTacToe robot arm.
 """
@@ -10,12 +11,15 @@ Camera calibration module for TicTacToe robot arm.
 import json
 import logging
 import sys
-from typing import Optional, Dict, Tuple, List
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import cv2  # pylint: disable=no-member
-from pynput import keyboard
 import numpy as np
 import torch  # Přidáno pro YOLO
+from pynput import keyboard
 from ultralytics import YOLO  # Přidáno pro YOLO
 
 # --- Import ArmController ---

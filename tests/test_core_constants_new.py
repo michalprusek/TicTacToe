@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Comprehensive tests for app.core.constants module using pytest.
 Tests all constants and their values.

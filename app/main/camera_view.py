@@ -1,11 +1,15 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Camera view module for the TicTacToe application.
 """
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QPixmap
+
 # pylint: disable=no-name-in-module,broad-exception-caught,import-outside-toplevel
 # pylint: disable=access-member-before-definition,attribute-defined-outside-init,unused-import
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap
+
 from app.main.frame_utils import FrameConverter
 
 

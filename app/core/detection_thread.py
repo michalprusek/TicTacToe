@@ -1,17 +1,20 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Detection thread module for TicTacToe application.
 """
-import time
+import json
 import logging
 import threading
-import json
-from typing import Optional, Tuple, Dict
+import time
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import torch
 
-from app.core.game_state import GameState
 from app.core.config import GameDetectorConfig
+from app.core.game_state import GameState
 from app.main.game_detector import GameDetector
 
 

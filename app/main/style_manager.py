@@ -1,11 +1,14 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Centralized style management for GUI components.
 Consolidates repeated styling patterns from multiple files.
 """
 
-from PyQt5.QtWidgets import QPushButton, QLabel, QWidget
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QPushButton
+
+# from PyQt5.QtCore import Qt  # unused
+# from PyQt5.QtGui import QFont  # unused
 from app.main.shared_styles import create_button_style
 
 
@@ -21,15 +24,15 @@ class StyleManager:
     }
 
     @staticmethod
-    def style_button(button: QPushButton, style_type: str = "default") -> None:
+    def style_button(button: QPushButton, style_type: str = "default") -> None:  # pylint: disable=unused-argument
         """Apply standardized button styling."""
-        button.setStyleSheet(create_button_style(style_type))
+        button.setStyleSheet(create_button_style())
 
     @staticmethod
     def style_status_label(label: QLabel, status_type: str = "default") -> None:
         """Apply standardized status label styling."""
         style = StyleManager.STATUS_STYLES.get(status_type,
-                                              StyleManager.STATUS_STYLES["default"])
+                                               StyleManager.STATUS_STYLES["default"])
         label.setStyleSheet(style)
 
     @staticmethod

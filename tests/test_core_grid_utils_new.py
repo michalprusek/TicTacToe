@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Comprehensive tests for app.core.grid_utils module using pytest.
 Tests robust_sort_grid_points function with various scenarios.

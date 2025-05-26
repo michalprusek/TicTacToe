@@ -1,5 +1,7 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """Constants for the Game Detector."""
 import numpy as np
+
 from app.core.game_state import GRID_POINTS_COUNT
 
 # --- Detection Thresholds --- #

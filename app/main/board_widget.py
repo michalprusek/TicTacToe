@@ -1,13 +1,20 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 TicTacToe board widget module for the TicTacToe application.
 """
 # pylint: disable=no-name-in-module,line-too-long,too-many-instance-attributes,invalid-name
 # pylint: disable=unused-argument,unnecessary-pass,unused-import
 import logging
-from PyQt5.QtWidgets import QWidget
+
+from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QTimer
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QPainter, QPen, QColor, QLinearGradient, QRadialGradient
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QLinearGradient
+from PyQt5.QtGui import QPainter
+from PyQt5.QtGui import QPen
+from PyQt5.QtGui import QRadialGradient
+from PyQt5.QtWidgets import QWidget
 
 from app.main import game_logic
 from app.main.game_utils import setup_logger

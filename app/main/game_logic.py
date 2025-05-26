@@ -1,15 +1,16 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Game logic for TicTacToe game.
 """
-import random
 import math
-from typing import List, Tuple
-from app.core.minimax_algorithm import (
-    get_available_moves as get_available_moves_shared,
-    get_optimal_move_with_heuristics,
-    minimax_maximize,
-    minimax_minimize
-)
+import random
+from typing import List
+from typing import Tuple
+
+from app.core.minimax_algorithm import get_available_moves as get_available_moves_shared
+from app.core.minimax_algorithm import get_optimal_move_with_heuristics
+from app.core.minimax_algorithm import minimax_maximize
+from app.core.minimax_algorithm import minimax_minimize
 
 EMPTY = ' '
 PLAYER_X = 'X'
@@ -125,8 +126,8 @@ def get_other_player(player):
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-def minimax(game_board, player_or_depth, is_maximizing_or_player=None,
-            alpha_or_depth=None, beta=None, ai_player=None):
+def minimax(game_board, player_or_depth, *,
+            is_maximizing_or_player=None, alpha_or_depth=None, beta=None, ai_player=None):
     """
     Minimax algorithm with Alpha-Beta Pruning.
     Supports both old and new parameter formats for backward compatibility:
@@ -167,9 +168,9 @@ def minimax(game_board, player_or_depth, is_maximizing_or_player=None,
     available_moves = get_available_moves_shared(game_board)
 
     # Create a wrapper for recursive calls
-    def minimax_recursive(board_state, current_player, depth, alpha, beta, ai_player):
-        return minimax(board_state, depth, current_player == ai_player,
-                      alpha, beta, ai_player)
+    def minimax_recursive(board_state, current_player, depth, *, alpha, beta, ai_player):
+        return minimax(board_state, depth, is_maximizing_or_player=current_player == ai_player,
+                       alpha_or_depth=alpha, beta=beta, ai_player=ai_player)
 
     minimax_args = {
         'board': game_board, 'available_moves': available_moves, 'depth': depth,
@@ -196,7 +197,11 @@ def get_best_move(game_board, player):
 
     # Call minimax to find the best move
     _, best_move = minimax(
-        game_board, player, 0, -math.inf, math.inf, player
+        game_board, player,
+        is_maximizing_or_player=True,
+        alpha_or_depth=-math.inf,
+        beta=math.inf,
+        ai_player=player
     )
 
     return best_move

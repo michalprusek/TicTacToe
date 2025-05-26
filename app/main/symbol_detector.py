@@ -1,11 +1,15 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Symbol detector module for the TicTacToe application.
 """
 import logging
-from typing import Tuple, List, Dict, Optional
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
-import numpy as np
 import cv2
+import numpy as np
 
 
 class SymbolDetector:
@@ -86,7 +90,7 @@ class SymbolDetector:
                 symbols.append(symbol)
 
                 self.logger.debug("Detected %s with confidence %.2f at %s",
-                                 label, conf, box.tolist())
+                                  label, conf, box.tolist())
 
         return frame, symbols
 
@@ -114,7 +118,7 @@ class SymbolDetector:
                 row = cell_idx // 3
                 col = cell_idx % 3
                 self.logger.debug("Point (%.1f, %.1f) is inside cell (%s, %s)",
-                                 x, y, row, col)
+                                  x, y, row, col)
                 return row, col
 
         # If point is not inside any cell, find the nearest cell
@@ -134,17 +138,17 @@ class SymbolDetector:
 
         if nearest_cell_coords:
             self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1f",
-                             x, y, nearest_cell_coords[0], nearest_cell_coords[1],
-                             np.sqrt(min_distance_sq))
+                              x, y, nearest_cell_coords[0], nearest_cell_coords[1],
+                              np.sqrt(min_distance_sq))
         else:
             self.logger.warning("Could not determine nearest cell for point (%.1f, %.1f)",
-                               x, y)
+                                x, y)
 
         return nearest_cell_coords
 
     def assign_symbols_to_cells(self,
-                               symbols: List[Dict],
-                               cell_polygons: List[np.ndarray]) -> List[Tuple[int, int, str]]:
+                                symbols: List[Dict],
+                                cell_polygons: List[np.ndarray]) -> List[Tuple[int, int, str]]:
         """Assigns detected symbols to grid cells.
 
         Args:

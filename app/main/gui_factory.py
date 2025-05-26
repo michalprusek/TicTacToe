@@ -1,15 +1,20 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 GUI Factory for standardized widget and layout creation.
 Consolidates repeated GUI creation patterns from multiple files.
 """
 # pylint: disable=no-name-in-module
-from typing import Optional, List, Callable
+from typing import Callable
+from typing import List
+from typing import Optional
 
-from PyQt5.QtWidgets import (
-    QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QWidget
-)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 
 from app.main.style_manager import StyleManager
 
@@ -19,8 +24,8 @@ class ButtonFactory:
 
     @staticmethod
     def create_button(text: str, style_type: str = "default",
-                     click_handler: Optional[Callable] = None,
-                     font_size: int = 10, min_width: int = 100) -> QPushButton:
+                      click_handler: Optional[Callable] = None,
+                      font_size: int = 10, min_width: int = 100) -> QPushButton:
         """
         Create standardized button with consistent styling.
 
@@ -47,7 +52,7 @@ class ButtonFactory:
 
     @staticmethod
     def create_control_button(text: str, click_handler: Callable,
-                            enabled: bool = True) -> QPushButton:
+                              enabled: bool = True) -> QPushButton:
         """Create control button with standard control styling."""
         button = ButtonFactory.create_button(
             text, "primary", click_handler,

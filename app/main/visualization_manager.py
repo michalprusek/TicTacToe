@@ -1,19 +1,20 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Visualization manager module for the TicTacToe application.
 """
 # pylint: disable=no-member,broad-exception-caught,unexpected-keyword-arg
 import logging
-from typing import List, Dict, Optional
+from typing import Dict
+from typing import List
+from typing import Optional
 
-import numpy as np
 import cv2  # pylint: disable=import-error
+import numpy as np
 
-from app.core.detector_constants import (
-    DEBUG_UV_KPT_COLOR,
-    DEBUG_FPS_COLOR
-)
-from app.main.frame_utils import FrameConverter
+from app.core.detector_constants import DEBUG_FPS_COLOR
+from app.core.detector_constants import DEBUG_UV_KPT_COLOR
 from app.main import drawing_utils
+from app.main.frame_utils import FrameConverter
 
 
 class VisualizationManager:
@@ -42,6 +43,7 @@ class VisualizationManager:
         frame: np.ndarray,
         fps: float,
         pose_kpts_uv: Optional[np.ndarray],
+        *,
         ordered_kpts_uv: Optional[np.ndarray],  # pylint: disable=unused-argument
         cell_polygons: Optional[List[np.ndarray]],
         detected_symbols: List[Dict],

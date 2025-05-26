@@ -1,10 +1,13 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Shared minimax algorithm implementation for TicTacToe.
 This module contains the common minimax logic to avoid code duplication.
 """
 # pylint: disable=too-many-return-statements,too-many-arguments
 import math
-from typing import List, Tuple, Optional
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 EMPTY = " "
 
@@ -52,17 +55,17 @@ def evaluate_board(board: List[List[str]], ai_player: str) -> int:
     if all(board[i][i] == human_player for i in range(3)):
         return -1
 
-    if all(board[i][2-i] == ai_player for i in range(3)):
+    if all(board[i][2 - i] == ai_player for i in range(3)):
         return 1
-    if all(board[i][2-i] == human_player for i in range(3)):
+    if all(board[i][2 - i] == human_player for i in range(3)):
         return -1
 
     return 0  # Draw or game continues
 
 
 def minimax_maximize(board: List[List[str]], available_moves: List[Tuple[int, int]],
-                    depth: int, *, alpha: float, beta: float, ai_player: str,
-                    minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
+                     depth: int, *, alpha: float, beta: float, ai_player: str,
+                     minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
     """Handle maximizing player logic in minimax."""
     best_score = -math.inf
     best_move = None
@@ -88,8 +91,8 @@ def minimax_maximize(board: List[List[str]], available_moves: List[Tuple[int, in
 
 
 def minimax_minimize(board: List[List[str]], available_moves: List[Tuple[int, int]],
-                    depth: int, *, alpha: float, beta: float, ai_player: str,
-                    minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
+                     depth: int, *, alpha: float, beta: float, ai_player: str,
+                     minimax_func) -> Tuple[float, Optional[Tuple[int, int]]]:
     """Handle minimizing player logic in minimax."""
     best_score = math.inf
     best_move = None

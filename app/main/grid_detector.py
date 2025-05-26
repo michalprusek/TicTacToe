@@ -1,19 +1,19 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Grid detector module for the TicTacToe application.
 """
 # pylint: disable=no-member,broad-exception-caught
 import logging
-from typing import Tuple, Optional
+from typing import Optional
+from typing import Tuple
 
-import numpy as np
 import cv2  # pylint: disable=import-error
+import numpy as np
 
-from app.core.detector_constants import (
-    MIN_POINTS_FOR_HOMOGRAPHY,
-    RANSAC_REPROJ_THRESHOLD,
-    GRID_DIST_STD_DEV_THRESHOLD,
-    IDEAL_GRID_NORM
-)
+from app.core.detector_constants import GRID_DIST_STD_DEV_THRESHOLD
+from app.core.detector_constants import IDEAL_GRID_NORM
+from app.core.detector_constants import MIN_POINTS_FOR_HOMOGRAPHY
+from app.core.detector_constants import RANSAC_REPROJ_THRESHOLD
 
 # Number of grid points (4x4 grid has 16 intersection points)
 GRID_POINTS_COUNT = 16
@@ -174,7 +174,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
         # Check if we have enough points
         if valid_count < MIN_POINTS_FOR_HOMOGRAPHY:
             self.logger.debug("Not enough valid grid points: %s/%s",
-                             valid_count, MIN_POINTS_FOR_HOMOGRAPHY)
+                              valid_count, MIN_POINTS_FOR_HOMOGRAPHY)
             return False
 
         # Check if points form a reasonable grid (distances between adjacent points)
@@ -183,7 +183,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
         # Calculate distances between all pairs of points
         distances = []
         for i in range(valid_count):
-            for j in range(i+1, valid_count):
+            for j in range(i + 1, valid_count):
                 dist = np.linalg.norm(valid_points[i] - valid_points[j])
                 distances.append(dist)
 
@@ -193,7 +193,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
             mean_dist = np.mean(distances)
             if std_dev / mean_dist > GRID_DIST_STD_DEV_THRESHOLD:
                 self.logger.debug("Grid point distances too variable: std/mean = %.2",
-                                 std_dev / mean_dist)
+                                  std_dev / mean_dist)
                 return False
 
         return True
@@ -212,7 +212,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
 
         if len(valid_points) < MIN_POINTS_FOR_HOMOGRAPHY:
             self.logger.debug("Not enough valid points for homography: %s/%s",
-                             len(valid_points), MIN_POINTS_FOR_HOMOGRAPHY)
+                              len(valid_points), MIN_POINTS_FOR_HOMOGRAPHY)
             return None
 
         try:
@@ -273,7 +273,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
                     if self.grid_detection_retries > self.max_grid_detection_retries:
                         # Too many retries, consider grid lost
                         self.logger.info("Grid lost after %s retries",
-                                        self.grid_detection_retries)
+                                         self.grid_detection_retries)
                         self.last_valid_grid_time = None
                         grid_status_changed = True
 

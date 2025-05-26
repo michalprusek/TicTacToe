@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Base controller class for common controller patterns.
 Consolidates repeated initialization and setup patterns.
@@ -5,10 +6,12 @@ Consolidates repeated initialization and setup patterns.
 # pylint: disable=no-name-in-module,unused-argument,wrong-import-order,unused-import
 
 import logging
-from PyQt5.QtCore import QObject
-from app.main.game_utils import setup_logger
-from app.core.config import AppConfig
 from typing import Optional
+
+from PyQt5.QtCore import QObject
+
+from app.core.config import AppConfig
+from app.main.game_utils import setup_logger
 
 
 class BaseController(QObject):

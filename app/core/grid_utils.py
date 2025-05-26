@@ -1,11 +1,13 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Grid utility functions for the TicTacToe application.
 """
 import logging
-from typing import Optional, Tuple
+from typing import Optional
+from typing import Tuple
 
-import numpy as np
 import cv2
+import numpy as np
 
 
 def robust_sort_grid_points(

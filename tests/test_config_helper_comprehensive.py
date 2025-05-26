@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Comprehensive tests for app.main.config_helper module using pytest.
 Tests ConfigHelper class with all methods and edge cases.

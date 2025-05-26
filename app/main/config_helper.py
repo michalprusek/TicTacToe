@@ -1,9 +1,11 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Configuration helper utilities for standardized config access.
 Consolidates repeated configuration access patterns.
 """
 
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 
 from app.core.config import AppConfig
 
@@ -58,7 +60,7 @@ class ConfigHelper:
         }
 
     def get_safe_value(self, key: str, default: Any = None,
-                      section: Optional[str] = None) -> Any:
+                       section: Optional[str] = None) -> Any:
         """
         Safely get configuration value with fallback.
 

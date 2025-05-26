@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """Comprehensive tests for config_helper.py module."""
 import pytest
 from unittest.mock import Mock, MagicMock, patch, PropertyMock

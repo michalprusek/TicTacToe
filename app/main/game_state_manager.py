@@ -1,9 +1,14 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Game state manager module for the TicTacToe application.
 """
 # pylint: disable=too-many-arguments,protected-access,no-member,unused-import
 import logging
-from typing import List, Dict, Optional, Tuple, Any
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 
@@ -34,6 +39,7 @@ class GameStateManager:
         frame: np.ndarray,
         ordered_kpts_uv: Optional[np.ndarray],
         homography: Optional[np.ndarray],
+        *,
         detected_symbols: List[Any],
         timestamp: float,
         grid_status_changed: bool = False
@@ -64,9 +70,9 @@ class GameStateManager:
             frame,
             ordered_kpts_uv,
             homography,
-            detected_symbols,
-            self.class_id_to_player,
-            timestamp
+            detected_symbols=detected_symbols,
+            class_id_to_player=self.class_id_to_player,
+            timestamp=timestamp
         )
 
         # Retrieve derived cell polygons from game state if available

@@ -1,17 +1,26 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Strategy module for TicTacToe game AI.
 """
 import logging
 import math
 import random
-from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional, Dict, Type
+from abc import ABC
+from abc import abstractmethod
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
 
-from .game_state import GameState, PLAYER_X, PLAYER_O, EMPTY
-from .minimax_algorithm import (
-    get_available_moves, minimax_maximize, minimax_minimize,
-    get_optimal_move_with_heuristics
-)
+from .game_state import EMPTY
+from .game_state import PLAYER_O
+from .game_state import PLAYER_X
+from .game_state import GameState
+from .minimax_algorithm import get_available_moves
+from .minimax_algorithm import get_optimal_move_with_heuristics
+from .minimax_algorithm import minimax_maximize
+from .minimax_algorithm import minimax_minimize
 
 
 class Strategy(ABC):  # pylint: disable=too-few-public-methods
@@ -87,7 +96,9 @@ class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
             return heuristic_move
 
         # Call minimax to find the best move
-        _, best_move = self._minimax(board, player, 0, alpha=-math.inf, beta=math.inf, ai_player=player)
+        _, best_move = self._minimax(
+            board, player, 0, alpha=-math.inf, beta=math.inf, ai_player=player
+        )
         return best_move
 
     def _minimax(self, board: List[List[str]], current_player: str, depth: int,  # pylint: disable=too-many-arguments
@@ -138,7 +149,6 @@ class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
         if winner == "TIE":
             return 0  # Draw
         return None  # Not a terminal state
-
 
     def _is_board_full(self, board: List[List[str]]) -> bool:
         """Check if the board is full."""

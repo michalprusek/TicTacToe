@@ -1,30 +1,28 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Refactored game detector module for the TicTacToe application.
 """
 # pylint: disable=no-member,broad-exception-caught
 import logging
 import time
-from typing import Tuple, Optional
+from typing import Optional
+from typing import Tuple
 
 import cv2  # pylint: disable=no-member
 import numpy as np
 import torch
 from ultralytics import YOLO
 
-from app.main.game_utils import setup_logger
-
-from app.core.detector_constants import (
-    DEFAULT_DETECT_MODEL_PATH,
-    DEFAULT_POSE_MODEL_PATH
-)
 from app.core.config import GameDetectorConfig
+from app.core.detector_constants import DEFAULT_DETECT_MODEL_PATH
+from app.core.detector_constants import DEFAULT_POSE_MODEL_PATH
 from app.core.game_state import GameState
 from app.core.utils import FPSCalculator
-
+from app.main.game_state_manager import GameStateManager
+from app.main.game_utils import setup_logger
 from app.main.grid_detector import GridDetector  # pylint: disable=no-name-in-module
 from app.main.symbol_detector import SymbolDetector
 from app.main.visualization_manager import VisualizationManager
-from app.main.game_state_manager import GameStateManager
 
 
 class GameDetector:  # pylint: disable=too-many-instance-attributes
@@ -33,6 +31,7 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         detector_config: GameDetectorConfig,
+        *,
         camera_index: int = 0,
         detect_model_path: str = DEFAULT_DETECT_MODEL_PATH,
         pose_model_path: str = DEFAULT_POSE_MODEL_PATH,
@@ -168,9 +167,9 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
             frame.copy(),
             final_kpts,
             current_homography,
-            detected_symbols,
-            frame_time,
-            grid_status_changed
+            detected_symbols=detected_symbols,
+            timestamp=frame_time,
+            grid_status_changed=grid_status_changed
         )
 
         # --- 5. Calculate FPS --- #
@@ -188,11 +187,11 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
             frame.copy(),
             fps,
             raw_kpts,
-            final_kpts,
-            cell_polygons,
-            detected_symbols,
-            current_homography,
-            self.game_state_manager.game_state
+            ordered_kpts_uv=final_kpts,
+            cell_polygons=cell_polygons,
+            detected_symbols=detected_symbols,
+            homography=current_homography,
+            game_state=self.game_state_manager.game_state
         )
 
         # Draw debug info in a separate window if enabled

@@ -1,10 +1,11 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Path utilities for the TicTacToe application.
 Consolidates repeated path setup patterns to avoid duplication.
 """
 
-import sys
 import os
+import sys
 
 
 def setup_project_path():

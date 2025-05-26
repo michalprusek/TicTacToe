@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 # pylint: disable=line-too-long,no-name-in-module,wrong-import-position,unnecessary-pass
 # pylint: disable=protected-access,broad-exception-caught,no-member,unused-import
 """
@@ -9,12 +10,14 @@ Consolidates functionality from camera_manager.py.
 import logging
 
 import cv2  # pylint: disable=no-member
-from PyQt5.QtCore import QObject, pyqtSignal  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QObject  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import pyqtSignal
+
+from app.main.camera_thread import CameraThread
+from app.main.error_handler import ErrorHandler
 
 # Import required modules
 from app.main.path_utils import setup_project_path
-from app.main.camera_thread import CameraThread
-from app.main.error_handler import ErrorHandler
 
 setup_project_path()
 
@@ -199,7 +202,7 @@ class CameraController(QObject):
                 if is_grid_incomplete:
                     self.grid_warning.emit(grid_issue_message)
                     self.logger.warning("Grid warning: %s",
-                                       grid_issue_message)
+                                        grid_issue_message)
 
             # Emit grid incomplete signal for UI notification only if actually incomplete
             if is_grid_incomplete:
@@ -285,7 +288,7 @@ class CameraController(QObject):
         if game_state:
             info['grid_valid'] = False
             has_valid_method = (hasattr(game_state, 'is_physical_grid_valid') and
-                              callable(game_state.is_physical_grid_valid))
+                                callable(game_state.is_physical_grid_valid))
             if has_valid_method:
                 info['grid_valid'] = game_state.is_physical_grid_valid()
 
@@ -294,7 +297,7 @@ class CameraController(QObject):
     # === Consolidated camera management functions from camera_manager.py ===
 
     def setup_camera_direct(self, camera_index=None, frame_width=640,
-                           frame_height=480, disable_autofocus=True):
+                            frame_height=480, disable_autofocus=True):
         """Direct camera setup without thread (consolidated from camera_manager.py)."""
         if camera_index is not None:
             self.camera_index = camera_index
@@ -320,7 +323,7 @@ class CameraController(QObject):
             actual_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
             actual_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
             self.logger.info("Camera initialized with resolution: %sx%s",
-                            actual_width, actual_height)
+                             actual_width, actual_height)
 
             cap.release()  # Release for thread to use
             return True

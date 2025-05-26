@@ -1,14 +1,22 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Game Statistics module for TicTacToe application.
 Handles tracking and persistence of game wins, losses, and ties.
 """
 # pylint: disable=no-name-in-module
 
-import os
 import json
+import os
 from typing import Dict
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
-from PyQt5.QtCore import Qt, pyqtSignal
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
+
 from app.main.game_utils import setup_logger
 from app.main.shared_styles import create_reset_button_style
 

@@ -1,15 +1,19 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Camera thread module for the TicTacToe application.
 """
+import logging
+
 # pylint: disable=no-name-in-module,too-many-instance-attributes,import-outside-toplevel,no-member,unused-import
 import time
-import logging
+
 import numpy as np
 import torch
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread
+from PyQt5.QtCore import pyqtSignal
 
-from app.core.detection_thread import DetectionThread
 from app.core.config import GameDetectorConfig
+from app.core.detection_thread import DetectionThread
 from app.core.game_state import GameState
 from app.main.constants import DEFAULT_CAMERA_INDEX
 

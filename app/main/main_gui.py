@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Main GUI module for TicTacToe application.
 This module contains the main window setup, layout, and basic UI components.
@@ -11,34 +12,36 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import Qt, QTimer  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import Qt  # pylint: disable=no-name-in-module
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon  # pylint: disable=no-name-in-module
-from PyQt5.QtWidgets import (  # pylint: disable=no-name-in-module
-    QApplication,
-    QHBoxLayout,
-    QLabel,
-    QMainWindow,
-    QPushButton,
-    QSlider,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt5.QtWidgets import QApplication  # pylint: disable=no-name-in-module
+from PyQt5.QtWidgets import QHBoxLayout
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QSlider
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
+
+from app.core.config import AppConfig
+from app.main.arm_movement_controller import ArmMovementController
+from app.main.board_widget import TicTacToeBoard
+from app.main.camera_controller import CameraController
+from app.main.constants import DEFAULT_CAMERA_INDEX
+from app.main.constants import DEFAULT_DIFFICULTY
+from app.main.game_controller import GameController
+from app.main.game_statistics import GameStatisticsWidget
+from app.main.game_utils import setup_logger
 
 # Add project root to path if not already there
 from app.main.path_utils import setup_project_path
+from app.main.status_manager import StatusManager
+from app.main.ui_event_handlers import UIEventHandlers
+
 setup_project_path()
 
 # Import refactored modules
-from app.main.game_controller import GameController
-from app.main.camera_controller import CameraController
-from app.main.arm_movement_controller import ArmMovementController
-from app.main.ui_event_handlers import UIEventHandlers
-from app.main.status_manager import StatusManager
-from app.main.board_widget import TicTacToeBoard
-from app.main.game_statistics import GameStatisticsWidget
-from app.main.constants import DEFAULT_CAMERA_INDEX, DEFAULT_DIFFICULTY
-from app.main.game_utils import setup_logger
-from app.core.config import AppConfig
 
 
 class TicTacToeApp(QMainWindow):

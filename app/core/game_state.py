@@ -1,12 +1,16 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Game state module for the TicTacToe application.
 """
 # pylint: disable=logging-too-many-args
 import logging
-from typing import List, Dict, Tuple, Optional
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
-import numpy as np
 import cv2
+import numpy as np
 
 from .grid_utils import robust_sort_grid_points
 
@@ -166,21 +170,21 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         # Check rows
         for row in range(3):
             if (self._board_state[row][0] == self._board_state[row][1] ==
-                self._board_state[row][2] != EMPTY):
+                    self._board_state[row][2] != EMPTY):
                 return self._board_state[row][0]
 
         # Check columns
         for col in range(3):
             if (self._board_state[0][col] == self._board_state[1][col] ==
-                self._board_state[2][col] != EMPTY):
+                    self._board_state[2][col] != EMPTY):
                 return self._board_state[0][col]
 
         # Check diagonals
         if (self._board_state[0][0] == self._board_state[1][1] ==
-            self._board_state[2][2] != EMPTY):
+                self._board_state[2][2] != EMPTY):
             return self._board_state[0][0]
         if (self._board_state[0][2] == self._board_state[1][1] ==
-            self._board_state[2][0] != EMPTY):
+                self._board_state[2][0] != EMPTY):
             return self._board_state[0][2]
 
         return None
@@ -258,7 +262,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
             len(detected_symbols)
         )
 
-        for symbol_info in detected_symbols: # Use unsorted for now
+        for symbol_info in detected_symbols:  # Use unsorted for now
             symbol_center_uv = symbol_info.get('center_uv')
             player = symbol_info.get('player')
 
@@ -365,7 +369,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
 
             self.logger.info(
                 "  Symbol %d: %s at %s (confidence: %.3f)",
-                i+1, player, center, confidence
+                i + 1, player, center, confidence
             )
 
             # Only accept high-confidence detections
@@ -520,7 +524,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
                 "🔍 YOLO DETECTED %d SYMBOLS", len(detected_symbols)
             )
 
-                # Filter out low-confidence detections
+            # Filter out low-confidence detections
             detected_symbols = self._filter_high_confidence_symbols(
                 detected_symbols
             )
@@ -545,7 +549,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
     def is_game_over_due_to_error(self) -> bool:
         """Check if the game is effectively over due to a persistent error."""
         return self.error_message is not None and \
-               self.error_message.startswith("FATAL:")
+            self.error_message.startswith("FATAL:")
 
     def get_winner(self) -> Optional[str]:
         """Get the winner of the game, if any."""
@@ -641,7 +645,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         # Check for complete grid detection first
         if (ordered_kpts_uv is None or
                 len(ordered_kpts_uv) != GRID_POINTS_COUNT):
-            self._is_valid_grid = False # Physical grid is not valid
+            self._is_valid_grid = False  # Physical grid is not valid
             self.game_paused_due_to_incomplete_grid = True
             self.error_message = self.ERROR_GRID_INCOMPLETE_PAUSE
             # Clear any existing grid-dependent data as it's no longer valid
@@ -651,22 +655,22 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
             self._cell_centers_uv_transformed = None
             self._cell_polygons_uv_transformed = None
             points_count = (len(ordered_kpts_uv) if ordered_kpts_uv is not None
-                           else 0)
+                            else 0)
             self.logger.warning(
                 "Grid not fully detected (%d points). Game paused.",
                 points_count
             )
-            return # Stop further processing for this frame
+            return  # Stop further processing for this frame
 
         # Grid is fully detected, proceed with normal logic
-        self._is_valid_grid = True # Physical grid is now considered valid
-        self._grid_points = ordered_kpts_uv # Store the valid grid points
+        self._is_valid_grid = True  # Physical grid is now considered valid
+        self._grid_points = ordered_kpts_uv  # Store the valid grid points
 
         # If game was paused, now it's resuming
         if self.game_paused_due_to_incomplete_grid:
             self.logger.info("Full grid detected. Resuming game logic.")
             if self.error_message == self.ERROR_GRID_INCOMPLETE_PAUSE:
-                self.clear_error_message() # Clear the specific pause message
+                self.clear_error_message()  # Clear the specific pause message
         self.game_paused_due_to_incomplete_grid = False
 
         if homography is not None:
@@ -901,7 +905,7 @@ class GameState:  # pylint: disable=too-many-public-methods,too-many-instance-at
         if (self._grid_points is None or
                 len(self._grid_points) != GRID_POINTS_COUNT):
             points_count = (len(self._grid_points) if self._grid_points is not None
-                           else 'None')
+                            else 'None')
             self.logger.debug(
                 "Not enough grid points for transformation. Points: %s",
                 points_count

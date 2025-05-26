@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Main entry point for the PyQt-based TicTacToe application.
 """
-# pylint: disable=no-name-in-module
-import sys
 import argparse
 import logging
+
+# pylint: disable=no-name-in-module
+import sys
+
 from PyQt5.QtWidgets import QApplication
 
-from app.main.main_gui import TicTacToeApp
 from app.core.config import AppConfig
+from app.main.main_gui import TicTacToeApp
 
 # Configure logging
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

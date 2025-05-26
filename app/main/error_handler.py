@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Centralized error handling utilities for the TicTacToe application.
 Consolidates repeated error handling patterns from multiple files.
@@ -6,7 +7,8 @@ Consolidates repeated error handling patterns from multiple files.
 import logging
 import traceback
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
+from typing import Callable
 
 
 class ErrorHandler:
@@ -33,7 +35,7 @@ class ErrorHandler:
 
     @staticmethod
     def safe_operation(logger: logging.Logger, operation_name: str,
-                      default_return: Any = None, log_traceback: bool = False):
+                       default_return: Any = None, log_traceback: bool = False):
         """
         Decorator for safe operation execution with standardized error handling.
         """

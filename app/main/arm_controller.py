@@ -1,16 +1,26 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Robotic arm controller for TicTacToe game.
 """
-# pylint: disable=wrong-import-position,ungrouped-imports,too-many-instance-attributes
-# pylint: disable=logging-format-truncated,too-many-arguments,too-many-locals,invalid-name
 import logging
 import math
 import time
 import traceback
-from typing import Optional, Tuple, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+
+# pylint: disable=wrong-import-position,ungrouped-imports,too-many-instance-attributes
+# pylint: disable=logging-format-truncated,too-many-arguments,too-many-locals,invalid-name
+from app.main.constants import DEFAULT_DRAW_Z
+from app.main.constants import DEFAULT_SAFE_Z
+from app.main.constants import DEFAULT_SPEED
+from app.main.constants import MAX_SPEED_FACTOR
 
 # Import uArm - required for operation
 from app.main.path_utils import setup_uarm_sdk_path
+
 uarm_sdk_path = setup_uarm_sdk_path()
 if uarm_sdk_path:
     print(f"Added uArm SDK path: {uarm_sdk_path}")
@@ -23,9 +33,6 @@ except ImportError:
     print("uArm library not available")
     SwiftAPI = None
 
-from app.main.constants import (
-    DEFAULT_SPEED, MAX_SPEED_FACTOR, DEFAULT_SAFE_Z, DEFAULT_DRAW_Z
-)
 POSITION_TOLERANCE = 5.0          # Tolerance for position checks (mm)
 # Multiplier for travel speed (faster than drawing)
 TRAVEL_SPEED_MULTIPLIER = 1.5
@@ -83,7 +90,7 @@ class ArmController:
             raise RuntimeError("Could not get initial position from arm")
 
         self.logger.info(
-            "Initial pos: X=%.1f, Y=%.1f, Z=%.1",
+            "Initial pos: X=%.1f, Y=%.1f, Z=%.1f",
             pos[0], pos[1], pos[2])
         self.go_to_position(z=self.safe_z, wait=True)
         self.swift.set_wrist(90, wait=True)
@@ -170,6 +177,7 @@ class ArmController:
             x: Optional[float] = None,
             y: Optional[float] = None,
             z: Optional[float] = None,
+            *,
             speed: Optional[int] = None,
             wait: bool = False,
             relative: bool = False,
@@ -231,6 +239,7 @@ class ArmController:
             y1,
             x2,
             y2,
+            *,
             z_draw,
             z_safe,
             draw_speed,
@@ -305,8 +314,8 @@ class ArmController:
         # Draw first diagonal (p1 to p2) with optimized speeds
         if not self._draw_line_v2(
             p1_x, p1_y, p2_x, p2_y,
-            self.draw_z, self.safe_z,
-            draw_speed, travel_speed
+            z_draw=self.draw_z, z_safe=self.safe_z,
+            draw_speed=draw_speed, safe_speed=travel_speed
         ):
             self.logger.error("Failed drawing first diagonal of X")
             self.go_to_position(
@@ -317,8 +326,8 @@ class ArmController:
         # Draw second diagonal (p3 to p4) with optimized speeds
         if not self._draw_line_v2(
             p3_x, p3_y, p4_x, p4_y,
-            self.draw_z, self.safe_z,
-            draw_speed, travel_speed
+            z_draw=self.draw_z, z_safe=self.safe_z,
+            draw_speed=draw_speed, safe_speed=travel_speed
         ):
             self.logger.error("Failed drawing second diagonal of X")
             self.go_to_position(
@@ -344,6 +353,7 @@ class ArmController:
             center_x: float,
             center_y: float,
             radius: float,
+            *,
             speed: Optional[int] = None,
             segments: int = OPTIMIZED_SEGMENTS) -> bool:
         """Draws an 'O' symbol centered at (center_x, center_y) with radius."""

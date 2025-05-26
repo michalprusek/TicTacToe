@@ -1,3 +1,4 @@
+# @generated [partially] Claude Code 2025-01-01: AI-assisted code review and pylint fixes
 """
 Comprehensive pytest test suite for drawing_utils.py module.
 Tests drawing functions using mocked OpenCV operations.
