@@ -1,13 +1,15 @@
 """
 Refactored game detector module for the TicTacToe application.
 """
+# pylint: disable=no-member,broad-exception-caught
 import logging
 import time
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional
 
 import numpy as np
-import cv2
+import cv2  # pylint: disable=import-error
 import torch
+from ultralytics import YOLO
 from app.main.game_utils import setup_logger
 
 from app.core.detector_constants import (
@@ -18,18 +20,18 @@ from app.core.config import GameDetectorConfig
 from app.core.game_state import GameState
 from app.core.utils import FPSCalculator
 
-from app.main.grid_detector import GridDetector
+from app.main.grid_detector import GridDetector  # pylint: disable=no-name-in-module
 from app.main.symbol_detector import SymbolDetector
 from app.main.visualization_manager import VisualizationManager
 from app.main.game_state_manager import GameStateManager
 
 
-class GameDetector:
+class GameDetector:  # pylint: disable=too-many-instance-attributes
     """Detects Tic Tac Toe grid and symbols using YOLO models."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
-        config: GameDetectorConfig,
+        detector_config: GameDetectorConfig,
         camera_index: int = 0,
         detect_model_path: str = DEFAULT_DETECT_MODEL_PATH,
         pose_model_path: str = DEFAULT_POSE_MODEL_PATH,
@@ -38,7 +40,7 @@ class GameDetector:
         log_level=logging.INFO
     ):
         """Initializes the detector, loads models, and sets up the camera."""
-        self.config = config
+        self.config = detector_config
         self.logger = setup_logger(__name__)
         self.logger.setLevel(log_level)
         self.camera_index = camera_index
@@ -68,23 +70,23 @@ class GameDetector:
 
         self.grid_detector = GridDetector(
             pose_model=self.pose_model,
-            config=config,
+            config=self.config,
             logger=self.logger
         )
 
         self.symbol_detector = SymbolDetector(
             detect_model=self.detect_model,
-            config=config,
+            config=self.config,
             logger=self.logger
         )
 
         self.visualization_manager = VisualizationManager(
-            config=config,
+            config=self.config,
             logger=self.logger
         )
 
         self.game_state_manager = GameStateManager(
-            config=config,
+            config=self.config,
             logger=self.logger
         )
 
@@ -99,7 +101,6 @@ class GameDetector:
             # Load detection model for X and O symbols
             self.logger.info("Loading detection model from %s", self.detect_model_path)
             try:
-                from ultralytics import YOLO
                 self.detect_model = YOLO(self.detect_model_path)
                 self.detect_model.to(self.device)
             except ImportError:
@@ -114,7 +115,6 @@ class GameDetector:
             # Load pose model for grid detection
             self.logger.info("Loading pose model from %s", self.pose_model_path)
             try:
-                from ultralytics import YOLO
                 self.pose_model = YOLO(self.pose_model_path)
                 self.pose_model.to(self.device)
             except ImportError:
@@ -127,14 +127,16 @@ class GameDetector:
                 )
 
             self.logger.info("Models loaded successfully")
-        except Exception as e:
-            self.logger.error("Error loading models: %s", e)
+        except Exception as exc:
+            self.logger.error("Error loading models: %s", exc)
             raise
 
-    def process_frame(self, frame: np.ndarray, frame_time: float) -> Tuple[np.ndarray, Optional[GameState]]:
+    def process_frame(
+        self, frame: np.ndarray, frame_time: float
+    ) -> Tuple[np.ndarray, Optional[GameState]]:
+        # pylint: disable=too-many-locals
         """Processes a single frame: detects grid, symbols, updates state."""
         # Start FPS counter for processing time
-        start_time_processing = time.perf_counter()
 
         # --- 1. Detect Symbols (X/O) --- #
         _, detected_symbols = self.symbol_detector.detect_symbols(frame.copy())
@@ -147,9 +149,9 @@ class GameDetector:
         grid_is_valid = self.grid_detector.is_valid_grid(sorted_kpts)
 
         # Compute homography if grid is valid
-        current_H = None
+        current_homography = None
         if grid_is_valid:
-            current_H = self.grid_detector.compute_homography(sorted_kpts)
+            current_homography = self.grid_detector.compute_homography(sorted_kpts)
 
         # Update grid status and check if it changed significantly
         current_time = time.time()
@@ -164,21 +166,20 @@ class GameDetector:
         cell_polygons = self.game_state_manager.update_game_state(
             frame.copy(),
             final_kpts,
-            current_H,
+            current_homography,
             detected_symbols,
             frame_time,
             grid_status_changed
         )
 
         # --- 5. Calculate FPS --- #
-        processing_time = time.perf_counter() - start_time_processing
         self.fps_calculator.tick()
         fps = self.fps_calculator.get_fps()
 
         # Log performance periodically
         current_time = time.time()
         if current_time - self.last_log_time > self.log_interval:
-            self.logger.info("Processing FPS: %.2", fps)
+            self.logger.info("Processing FPS: %.2f", fps)
             self.last_log_time = current_time
 
         # --- 6. Draw Detection Results --- #
@@ -189,7 +190,7 @@ class GameDetector:
             final_kpts,
             cell_polygons,
             detected_symbols,
-            current_H,
+            current_homography,
             self.game_state_manager.game_state
         )
 
@@ -238,8 +239,8 @@ class GameDetector:
                     else:
                         self.logger.debug("Waiting for valid grid detection...")
 
-                except Exception as e:
-                    self.logger.exception("Error during frame processing: %s", e)
+                except Exception as exc:
+                    self.logger.exception("Error during frame processing: %s", exc)
 
                 # Check for key press to exit
                 key = cv2.waitKey(1) & 0xFF
@@ -263,28 +264,28 @@ class GameDetector:
 # --- Integrated Test Block --- #
 if __name__ == '__main__':
     # Configure logging
-    log_level = logging.INFO
+    LOG_LEVEL = logging.INFO
     logging.basicConfig(
-        level=log_level,
+        level=LOG_LEVEL,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
 
-    detector = None
+    GAME_DETECTOR = None
     try:
         # Create detector with configuration
         config = GameDetectorConfig()
-        detector = GameDetector(
-            config=config,
+        GAME_DETECTOR = GameDetector(
+            detector_config=config,
             camera_index=0,
-            log_level=log_level
+            log_level=LOG_LEVEL
         )
 
         # Run detection loop
-        detector.run_detection()
+        GAME_DETECTOR.run_detection()
     except Exception as e:
         logger.error("Error: %s", e)
     finally:
-        if detector:
-            detector.release()
+        if GAME_DETECTOR:
+            GAME_DETECTOR.release()
         logger.info("Application exited.")

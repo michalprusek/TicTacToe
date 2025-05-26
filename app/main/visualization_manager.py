@@ -1,16 +1,15 @@
 """
 Visualization manager module for the TicTacToe application.
 """
+# pylint: disable=no-member,broad-exception-caught
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 
 import numpy as np
-import cv2
+import cv2  # pylint: disable=import-error
 
 from app.core.detector_constants import (
     DEBUG_UV_KPT_COLOR,
-    DEBUG_BBOX_COLOR,
-    DEBUG_BBOX_THICKNESS,
     DEBUG_FPS_COLOR
 )
 from app.main.frame_utils import FrameConverter
@@ -38,15 +37,15 @@ class VisualizationManager:
         # Debug window settings
         self.debug_window_scale_factor = getattr(config, 'debug_window_scale_factor', 0.5)
 
-    def draw_detection_results(
+    def draw_detection_results(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
         self,
         frame: np.ndarray,
         fps: float,
         pose_kpts_uv: Optional[np.ndarray],
-        ordered_kpts_uv: Optional[np.ndarray],
+        ordered_kpts_uv: Optional[np.ndarray],  # pylint: disable=unused-argument
         cell_polygons: Optional[List[np.ndarray]],
         detected_symbols: List[Dict],
-        homography: Optional[np.ndarray],
+        homography: Optional[np.ndarray],  # pylint: disable=unused-argument
         game_state=None
     ) -> np.ndarray:
         """Draw detection results onto the frame.
@@ -164,7 +163,8 @@ class VisualizationManager:
             for det_info in detected_symbols:
                 try:
                     # Check if det_info is a dictionary with expected keys
-                    if isinstance(det_info, dict) and all(k in det_info for k in ['label', 'confidence', 'box', 'class_id']):
+                    required_keys = ['label', 'confidence', 'box', 'class_id']
+                    if isinstance(det_info, dict) and all(k in det_info for k in required_keys):
                         label = det_info['label']
                         conf = det_info['confidence']
                         box = det_info['box']

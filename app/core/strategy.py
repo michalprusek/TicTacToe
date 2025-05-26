@@ -1,6 +1,7 @@
 """
 Strategy module for TicTacToe game AI.
 """
+# pylint: disable=too-many-arguments,too-few-public-methods
 import logging
 import math
 import random
@@ -37,7 +38,7 @@ class RandomStrategy(Strategy):
             self.logger.debug("RandomStrategy: No valid moves available.")
             return None
         move = random.choice(valid_moves)
-        self.logger.debug(f"RandomStrategy: Suggesting move {move}")
+        self.logger.debug("RandomStrategy: Suggesting move %s", move)
         return move
 
 
@@ -47,7 +48,7 @@ class MinimaxStrategy(Strategy):
     def suggest_move(self, game_state: GameState) -> Optional[Tuple[int, int]]:
         """Suggest the optimal move using minimax algorithm with alpha-beta pruning."""
         self.logger.debug(
-            f"MinimaxStrategy: Suggesting move for board:\n{game_state.board_to_string()}"
+            "MinimaxStrategy: Suggesting move for board:\n%s", game_state.board_to_string()
         )
 
         board = game_state.board
@@ -66,7 +67,7 @@ class MinimaxStrategy(Strategy):
         best_move = self._get_best_move(board_copy, self.player)
 
         if best_move:
-            self.logger.debug(f"MinimaxStrategy: Selected optimal move: {best_move}")
+            self.logger.debug("MinimaxStrategy: Selected optimal move: %s", best_move)
         else:
             self.logger.warning("MinimaxStrategy: No valid move found")
 
@@ -114,44 +115,63 @@ class MinimaxStrategy(Strategy):
         Returns:
             Tuple of (score, best_move)
         """
-        winner = self._check_winner(board)
-        human_player = self._get_other_player(ai_player)
-
-        # Terminal states
-        if winner == ai_player:
-            return 10 - depth, None  # AI wins, prioritize faster wins
-        if winner == human_player:
-            return depth - 10, None  # Human wins, penalize slower losses
-        if winner == "TIE":
-            return 0, None  # Draw
+        # Check for terminal states
+        terminal_score = self._evaluate_terminal_state(board, depth, ai_player)
+        if terminal_score is not None:
+            return terminal_score, None
 
         available_moves = self._get_available_moves(board)
         is_maximizing = current_player == ai_player
 
         if is_maximizing:
-            # AI's turn (maximize score)
-            best_score = -math.inf
-            best_move = None
+            return self._maximize_score(board, available_moves, depth, alpha, beta, ai_player)
+        return self._minimize_score(board, available_moves, depth, alpha, beta, ai_player)
 
-            for move in available_moves:
-                r, c = move
-                board[r][c] = ai_player
-                score, _ = self._minimax(board, human_player, depth + 1, alpha, beta, ai_player)
-                board[r][c] = EMPTY  # Undo move
+    def _evaluate_terminal_state(self, board: List[List[str]], depth: int,
+                                ai_player: str) -> Optional[float]:
+        """Evaluate terminal game states."""
+        winner = self._check_winner(board)
+        human_player = self._get_other_player(ai_player)
 
-                if score > best_score:
-                    best_score = score
-                    best_move = move
+        if winner == ai_player:
+            return 10 - depth  # AI wins, prioritize faster wins
+        if winner == human_player:
+            return depth - 10  # Human wins, penalize slower losses
+        if winner == "TIE":
+            return 0  # Draw
+        return None  # Not a terminal state
 
-                alpha = max(alpha, score)
-                if beta <= alpha:
-                    break  # Beta cut-off
+    def _maximize_score(self, board: List[List[str]], available_moves: List[Tuple[int, int]],
+                       depth: int, alpha: float, beta: float, ai_player: str
+                       ) -> Tuple[float, Optional[Tuple[int, int]]]:
+        """Handle maximizing player logic."""
+        best_score = -math.inf
+        best_move = None
+        human_player = self._get_other_player(ai_player)
 
-            return best_score, best_move
+        for move in available_moves:
+            r, c = move
+            board[r][c] = ai_player
+            score, _ = self._minimax(board, human_player, depth + 1, alpha, beta, ai_player)
+            board[r][c] = EMPTY  # Undo move
 
-        # Human's turn (minimize score from AI's perspective)
+            if score > best_score:
+                best_score = score
+                best_move = move
+
+            alpha = max(alpha, score)
+            if beta <= alpha:
+                break  # Beta cut-off
+
+        return best_score, best_move
+
+    def _minimize_score(self, board: List[List[str]], available_moves: List[Tuple[int, int]],
+                       depth: int, alpha: float, beta: float, ai_player: str
+                       ) -> Tuple[float, Optional[Tuple[int, int]]]:
+        """Handle minimizing player logic."""
         best_score = math.inf
         best_move = None
+        human_player = self._get_other_player(ai_player)
 
         for move in available_moves:
             r, c = move
@@ -228,7 +248,7 @@ class FixedStrategySelector(StrategySelector):
         if strategy_type.lower() not in ['minimax', 'random']:
             raise ValueError(f"Invalid fixed strategy type specified: {strategy_type}")
         self.logger = logging.getLogger(__name__)
-        self.logger.debug(f"Initialized FixedStrategySelector with type: {self.strategy_type}")
+        self.logger.debug("Initialized FixedStrategySelector with type: %s", self.strategy_type)
 
     def select_strategy(self) -> str:
         return self.strategy_type.lower()
@@ -248,7 +268,7 @@ class BernoulliStrategySelector(StrategySelector):
         else:
             self._p = max(0.0, min(1.0, p))
 
-        self.logger.debug(f"Initialized BernoulliStrategySelector with p={self._p:.2f}")
+        self.logger.debug("Initialized BernoulliStrategySelector with p=%.2f", self._p)
 
     @property
     def p(self) -> float:
@@ -286,7 +306,8 @@ class BernoulliStrategySelector(StrategySelector):
         # If random_value >= p, select random (random play)
         selected_strategy = 'minimax' if random_value < self._p else 'random'
 
-        self.logger.info(f"🎯 STRATEGY SELECTION: p={self._p:.2f}, random={random_value:.3f}, selected='{selected_strategy}'")
+        self.logger.info("🎯 STRATEGY SELECTION: p=%.2f, random=%.3f, selected='%s'",
+                         self._p, random_value, selected_strategy)
 
         return selected_strategy
 
@@ -308,14 +329,14 @@ class BernoulliStrategySelector(StrategySelector):
 
         # Use the selected strategy to get the move
         if strategy == 'minimax':
-            self.logger.info(f"🧠 USING MINIMAX STRATEGY for player {player}")
+            self.logger.info("🧠 USING MINIMAX STRATEGY for player %s", player)
             move = game_logic.get_best_move(board, player)
-            self.logger.info(f"🎯 MINIMAX SELECTED MOVE: {move}")
+            self.logger.info("🎯 MINIMAX SELECTED MOVE: %s", move)
             return move
 
-        self.logger.info(f"🎲 USING RANDOM STRATEGY for player {player}")
+        self.logger.info("🎲 USING RANDOM STRATEGY for player %s", player)
         move = game_logic.get_random_move(board, player)
-        self.logger.info(f"🎯 RANDOM SELECTED MOVE: {move}")
+        self.logger.info("🎯 RANDOM SELECTED MOVE: %s", move)
         return move
 
 

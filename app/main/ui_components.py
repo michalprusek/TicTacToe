@@ -1,6 +1,7 @@
 """
 UI components for the TicTacToe application.
 """
+# pylint: disable=no-name-in-module
 import os
 from PyQt5.QtWidgets import (
     QWidget,

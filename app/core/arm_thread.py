@@ -101,7 +101,7 @@ class ArmThread(threading.Thread):
         return command.wait_for_completion(timeout=5)
 
     def draw_x(self, center_x: float, center_y: float, size: float,
-               speed: Optional[int] = None) -> bool:
+               speed: Optional[int] = None, timeout: Optional[float] = None) -> bool:
         """Draw an X symbol.
 
         Args:
@@ -109,6 +109,7 @@ class ArmThread(threading.Thread):
             center_y: Y coordinate of the center
             size: Size of the X
             speed: Drawing speed
+            timeout: Timeout in seconds
 
         Returns:
             Whether the command was successful
@@ -124,10 +125,11 @@ class ArmThread(threading.Thread):
             'speed': speed
         })
         self.command_queue.put(command)
-        return command.wait_for_completion()
+        return command.wait_for_completion(timeout)
 
     def draw_o(self, center_x: float, center_y: float, radius: float,
-               speed: Optional[int] = None, segments: int = 16) -> bool:
+               speed: Optional[int] = None, segments: int = 16,
+               timeout: Optional[float] = None) -> bool:
         """Draw an O symbol.
 
         Args:
@@ -136,6 +138,7 @@ class ArmThread(threading.Thread):
             radius: Radius of the O
             speed: Drawing speed
             segments: Number of segments for the circle
+            timeout: Timeout in seconds
 
         Returns:
             Whether the command was successful
@@ -152,7 +155,7 @@ class ArmThread(threading.Thread):
             'segments': segments
         })
         self.command_queue.put(command)
-        return command.wait_for_completion()
+        return command.wait_for_completion(timeout)
 
     def go_to_position(self, x: Optional[float] = None, y: Optional[float] = None,
                       z: Optional[float] = None, speed: Optional[int] = None,
@@ -270,14 +273,14 @@ class ArmThread(threading.Thread):
                     command.mark_completed(result is not None, result)
 
                 else:
-                    self.logger.warning(f"Unknown command type: {command.command_type}")
+                    self.logger.warning("Unknown command type: %s", command.command_type)
                     command.mark_completed(False)
 
                 # Mark task as done in the queue
                 self.command_queue.task_done()
 
-            except Exception as e:
-                self.logger.error(f"Error processing arm command: {e}")
+            except (ConnectionError, TimeoutError, RuntimeError) as e:
+                self.logger.error("Error processing arm command: %s", e)
                 if 'command' in locals():
                     command.mark_completed(False)
                     self.command_queue.task_done()
@@ -299,8 +302,8 @@ class ArmThread(threading.Thread):
                     except queue.Empty:
                         break
                 self.logger.info("🛑 Cleared arm command queue and stopped current moves")
-            except Exception as e:
-                self.logger.error(f"Error stopping current arm move: {e}")
+            except (ConnectionError, RuntimeError) as e:
+                self.logger.error("Error stopping current arm move: %s", e)
 
     def stop(self):
         """Stop the arm thread."""

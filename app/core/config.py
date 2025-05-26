@@ -7,7 +7,7 @@ import numpy as np
 
 
 @dataclass
-class GameDetectorConfig:
+class GameDetectorConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration for the game detector component."""
     # Camera settings
     camera_index: int = 0

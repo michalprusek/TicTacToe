@@ -2,6 +2,7 @@
 """
 Main entry point for the PyQt-based TicTacToe application.
 """
+# pylint: disable=no-name-in-module
 import sys
 import argparse
 import logging

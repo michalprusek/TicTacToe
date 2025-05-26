@@ -3,6 +3,7 @@ Main GUI module for TicTacToe application.
 This module contains the main window setup, layout, and basic UI components.
 Refactored from pyqt_gui.py to separate concerns.
 """
+# pylint: disable=no-name-in-module
 
 import sys
 import os

@@ -45,7 +45,7 @@ class DetectionThread(threading.Thread):
                 device = 'cpu'
 
         self.device = device
-        self.logger.info(f"Detection thread using device: {self.device}")
+        self.logger.info("Detection thread using device: %s", self.device)
 
         # Thread control
         self.running = False
@@ -109,7 +109,15 @@ class DetectionThread(threading.Thread):
         """Main thread loop."""
         self.running = True
 
-        # Initialize detector
+        if not self._initialize_detector():
+            return
+
+        # Main detection loop
+        while self.running:
+            self._process_detection_loop()
+
+    def _initialize_detector(self) -> bool:
+        """Initialize the detector. Returns True if successful."""
         try:
             self.detector = GameDetector(
                 config=self.config,
@@ -117,84 +125,109 @@ class DetectionThread(threading.Thread):
                 device=self.device
             )
             self.logger.info("Detector initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize detector: {e}")
+            return True
+        except (RuntimeError, ImportError, ValueError) as e:
+            self.logger.error("Failed to initialize detector: %s", e)
             self.running = False
+            return False
+
+    def _process_detection_loop(self):
+        """Process one iteration of the detection loop."""
+        loop_start_time = time.time()
+
+        # Get the latest frame
+        frame = self._get_latest_frame()
+        if frame is None:
+            time.sleep(0.01)  # Short sleep to avoid busy waiting
             return
 
-        # Main detection loop
-        while self.running:
-            loop_start_time = time.time()
+        # Process the frame
+        try:
+            self._process_frame(frame)
+        except (RuntimeError, TypeError, ValueError) as e:
+            self.logger.error("Error processing frame: %s", e)
 
-            # Get the latest frame
-            with self.frame_lock:
-                if self.latest_frame is None:
-                    time.sleep(0.01)  # Short sleep to avoid busy waiting
-                    continue
-                frame = self.latest_frame.copy()
+        # Calculate sleep time to maintain target FPS
+        elapsed = time.time() - loop_start_time
+        sleep_time = max(0, self.frame_interval - elapsed)
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
-            # Process the frame
-            try:
-                inference_start = time.time()
+    def _get_latest_frame(self) -> Optional[np.ndarray]:
+        """Get the latest frame for processing."""
+        with self.frame_lock:
+            if self.latest_frame is None:
+                return None
+            return self.latest_frame.copy()
 
-                # Předáme nastavení detekce do detektoru
-                # Správná cesta je přes konfiguraci detektoru (self.detector.config)
-                if hasattr(self.detector.config, "show_detections"):
-                    self.detector.config.show_detections = self.show_detections
-                # Fallback, pokud by show_detections byl přímo na GameDetector instanci
-                elif hasattr(self.detector, "show_detections"):
-                    self.detector.show_detections = self.show_detections
+    def _process_frame(self, frame: np.ndarray):
+        """Process a single frame."""
+        inference_start = time.time()
 
-                if hasattr(self.detector.config, "show_grid"):
-                    self.detector.config.show_grid = self.show_grid
-                elif hasattr(self.detector, "show_grid"):
-                    self.detector.show_grid = self.show_grid
+        # Configure detector settings
+        self._configure_detector_settings()
 
-                if hasattr(self.detector.config, "bbox_conf_threshold"):
-                    self.detector.config.bbox_conf_threshold = self.confidence_threshold
-                if hasattr(self.detector.config, "pose_conf_threshold"):
-                    self.detector.config.pose_conf_threshold = self.confidence_threshold
+        # Run detection
+        processed_frame, game_state = self.detector.process_frame(frame, inference_start)
+        inference_time = time.time() - inference_start
+        self.last_inference_time = inference_time
 
-                # Pokud GameDetector má obecný confidence_threshold, nastavíme ho také,
-                # ale prioritu má specifičtější nastavení v configu.
-                # Tento blok by měl být až po nastavení specifičtějších prahů.
-                if (not hasattr(self.detector.config, "bbox_conf_threshold") and
-                    not hasattr(self.detector.config, "pose_conf_threshold") and
-                    hasattr(self.detector, "confidence_threshold")):
-                    self.detector.confidence_threshold = self.confidence_threshold
+        # Update results
+        self._update_results(processed_frame, game_state)
 
-                processed_frame, game_state = self.detector.process_frame(frame, inference_start)
-                inference_time = time.time() - inference_start
-                self.last_inference_time = inference_time
+        # Update performance metrics
+        self._update_performance_metrics(inference_time)
 
-                # Update the latest result - vždy použít zpracovaný snímek s detekcemi
-                with self.result_lock:
-                    self.latest_result = processed_frame
-                    self.latest_game_state = game_state
+    def _configure_detector_settings(self):
+        """Configure detector visualization and confidence settings."""
+        # Configure show_detections
+        if hasattr(self.detector.config, "show_detections"):
+            self.detector.config.show_detections = self.show_detections
+        elif hasattr(self.detector, "show_detections"):
+            self.detector.show_detections = self.show_detections
 
-                # Update FPS metrics
-                self.fps_history.append(1.0 / inference_time if inference_time > 0 else 0)
-                if len(self.fps_history) > 10:
-                    self.fps_history.pop(0)
-                if self.fps_history:
-                    self.avg_fps = sum(self.fps_history) / len(self.fps_history)
-                else:
-                    self.avg_fps = 0
+        # Configure show_grid
+        if hasattr(self.detector.config, "show_grid"):
+            self.detector.config.show_grid = self.show_grid
+        elif hasattr(self.detector, "show_grid"):
+            self.detector.show_grid = self.show_grid
 
-                # Log performance periodically
-                if len(self.fps_history) % 10 == 0:
-                    self.logger.debug(
-                        "Detection performance: %.2f FPS, inference time: %.1fms",
-                        self.avg_fps, inference_time*1000)
+        # Configure confidence thresholds
+        if hasattr(self.detector.config, "bbox_conf_threshold"):
+            self.detector.config.bbox_conf_threshold = self.confidence_threshold
+        if hasattr(self.detector.config, "pose_conf_threshold"):
+            self.detector.config.pose_conf_threshold = self.confidence_threshold
 
-            except Exception as e:
-                self.logger.error("Error processing frame: %s", e)
+        # Fallback for general confidence threshold
+        if (not hasattr(self.detector.config, "bbox_conf_threshold") and
+                not hasattr(self.detector.config, "pose_conf_threshold") and
+                hasattr(self.detector, "confidence_threshold")):
+            self.detector.confidence_threshold = self.confidence_threshold
 
-            # Calculate sleep time to maintain target FPS
-            elapsed = time.time() - loop_start_time
-            sleep_time = max(0, self.frame_interval - elapsed)
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+    def _update_results(self, processed_frame: np.ndarray, game_state: GameState):
+        """Update the latest detection results."""
+        with self.result_lock:
+            self.latest_result = processed_frame
+            self.latest_game_state = game_state
+
+    def _update_performance_metrics(self, inference_time: float):
+        """Update performance metrics."""
+        # Update FPS metrics
+        fps = 1.0 / inference_time if inference_time > 0 else 0
+        self.fps_history.append(fps)
+        if len(self.fps_history) > 10:
+            self.fps_history.pop(0)
+
+        if self.fps_history:
+            self.avg_fps = sum(self.fps_history) / len(self.fps_history)
+        else:
+            self.avg_fps = 0
+
+        # Log performance periodically
+        if len(self.fps_history) % 10 == 0:
+            self.logger.debug(
+                "Detection performance: %.2f FPS, inference time: %.1fms",
+                self.avg_fps, inference_time * 1000)
 
     def stop(self):
         """Stop the detection thread."""
@@ -223,6 +256,6 @@ class DetectionThread(threading.Thread):
                 data = json.load(f)
                 self.logger.info("Loaded calibration data from %s", calibration_file)
                 return data
-        except Exception as e:
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
             self.logger.warning("Could not load calibration data: %s", e)
             return None

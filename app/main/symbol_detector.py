@@ -134,7 +134,7 @@ class SymbolDetector:
                 nearest_cell_coords = (row, col)
 
         if nearest_cell_coords:
-            self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1",
+            self.logger.debug("Nearest cell to point (%.1f, %.1f) is (%s, %s) with distance %.1f",
                              x, y, nearest_cell_coords[0], nearest_cell_coords[1],
                              np.sqrt(min_distance_sq))
         else:

@@ -1,18 +1,17 @@
 """
 Grid detector module for the TicTacToe application.
 """
+# pylint: disable=no-member,broad-exception-caught
 import logging
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 
 import numpy as np
-import cv2
+import cv2  # pylint: disable=import-error
 
 from app.core.detector_constants import (
-    KEYPOINT_VISIBLE_THRESHOLD,
     MIN_POINTS_FOR_HOMOGRAPHY,
     RANSAC_REPROJ_THRESHOLD,
     GRID_DIST_STD_DEV_THRESHOLD,
-    GRID_ANGLE_TOLERANCE_DEG,
     IDEAL_GRID_NORM
 )
 
@@ -20,7 +19,7 @@ from app.core.detector_constants import (
 GRID_POINTS_COUNT = 16
 
 
-class GridDetector:
+class GridDetector:  # pylint: disable=too-many-instance-attributes
     """Detects and processes the Tic Tac Toe grid."""
 
     def __init__(self, pose_model, config=None, logger=None):
@@ -99,7 +98,7 @@ class GridDetector:
 
         return frame, keypoints
 
-    def sort_grid_points(self, keypoints: np.ndarray) -> np.ndarray:
+    def sort_grid_points(self, keypoints: np.ndarray) -> np.ndarray:  # pylint: disable=too-many-locals
         """Sorts the grid points into a consistent order.
 
         Args:
@@ -221,14 +220,14 @@ class GridDetector:
             ideal_points = IDEAL_GRID_NORM.copy()
 
             # Compute homography from ideal grid to image coordinates
-            H, _ = cv2.findHomography(
+            homography_matrix, _ = cv2.findHomography(
                 ideal_points[:len(valid_points)],
                 valid_points,
                 cv2.RANSAC,
                 RANSAC_REPROJ_THRESHOLD
             )
 
-            return H
+            return homography_matrix
         except Exception as e:
             self.logger.error("Error computing homography: %s", e)
             return None

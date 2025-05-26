@@ -1,6 +1,9 @@
 """
 Camera calibration module for TicTacToe robot arm.
 """
+# pylint: disable=line-too-long,invalid-name,global-variable-not-assigned,undefined-variable
+# pylint: disable=too-many-locals,too-many-return-statements,consider-using-f-string
+# pylint: disable=superfluous-parens,no-else-return,logging-too-many-args,no-member
 import logging
 import json
 import sys
@@ -22,11 +25,13 @@ except ImportError:
 
 # --- Konfigurace ---
 # Absolutní cesta pro ukládání kalibračního souboru
-OUTPUT_FILE = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
+OUTPUT_FILE = ("/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/"
+               "hand_eye_calibration.json")
 CAM_INDEX = 0  # Index kamery
 WINDOW_NAME = "Hand-Eye Calibration"
 # Cesta k YOLO modelu pro detekci pozice mřížky
-POSE_MODEL_PATH = "/Users/michalprusek/PycharmProjects/TicTacToe/weights/best_pose.pt"
+POSE_MODEL_PATH = ("/Users/michalprusek/PycharmProjects/TicTacToe/weights/"
+                   "best_pose.pt")
 # Prahové hodnoty pro detekci mřížky
 POSE_CONF_THRESHOLD = 0.5
 KEYPOINT_VISIBLE_THRESHOLD = 0.5
@@ -64,7 +69,7 @@ KEY_MODIFIER = keyboard.Key.shift  # Hold Shift for coarse movement
 
 # --- Globální Stav ---
 controller: Optional[ArmController] = None
-cap: Optional[cv2.VideoCapture] = None
+cap: Optional[cv2.VideoCapture] = None  # pylint: disable=no-member
 pose_model: Optional[YOLO] = None  # Přidáno pro model
 device: Optional[str] = None  # Přidáno pro zařízení (cpu/cuda)
 current_frame: Optional[np.ndarray] = None
@@ -128,8 +133,8 @@ def correct_grid_points_homography(
                               dtype=np.float32)
     valid_ideal_pts = ideal_grid_all[valid_indices]
     try:
-        homography_matrix, ransac_mask = cv2.findHomography(
-            valid_ideal_pts, valid_predicted_pts, method=cv2.RANSAC,
+        homography_matrix, ransac_mask = cv2.findHomography(  # pylint: disable=no-member
+            valid_ideal_pts, valid_predicted_pts, method=cv2.RANSAC,  # pylint: disable=no-member
             ransacReprojThreshold=10.0)
         if homography_matrix is None:
             correction_logger.warning("RANSAC selhal při hledání "
@@ -147,18 +152,14 @@ def correct_grid_points_homography(
                 num_inliers
             )
             return None
-    except Exception as e:  # cv2.error is not recognized by pylint
+    except (RuntimeError, ValueError) as e:  # cv2.error is not recognized by pylint
         correction_logger.error(
-            "OpenCV chyba findHomography pro mřížku: %s.", e
+            "OpenCV chyba findHomography pro mřížku: %s", e
         )
-        return None
-    except Exception as e:
-        correction_logger.exception("Neočekávaná chyba findHomography "
-                                    "pro mřížku: %s.", e)
         return None
     # Aplikujeme transformaci na všechny ideální body
     ideal_grid_all_reshaped = ideal_grid_all.reshape(-1, 1, 2)
-    corrected_pts_xy = cv2.perspectiveTransform(
+    corrected_pts_xy = cv2.perspectiveTransform(  # pylint: disable=no-member
         ideal_grid_all_reshaped.astype(np.float32), homography_matrix
     ).reshape(-1, 2)
     correction_logger.debug("Korekce bodů mřížky homografií úspěšná.")
@@ -518,7 +519,7 @@ def calibration_main():
     logger.info("Načítání Pose modelu...")
     try:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        logger.info("Používám zařízení: %s" % device)
+        logger.info("Používám zařízení: %s", device)
         pose_model = YOLO(POSE_MODEL_PATH)
         pose_model.to(device)
         logger.info("Pose model úspěšně načten.")
@@ -528,22 +529,22 @@ def calibration_main():
         )
         return
     except Exception as e:
-        logger.error("Chyba při načítání Pose modelu: %s" % e)
+        logger.error("Chyba při načítání Pose modelu: %s", e)
         return
     # ------------------------------
 
     # --- Inicializace kamery ---
-    logger.info("Otevírání kamery s indexem %s..." % CAM_INDEX)
+    logger.info("Otevírání kamery s indexem %s...", CAM_INDEX)
     cap = cv2.VideoCapture(CAM_INDEX)
     if not cap.isOpened():
-        logger.error("Nepodařilo se otevřít kameru %s." % CAM_INDEX)
+        logger.error("Nepodařilo se otevřít kameru %s.", CAM_INDEX)
         return
     # Zkusíme nastavit rozlišení (pokud je potřeba, jinak zakomentujte)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    logger.info("Kamera otevřena (%sx%s)." % (frame_width, frame_height))
+    logger.info("Kamera otevřena (%sx%s).", frame_width, frame_height)
     cv2.namedWindow(WINDOW_NAME)
 
     # --- Inicializace ArmController ---
@@ -568,7 +569,7 @@ def calibration_main():
         # Nastavíme počáteční CÍLOVOU pozici
         start_x, start_y, _ = initial_pos_tuple  # Původní Z ignorujeme
         target_z_init = 10.0  # Cílová Z výška
-        logger.info("Přesun na počáteční výšku Z=%f..." % target_z_init)
+        logger.info("Přesun na počáteční výšku Z=%f...", target_z_init)
         move_init_ok = controller.go_to_position(x=start_x, y=start_y,
                                                  z=target_z_init, speed=ARM_SPEED, wait=True)
 
@@ -580,7 +581,7 @@ def calibration_main():
                                       'y': actual_pos_after_init[1],
                                       'z': actual_pos_after_init[2]}
                 last_confirmed_pos_arm = actual_pos_after_init  # Zobrazíme skutečnou
-                logger.info("Rameno na počáteční výšce. Aktuální cíl: %s" % current_target_pos)
+                logger.info("Rameno na počáteční výšce. Aktuální cíl: %s", current_target_pos)
             else:
                 logger.error("Nepodařilo se získat pozici po přesunu na Z=10. "
                              "Ukončuji.")
