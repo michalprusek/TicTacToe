@@ -3,14 +3,11 @@ Status Manager module for TicTacToe application.
 This module handles status updates, language management, and UI state.
 Refactored from pyqt_gui.py to separate concerns.
 """
-# pylint: disable=too-many-instance-attributes,consider-using-in,import-outside-toplevel
-# pylint: disable=unused-variable,protected-access,unnecessary-lambda,too-many-statements
-# pylint: disable=line-too-long,unused-import,no-name-in-module
 
 import logging
 import time
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel  # pylint: disable=no-name-in-module
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt  # pylint: disable=no-name-in-module
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, Qt
 from app.main.game_utils import convert_board_1d_to_2d, get_board_symbol_counts, setup_logger
 from app.main.gui_factory import LabelFactory, LayoutFactory
 
@@ -227,8 +224,8 @@ class StatusManager(QObject):
 
     def show_game_end_notification(self, winner):
         """Show game end notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect  # pylint: disable=no-name-in-module
-        from PyQt5.QtCore import QPropertyAnimation  # pylint: disable=no-name-in-module
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        from PyQt5.QtCore import QPropertyAnimation
 
         # Prevent multiple notifications
         if hasattr(self.main_window, '_celebration_triggered'):
@@ -314,8 +311,8 @@ class StatusManager(QObject):
 
     def show_grid_incomplete_notification(self):
         """Show grid incomplete notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect  # pylint: disable=no-name-in-module
-        from PyQt5.QtCore import QPropertyAnimation  # pylint: disable=no-name-in-module
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        from PyQt5.QtCore import QPropertyAnimation
 
         # Hide any existing notification first
         self._hide_notification()
@@ -382,8 +379,8 @@ class StatusManager(QObject):
 
     def show_arm_disconnected_notification(self):
         """Show arm disconnected notification."""
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect  # pylint: disable=no-name-in-module
-        from PyQt5.QtCore import QPropertyAnimation  # pylint: disable=no-name-in-module
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        from PyQt5.QtCore import QPropertyAnimation
 
         # Hide any existing notification first
         self._hide_notification()
