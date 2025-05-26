@@ -7,7 +7,7 @@ ultralytics>=8.0.0
 matplotlib>=3.4.0
 pynput>=1.7.0
 Pillow>=8.0.0
-uarm>=2.3.0
+pyuarm>=2.2.5
 
 # Testing & Development
 pytest>=7.0.0
