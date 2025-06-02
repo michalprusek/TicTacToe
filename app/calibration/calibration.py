@@ -24,24 +24,26 @@ import torch  # Přidáno pro YOLO
 from pynput import keyboard
 from ultralytics import YOLO  # Přidáno pro YOLO
 
-# --- Import ArmController ---
+# --- Import ArmController and Path Utils ---
 try:
     # Importujeme z app.main modulu
     from app.main.arm_controller import ArmController
+    from app.main.path_utils import (
+        get_calibration_file_path,
+        get_pose_model_path
+    )
 except ImportError:
-    print("ERROR: ArmController not found in app.main.arm_controller.")
+    print("ERROR: ArmController or path_utils not found in app.main.")
     print("       Ensure the path is correct.")
     sys.exit(1)
 
 # --- Konfigurace ---
-# Absolutní cesta pro ukládání kalibračního souboru
-OUTPUT_FILE = ("/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/"
-               "hand_eye_calibration.json")
+# Relativní cesta pro ukládání kalibračního souboru
+OUTPUT_FILE = str(get_calibration_file_path())
 CAM_INDEX = 0  # Index kamery
 WINDOW_NAME = "Hand-Eye Calibration"
 # Cesta k YOLO modelu pro detekci pozice mřížky
-POSE_MODEL_PATH = ("/Users/michalprusek/PycharmProjects/TicTacToe/weights/"
-                   "best_pose.pt")
+POSE_MODEL_PATH = str(get_pose_model_path())
 # Prahové hodnoty pro detekci mřížky
 POSE_CONF_THRESHOLD = 0.5
 KEYPOINT_VISIBLE_THRESHOLD = 0.5

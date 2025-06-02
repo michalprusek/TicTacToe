@@ -70,11 +70,20 @@ class ArmController:
             self.logger.info("Arm already connected.")
             return True
 
+        self.logger.debug("Checking SwiftAPI availability: %s", SwiftAPI)
+        if SwiftAPI is None:
+            self.logger.error("Cannot connect: uArm library not available.")
+            return False
+
         self.logger.info(
             "Connecting to uArm on port: %s",
             self.port or 'Autodetect')
 
-        self.swift = SwiftAPI(port=self.port)
+        try:
+            self.swift = SwiftAPI(port=self.port)
+        except Exception as e:
+            self.logger.error("Failed to create SwiftAPI instance: %s", e)
+            return False
         self.logger.info("Waiting for arm connection...")
         self.swift.waiting_ready(timeout=10)
         self.connected = True

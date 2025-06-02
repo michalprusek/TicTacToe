@@ -8,16 +8,20 @@ import torch
 from ultralytics import YOLO
 import logging
 import sys
-# --- Visualization Imports ---
-# import torchvision.transforms.functional as TF # Není potřeba pro OpenCV
-# kreslení
+from pathlib import Path
+
+# Add project root to path for imports
+current_dir = Path(__file__).resolve().parent
+project_root = current_dir.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Import path utilities
+from app.main.path_utils import get_detection_model_path, get_pose_model_path
 
 # --- Konfigurace ---
-# ... (Cesty k modelům, výstupní adresář atd. zůstávají stejné) ...
-# !!! UPRAVTE CESTU !!!
-DETECT_MODEL_PATH = "/Users/michalprusek/PycharmProjects/TicTacToe/weights/best_detection.pt"
-# !!! UPRAVTE CESTU !!!
-POSE_MODEL_PATH = "/Users/michalprusek/PycharmProjects/TicTacToe/weights/best_pose.pt"
+# Relativní cesty k modelům pomocí path_utils
+DETECT_MODEL_PATH = str(get_detection_model_path())
+POSE_MODEL_PATH = str(get_pose_model_path())
 OUTPUT_DIR = "captured_frames_with_preds"
 SAVE_FRAMES = False
 BBOX_CONF_THRESHOLD = 0.5
