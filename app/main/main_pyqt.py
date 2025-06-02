@@ -37,6 +37,10 @@ def main():
         "--difficulty", type=int, default=10, choices=range(11),
         help="Initial difficulty level (0-10, default: 10)"
     )
+    parser.add_argument(
+        "--port", type=str, default=None,
+        help="Serial port for uArm connection (e.g., COM3, /dev/ttyUSB0). Auto-detects if not specified."
+    )
     args = parser.parse_args()
 
     # Create application configuration
@@ -44,6 +48,8 @@ def main():
     config.game_detector.camera_index = args.camera
     config.game.default_difficulty = args.difficulty
     config.debug_mode = args.debug
+    if args.port:
+        config.arm_controller.port = args.port
 
     # Configure logging level based on debug mode
     if config.debug_mode:

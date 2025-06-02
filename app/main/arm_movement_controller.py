@@ -88,15 +88,15 @@ class ArmMovementController(QObject):
         """Initialize arm thread and controller."""
         # Get arm port from config
         arm_port = None
-        if hasattr(self.config, 'arm') and hasattr(self.config.arm, 'port'):
-            arm_port = self.config.arm.port
+        if hasattr(self.config, 'arm_controller') and hasattr(self.config.arm_controller, 'port'):
+            arm_port = self.config.arm_controller.port
 
         # Get Z heights from config
-        if hasattr(self.config, 'arm'):
-            if hasattr(self.config.arm, 'safe_z'):
-                self.safe_z = self.config.arm.safe_z
-            if hasattr(self.config.arm, 'draw_z'):
-                self.draw_z = self.config.arm.draw_z
+        if hasattr(self.config, 'arm_controller'):
+            if hasattr(self.config.arm_controller, 'safe_z'):
+                self.safe_z = self.config.arm_controller.safe_z
+            if hasattr(self.config.arm_controller, 'draw_z'):
+                self.draw_z = self.config.arm_controller.draw_z
 
         arm_connection_successful = False
 

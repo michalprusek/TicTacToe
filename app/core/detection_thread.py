@@ -140,10 +140,12 @@ class DetectionThread(threading.Thread):
     def _process_detection_loop(self):
         """Process one iteration of the detection loop."""
         loop_start_time = time.time()
+        # Processing detection loop iteration
 
         # Get the latest frame
         frame = self._get_latest_frame()
         if frame is None:
+            # No frame available, waiting...
             time.sleep(0.01)  # Short sleep to avoid busy waiting
             return
 
@@ -153,11 +155,8 @@ class DetectionThread(threading.Thread):
         except (RuntimeError, TypeError, ValueError) as e:
             self.logger.error("Error processing frame: %s", e)
 
-        # Calculate sleep time to maintain target FPS
-        elapsed = time.time() - loop_start_time
-        sleep_time = max(0, self.frame_interval - elapsed)
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+        # Minimal sleep to prevent CPU overload
+        time.sleep(0.001)  # 1ms sleep
 
     def _get_latest_frame(self) -> Optional[np.ndarray]:
         """Get the latest frame for processing."""
@@ -235,7 +234,7 @@ class DetectionThread(threading.Thread):
 
         # Log performance periodically
         if len(self.fps_history) % 10 == 0:
-            self.logger.debug(
+            self.logger.info(
                 "Detection performance: %.2f FPS, inference time: %.1fms",
                 self.avg_fps, inference_time * 1000)
 

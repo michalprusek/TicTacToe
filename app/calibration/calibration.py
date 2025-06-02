@@ -523,6 +523,19 @@ def calibration_main():
     # Přidáno pro model a detekci
     global pose_model, device, detected_grid_kpts_uv
 
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description="uArm Calibration for TicTacToe")
+    parser.add_argument(
+        "--port", type=str, default=None,
+        help="Serial port for uArm connection (e.g., COM3, /dev/ttyUSB0). Auto-detects if not specified."
+    )
+    parser.add_argument(
+        "--camera", type=int, default=0,
+        help="Camera index to use (default: 0)"
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s-%(levelname)s-%(name)s: %(message)s'
@@ -548,10 +561,11 @@ def calibration_main():
     # ------------------------------
 
     # --- Inicializace kamery ---
-    logger.info("Otevírání kamery s indexem %s...", CAM_INDEX)
-    cap = cv2.VideoCapture(CAM_INDEX)
+    camera_index = args.camera
+    logger.info("Otevírání kamery s indexem %s...", camera_index)
+    cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():
-        logger.error("Nepodařilo se otevřít kameru %s.", CAM_INDEX)
+        logger.error("Nepodařilo se otevřít kameru %s.", camera_index)
         return
     # Zkusíme nastavit rozlišení (pokud je potřeba, jinak zakomentujte)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -563,7 +577,12 @@ def calibration_main():
 
     # --- Inicializace ArmController ---
     logger.info("Inicializace ArmController...")
-    controller = ArmController(port=None, speed=ARM_SPEED, draw_z=5.0, safe_z=15.0)  # Přidány parametry jako v hlavní aplikaci
+    arm_port = args.port
+    if arm_port:
+        logger.info("Using specified port: %s", arm_port)
+    else:
+        logger.info("Using auto-detection for uArm port")
+    controller = ArmController(port=arm_port, speed=ARM_SPEED, draw_z=5.0, safe_z=15.0)  # Přidány parametry jako v hlavní aplikaci
     if not controller.connect():
         logger.error("Nepodařilo se připojit k rameni. Ukončuji.")
         if cap:

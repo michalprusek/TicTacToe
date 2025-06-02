@@ -40,7 +40,7 @@ class GameDetectorConfig:  # pylint: disable=too-many-instance-attributes
     max_grid_detection_retries: int = 3
 
     # Performance settings
-    target_fps: float = 2.0  # Target frames per second for detection
+    target_fps: float = 30.0  # Target frames per second for detection
     # Device to use for inference (None = auto-detect)
     device: Optional[str] = None
 

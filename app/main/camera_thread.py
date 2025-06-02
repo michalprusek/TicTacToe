@@ -24,7 +24,7 @@ class CameraThread(QThread):
     game_state_updated = pyqtSignal(list)
     fps_updated = pyqtSignal(float)
 
-    def __init__(self, camera_index=DEFAULT_CAMERA_INDEX, target_fps=2.0):
+    def __init__(self, camera_index=DEFAULT_CAMERA_INDEX, target_fps=30.0):
         super().__init__()
         self.camera_index = camera_index
         self.running = False
@@ -56,11 +56,23 @@ class CameraThread(QThread):
 
     def run(self):
         """Main thread loop for capturing frames and processing game state."""
+        self.logger.info("Camera thread starting...")
         self.running = True
-        import cv2
-        self.cap = cv2.VideoCapture(self.camera_index)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"Failed to open camera {self.camera_index}")
+        
+        try:
+            import cv2
+            self.logger.info(f"Opening camera {self.camera_index}...")
+            self.cap = cv2.VideoCapture(self.camera_index)
+            if not self.cap.isOpened():
+                raise RuntimeError(f"Failed to open camera {self.camera_index}")
+            
+            self.logger.info(f"Camera {self.camera_index} opened successfully")
+        except Exception as e:
+            self.logger.error(f"Error opening camera: {e}")
+            return
+        
+        # Nastavení buffer size na 1 pro minimální zpoždění
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         # Nastavení rozlišení kamery (volitelné)
         # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -74,12 +86,18 @@ class CameraThread(QThread):
 
         # Hlavní smyčka pro čtení snímků z kamery
         while self.running:
+            # Reading frame from camera
+            
+            # Jednoduchý přístup - čteme pouze jeden frame
             ret, frame = self.cap.read()
-            if not ret:
+            
+            if not ret or frame is None:
+                self.logger.error(f"Failed to read frame from camera {self.camera_index}")
                 raise RuntimeError(f"Failed to read frame from camera {self.camera_index}")
 
             # Předání snímku detekčnímu vláknu
             self.detection_thread.set_frame(frame)
+            # Frame sent to detection thread
 
             # Získání výsledků detekce
             processed_frame, game_state = self.detection_thread.get_latest_result()
@@ -91,6 +109,7 @@ class CameraThread(QThread):
                 # Odeslání aktuální FPS
                 metrics = self.detection_thread.get_performance_metrics()
                 self.fps_updated.emit(metrics['avg_fps'])
+                self.logger.info(f"Current FPS: {metrics['avg_fps']:.1f}")
 
             # Pokud máme platný stav hry, aktualizujeme
             if game_state and game_state.is_valid():
@@ -108,8 +127,8 @@ class CameraThread(QThread):
                     flat_board = [cell for row in current_board for cell in row]
                     self.game_state_updated.emit(flat_board)
 
-            # Omezení FPS pro snížení zatížení CPU
-            time.sleep(1.0 / self.config.target_fps)
+            # Krátká pauza pro uvolnění CPU
+            time.sleep(0.001)  # 1ms pauza
 
     def stop(self):
         """Stops the camera thread and releases resources."""
