@@ -41,6 +41,14 @@ def main():
         "--port", type=str, default=None,
         help="Serial port for uArm connection (e.g., COM3, /dev/ttyUSB0). Auto-detects if not specified."
     )
+    parser.add_argument(
+        "--monitor", type=int, default=0,
+        help="Monitor index for main window (0=primary, 1=secondary, etc.)"
+    )
+    parser.add_argument(
+        "--windowed", action="store_true",
+        help="Run in windowed mode instead of fullscreen"
+    )
     args = parser.parse_args()
 
     # Create application configuration
@@ -59,7 +67,23 @@ def main():
     # Create and run the Qt application
     app = QApplication(sys.argv)
     window = TicTacToeApp(config=config)
-    window.show()
+    
+    # Handle monitor selection and window mode
+    if args.windowed:
+        window.showNormal()
+    else:
+        # Position on selected monitor before showing fullscreen
+        from PyQt5.QtWidgets import QDesktopWidget
+        desktop = QDesktopWidget()
+        
+        if args.monitor < desktop.screenCount():
+            screen_geometry = desktop.screenGeometry(args.monitor)
+            window.move(screen_geometry.x(), screen_geometry.y())
+            logger.info(f"Main window will be shown on monitor {args.monitor}")
+        else:
+            logger.warning(f"Monitor {args.monitor} not found, using primary monitor")
+        
+        window.showFullScreen()
 
     # Start the application event loop
     return app.exec_()

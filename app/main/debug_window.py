@@ -17,6 +17,7 @@ from PyQt5.QtGui import QImage
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QCheckBox
 from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QDesktopWidget
 from PyQt5.QtWidgets import QGroupBox
 from PyQt5.QtWidgets import QHBoxLayout
 from PyQt5.QtWidgets import QLabel
@@ -43,6 +44,9 @@ class DebugWindow(QMainWindow):
         # Window setup
         self.setWindowTitle(self.config.game.debug_window_title)
         self.resize(800, 600)
+        
+        # Position window on secondary monitor if available
+        self._position_on_secondary_monitor()
 
         # Initialize UI
         self.init_ui()
@@ -152,6 +156,32 @@ class DebugWindow(QMainWindow):
         controls_layout.addWidget(status_group)
 
         main_layout.addLayout(controls_layout)
+    
+    def _position_on_secondary_monitor(self):
+        """Position window on secondary monitor if available."""
+        desktop = QDesktopWidget()
+        
+        if desktop.screenCount() > 1:
+            # Get secondary monitor geometry
+            secondary_screen = desktop.screenGeometry(1)
+            
+            # Center window on secondary monitor
+            x = secondary_screen.x() + (secondary_screen.width() - self.width()) // 2
+            y = secondary_screen.y() + (secondary_screen.height() - self.height()) // 2
+            
+            self.move(x, y)
+            self.logger.info(f"Debug window positioned on secondary monitor at ({x}, {y})")
+        else:
+            # Single monitor - position to the right
+            primary_screen = desktop.primaryScreen()
+            primary_geom = desktop.screenGeometry(primary_screen)
+            
+            # Position on right side of primary monitor
+            x = primary_geom.x() + primary_geom.width() - self.width() - 50
+            y = primary_geom.y() + 50
+            
+            self.move(x, y)
+            self.logger.info(f"Debug window positioned on primary monitor at ({x}, {y})")
 
     def connect_signals(self):
         """Connect UI signals to slots."""

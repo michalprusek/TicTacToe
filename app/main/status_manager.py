@@ -40,7 +40,6 @@ LANG_CS = {
     "move_to_neutral": "PŘESUN DO NEUTRÁLNÍ POZICE", "new_game_detected": "NOVÁ HRA DETEKOVÁNA",
     "move_success": "Ruka v neutrální pozici", "move_failed": "Nepodařilo se přesunout ruku",
     "waiting_for_symbol": "⏳ Čekám na detekci symbolu {}...",
-    "detection_failed": "Detekce tahu selhala.",
     "detection_attempt": "Čekám na detekci tahu... (pokus {}/{})", "language": "Jazyk",
     "debug_tooltip": "Otevřít ladící okno", "loss": "PROHRA",
     "game_instructions": "Klikněte na políčko pro umístění vašeho symbolu "
@@ -66,7 +65,6 @@ LANG_EN = {
     "move_to_neutral": "MOVING TO NEUTRAL POSITION", "new_game_detected": "NEW GAME DETECTED",
     "move_success": "Arm in neutral position", "move_failed": "Failed to move arm",
     "waiting_for_symbol": "⏳ Waiting for symbol {} detection...",
-    "detection_failed": "Symbol detection failed.",
     "detection_attempt": "Waiting for symbol detection... (attempt {}/{})", "language": "Language",
     "debug_tooltip": "Open debug window", "loss": "LOSS",
     "game_instructions": "Click on a cell to place your symbol "

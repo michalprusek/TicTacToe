@@ -54,6 +54,8 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Arm control flags
         self.waiting_for_detection = False
         self.arm_move_in_progress = False
+        self.waiting_for_arm_completion = False  # NEW: Track when waiting for arm to reach neutral
+        self.robot_status_displayed = False  # NEW: Track if "ROBOT HRAJE" status is displayed
         self.last_arm_move_time = 0
         self.arm_move_cooldown = 3.0
 
@@ -83,25 +85,45 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         """Set the arm controller reference."""
         self.arm_controller = arm_controller
 
+    def handle_arm_turn_completed(self, success):
+        """Handle arm turn completion - only emit your_turn after neutral position reached."""
+        # Reset the waiting flag
+        self.waiting_for_arm_completion = False
+
+        # Reset robot status flag so "ROBOT HRAJE" can be displayed again next turn
+        self.robot_status_displayed = False
+
+        if success:
+            self.logger.info("🎯 ARM TURN COMPLETED: Arm returned to neutral, emitting your_turn")
+            # Only now emit the your_turn signal - arm is safely at neutral position
+            self.status_changed.emit("your_turn", True)
+        else:
+            self.logger.error("❌ ARM TURN FAILED: Arm failed to return to neutral position")
+            # Still emit your_turn to prevent game from getting stuck
+            self.status_changed.emit("your_turn", True)
+
     def start_game(self):
         """Start a new game."""
         self.reset_game()
 
     def reset_game(self):
-        """Reset the game to initial state."""
-        self.logger.info("Resetting game.")
+        """Reset the game to initial state with complete hard reset."""
+        self.logger.info("HARD RESET: Performing complete game reset.")
 
-        # Reset authoritative board state
+        # HARD RESET: Reset authoritative board state
         self.authoritative_board = game_logic.create_board()
 
-        # Reset board widget
+        # HARD RESET: Reset board widget completely
         if hasattr(self.main_window, 'board_widget') and self.main_window.board_widget:
             empty_board = game_logic.create_board()
+            self.main_window.board_widget.board = empty_board  # Direct board assignment
             self.main_window.board_widget.update_board(empty_board, None, highlight_changes=False)
             self.main_window.board_widget.winning_line = None
+            self.main_window.board_widget.last_board = None  # Clear cached board
             self.main_window.board_widget.update()
+            self.logger.info("HARD RESET: Board widget completely reset")
 
-        # Reset game state
+        # HARD RESET: Reset all game state variables
         self.game_over = False
         self.winner = None
         self.human_player = game_logic.PLAYER_X
@@ -109,31 +131,105 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         self.current_turn = game_logic.PLAYER_X
         self.move_counter = 0
 
-        # Reset arm flags
+        # HARD RESET: Reset arm flags and state
         self.waiting_for_detection = False
         self.arm_move_in_progress = False
         self.last_arm_move_time = 0
 
-        # Reset detection retry logic
+        # HARD RESET: Reset detection retry logic completely
         self.ai_move_row = None
         self.ai_move_col = None
         self.expected_symbol = None
         self.ai_move_retry_count = 0
         self.detection_wait_time = 0.0
 
-        # Reset celebration trigger to allow new notifications
+        # HARD RESET: Reset celebration trigger
         if hasattr(self.main_window, '_celebration_triggered'):
             delattr(self.main_window, '_celebration_triggered')
 
-        self.status_changed.emit("new_game_detected", True)
-        self.logger.info("Game reset. Current turn: %s", self.current_turn)
+        # HARD RESET: Reset core game state in detection system
+        self._reset_detection_system_state()
 
-        # Set status to indicate it's human player's turn
-        QTimer.singleShot(2000, lambda: self.status_changed.emit("your_turn", True))
+        # HARD RESET: Force clear any cached detection results
+        self._force_clear_detection_cache()
+
+        self.status_changed.emit("new_game_detected", True)
+        self.logger.info("HARD RESET: Game reset complete. Current turn: %s", self.current_turn)
+
+        # CLEANUP: Immediate status update instead of 2-second delay
+        self.status_changed.emit("your_turn", True)
 
         # Move arm to neutral position
         if self.arm_controller:
             self.arm_controller.move_to_neutral_position()
+
+    def _reset_detection_system_state(self):
+        """Reset the core game state in the detection system."""
+        try:
+            # Reset camera thread's board state tracking
+            if (hasattr(self.main_window, 'camera_controller') and
+                self.main_window.camera_controller and
+                hasattr(self.main_window.camera_controller, 'camera_thread')):
+                camera_thread = self.main_window.camera_controller.camera_thread
+                if camera_thread:
+                    camera_thread.last_board_state = None
+                    camera_thread.last_board_update_time = 0
+                    self.logger.info("HARD RESET: Camera thread state reset")
+
+            # Reset detection thread's game state
+            if (hasattr(self.main_window, 'camera_controller') and
+                self.main_window.camera_controller and
+                hasattr(self.main_window.camera_controller, 'camera_thread') and
+                self.main_window.camera_controller.camera_thread and
+                hasattr(self.main_window.camera_controller.camera_thread, 'detection_thread')):
+                detection_thread = self.main_window.camera_controller.camera_thread.detection_thread
+                if detection_thread and hasattr(detection_thread, 'detector'):
+                    detector = detection_thread.detector
+                    if detector and hasattr(detector, 'game_state_manager'):
+                        detector.game_state_manager.game_state.reset_game()
+                        self.logger.info("HARD RESET: Detection system game state reset")
+        except Exception as e:
+            self.logger.warning("Error resetting detection system state: %s", e)
+
+    def _force_clear_detection_cache(self):
+        """Force clear any cached detection results."""
+        try:
+            # Clear detection thread cache
+            if (hasattr(self.main_window, 'camera_controller') and
+                self.main_window.camera_controller and
+                hasattr(self.main_window.camera_controller, 'camera_thread') and
+                self.main_window.camera_controller.camera_thread and
+                hasattr(self.main_window.camera_controller.camera_thread, 'detection_thread')):
+                detection_thread = self.main_window.camera_controller.camera_thread.detection_thread
+                if detection_thread:
+                    with detection_thread.result_lock:
+                        detection_thread.latest_result = None
+                        detection_thread.latest_game_state = None
+                    self.logger.info("HARD RESET: Detection cache cleared")
+        except Exception as e:
+            self.logger.warning("Error clearing detection cache: %s", e)
+
+    def _is_board_empty(self, board):
+        """Check if the board is completely empty with robust detection."""
+        if not board:
+            return True
+
+        # Count non-empty cells
+        non_empty_count = 0
+        for row in board:
+            for cell in row:
+                if cell != game_logic.EMPTY and cell.strip():  # Also check for whitespace
+                    non_empty_count += 1
+
+        # Board is considered empty if it has 0 symbols
+        is_empty = non_empty_count == 0
+
+        if is_empty:
+            self.logger.debug("EMPTY BOARD DETECTED: No symbols found on board")
+        else:
+            self.logger.debug("BOARD NOT EMPTY: Found %d symbols", non_empty_count)
+
+        return is_empty
 
     def handle_cell_clicked(self, row, col):
         """Handle cell click from the board widget."""
@@ -182,14 +278,27 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             self.logger.debug(
                 "Updated GUI board with detected state: %s", detected_board)
 
-        # Handle game over state
+        # Handle game over state - improved empty board detection
         if self.game_over:
-            is_empty_now = all(cell == game_logic.EMPTY for row in detected_board for cell in row)
+            is_empty_now = self._is_board_empty(detected_board)
             if is_empty_now:
                 self.logger.info(
-                    "Detected empty board after game end - resetting for new game.")
+                    "AUTO NEW GAME: Detected empty board after game end - "
+                    "automatically starting new game.")
                 self.reset_game()
             return
+
+        # Check for automatic new game detection even during active game
+        # This handles cases where user replaces board during game
+        if not self.game_over and self._is_board_empty(detected_board):
+            # Only reset if we previously had symbols on the board
+            if any(cell != game_logic.EMPTY for row in self.authoritative_board
+                   for cell in row):
+                self.logger.info(
+                    "AUTO NEW GAME: Detected empty board during active game - "
+                    "user replaced board, starting new game.")
+                self.reset_game()
+                return
 
         # Check for new moves and game progression
         self._process_detected_board(detected_board)
@@ -208,7 +317,13 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                     "DECISION: Arm should play with symbol %s.", arm_symbol_to_play)
                 self.ai_player = arm_symbol_to_play
                 self.current_turn = self.ai_player
-                self.status_changed.emit("arm_moving", True)
+
+                # REQUIREMENT: Display "ROBOT HRAJE" immediately when robot's turn is determined
+                if not self.robot_status_displayed:
+                    self.status_changed.emit("arm_moving", True)
+                    self.robot_status_displayed = True
+                    self.logger.info("🔄 STATUS: Displaying 'ROBOT HRAJE' - robot turn determined")
+
                 self.make_arm_move_with_symbol(arm_symbol_to_play)
             elif (self.current_turn == self.ai_player and not self.arm_move_in_progress
                   and not self.waiting_for_detection):
@@ -218,10 +333,16 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 self.logger.debug(
                     "Arm is on turn, but conditions for playing are not met.")
             elif (self.current_turn == self.human_player and not self.arm_move_in_progress
-                  and not self.waiting_for_detection):
-                self.status_changed.emit("your_turn", True)
-                print(f"DEBUG: Emitting your_turn - current_turn={self.current_turn}, "
-                      f"human_player={self.human_player}")
+                  and not self.waiting_for_detection and not self.waiting_for_arm_completion):
+                # REQUIREMENT: Only emit "your_turn" if robot is not currently playing
+                # This prevents overriding "ROBOT HRAJE" status during robot's turn
+                if not (self.current_turn == self.ai_player or self.arm_move_in_progress or
+                       self.waiting_for_detection or self.waiting_for_arm_completion):
+                    self.status_changed.emit("your_turn", True)
+                    print(f"DEBUG: Emitting your_turn - current_turn={self.current_turn}, "
+                          f"human_player={self.human_player}")
+                else:
+                    self.logger.debug("Skipping your_turn emission - robot is still playing")
 
     def _should_arm_play_now(self, current_board_state):
         """Determine if the arm should play now."""
@@ -275,7 +396,6 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         # Set flags BEFORE starting movement
         self.arm_move_in_progress = True
         self.last_arm_move_time = time.time()
-        self.status_changed.emit("arm_moving", True)
 
         # Get move from strategy
         move = self.strategy_selector.get_move(current_board_for_strategy, symbol_to_play)
@@ -299,15 +419,20 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             self.logger.info(
                 "Symbol %s successfully sent for drawing at (%s,%s). "
                 "Waiting for detection.", symbol_to_play, row, col)
+
             self.waiting_for_detection = True
+            self.waiting_for_arm_completion = True  # NEW: Wait for arm to reach neutral
+            self.logger.info("🔄 TURN SEQUENCE: Waiting for arm to complete and return to neutral")
             return True
 
         self.logger.error(
             "Failed to start drawing symbol %s at (%s,%s).", symbol_to_play, row, col)
         self.arm_move_in_progress = False
         self.waiting_for_detection = False
+        self.waiting_for_arm_completion = False  # Reset arm completion flag
+        self.robot_status_displayed = False  # Reset robot status flag
         self.current_turn = self.human_player
-        self.status_changed.emit("your_turn", True)
+        self.status_changed.emit("your_turn", True)  # Emit immediately on failure
         return False
 
     def update_game_state(
@@ -331,9 +456,11 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                         "Max retries reached. Giving up on arm move.")
                     self.waiting_for_detection = False
                     self.arm_move_in_progress = False
+                    self.waiting_for_arm_completion = False  # Reset arm completion flag
+                    self.robot_status_displayed = False  # Reset robot status flag
                     self.current_turn = self.human_player
-                    self.status_changed.emit("detection_failed", True)
-                    QTimer.singleShot(2000, lambda: self.status_changed.emit("your_turn", True))
+                    # CLEANUP: Skip detection_failed message, proceed directly to your_turn
+                    self.status_changed.emit("your_turn", True)
 
                 # Reset for next attempt
                 self.ai_move_row, self.ai_move_col, self.expected_symbol = None, None, None
@@ -489,7 +616,10 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
             if not self.game_over:
                 self.current_turn = self.human_player
-                self.status_changed.emit("your_turn", True)
+                # Reset robot status flag for next turn
+                self.robot_status_displayed = False
+                # NOTE: Don't emit "your_turn" here - wait for arm_turn_completed signal
+                self.logger.info("🔄 AI MOVE DETECTED: Waiting for arm to complete turn sequence")
 
     def make_arm_move_with_detection_timeout(
             self, symbol_to_play, cell_centers=None):
@@ -567,4 +697,7 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
             if not self.game_over:
                 self.current_turn = self.human_player
-                self.status_changed.emit("your_turn", True)
+                # Reset robot status flag for next turn
+                self.robot_status_displayed = False
+                # NOTE: Don't emit "your_turn" here - wait for arm_turn_completed signal
+                self.logger.info("🔄 DETECTION TIMEOUT: Waiting for arm to complete turn sequence")

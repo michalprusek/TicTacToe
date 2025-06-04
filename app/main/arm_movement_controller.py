@@ -41,8 +41,10 @@ class ArmMovementController(QObject):
 
     # Signals
     arm_connected = pyqtSignal(bool)  # connection_status
-    arm_move_completed = pyqtSignal(bool)  # success
+    arm_move_completed = pyqtSignal(bool)  # success (DEPRECATED - use arm_turn_completed)
+    arm_turn_completed = pyqtSignal(bool)  # success - emitted ONLY after neutral position reached
     arm_status_changed = pyqtSignal(str)  # status_message
+    neutral_position_reached = pyqtSignal(bool)  # success - emitted when neutral position is reached
 
     def __init__(self, main_window, config):
         super().__init__()
@@ -55,34 +57,86 @@ class ArmMovementController(QObject):
         self.arm_thread = None
         self.arm_controller = None
 
-        # Configuration
-        self.safe_z = DEFAULT_SAFE_Z
-        self.draw_z = DEFAULT_DRAW_Z
+        # Configuration - will be loaded from calibration file
+        self.safe_z = None
+        self.draw_z = None
         self.symbol_size = DEFAULT_SYMBOL_SIZE
 
-        # Load neutral position from calibration
-        self.neutral_position = self._load_neutral_position()
+        # Turn completion tracking
+        self._pending_turn_completion = False
+        self._pending_turn_success = False
+
+        # Load calibration data (neutral position, safe_z, draw_z)
+        self.neutral_position, self.safe_z, self.draw_z = self._load_calibration_data()
 
         # Initialize arm
         self._init_arm_components()
 
-    def _load_neutral_position(self):
-        """Load neutral position from calibration file."""
+    def _load_calibration_data(self):
+        """Load neutral position, safe_z, and draw_z from calibration file.
+
+        Returns:
+            Tuple[Dict, float, float]: (neutral_position, safe_z, draw_z)
+
+        Raises:
+            RuntimeError: If calibration file is missing or invalid
+        """
+        calibration_path = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
+
         try:
-            calibration_path = "/Users/michalprusek/PycharmProjects/TicTacToe/app/calibration/hand_eye_calibration.json"
             with open(calibration_path, 'r') as f:
                 calibration_data = json.load(f)
-
-            neutral_pos = calibration_data.get("neutral_position", {})
-            return {
-                'x': neutral_pos.get('x', 150),  # fallback to old hardcoded values
-                'y': neutral_pos.get('y', 0),
-                'z': neutral_pos.get('z', DEFAULT_SAFE_Z)
-            }
+        except FileNotFoundError:
+            raise RuntimeError(
+                f"CRITICAL ERROR: Calibration file not found at {calibration_path}. "
+                "The robotic arm cannot operate without proper calibration. "
+                "Please run the calibration script first."
+            )
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"CRITICAL ERROR: Invalid JSON in calibration file {calibration_path}: {e}. "
+                "The calibration file is corrupted. Please re-run the calibration script."
+            )
         except Exception as e:
-            self.logger.warning(
-                "Could not load neutral position from calibration: {e}. Using defaults.")
-            return {'x': 150, 'y': 0, 'z': DEFAULT_SAFE_Z}
+            raise RuntimeError(
+                f"CRITICAL ERROR: Cannot read calibration file {calibration_path}: {e}"
+            )
+
+        # Validate required fields
+        required_fields = ["neutral_position", "safe_z", "touch_z"]
+        missing_fields = [field for field in required_fields if field not in calibration_data]
+        if missing_fields:
+            raise RuntimeError(
+                f"CRITICAL ERROR: Missing required fields in calibration file: {missing_fields}. "
+                "The calibration file is incomplete. Please re-run the calibration script."
+            )
+
+        # Extract neutral position
+        neutral_pos = calibration_data["neutral_position"]
+        required_coords = ["x", "y", "z"]
+        missing_coords = [coord for coord in required_coords if coord not in neutral_pos]
+        if missing_coords:
+            raise RuntimeError(
+                f"CRITICAL ERROR: Missing neutral position coordinates: {missing_coords}. "
+                "The calibration file is incomplete. Please re-run the calibration script."
+            )
+
+        neutral_position = {
+            'x': float(neutral_pos['x']),
+            'y': float(neutral_pos['y']),
+            'z': float(neutral_pos['z'])
+        }
+
+        # Extract Z heights
+        safe_z = float(calibration_data["safe_z"])
+        draw_z = float(calibration_data["touch_z"])  # touch_z is the drawing height
+
+        self.logger.info("✅ CALIBRATION LOADED SUCCESSFULLY:")
+        self.logger.info(f"  Neutral Position: X={neutral_position['x']:.2f}, Y={neutral_position['y']:.2f}, Z={neutral_position['z']:.2f}")
+        self.logger.info(f"  Safe Z: {safe_z:.2f}")
+        self.logger.info(f"  Draw Z: {draw_z:.2f}")
+
+        return neutral_position, safe_z, draw_z
 
     def _init_arm_components(self):
         """Initialize arm thread and controller."""
@@ -167,33 +221,104 @@ class ArmMovementController(QObject):
                     self.arm_controller.swift = self.arm_thread.arm_controller.swift
 
     def move_to_neutral_position(self):
-        """Move arm to neutral position."""
+        """Move arm to neutral position and emit completion signal (NON-BLOCKING)."""
         if not self.is_arm_available():
             self.logger.warning("Cannot move to neutral: arm not available.")
+            self.neutral_position_reached.emit(False)
             return False
 
         try:
+            # REQUIREMENT: Use NON-BLOCKING operation to maintain GUI responsiveness
             success = self._unified_arm_command(
                 'park',
                 x=self.neutral_position['x'],
                 y=self.neutral_position['y'],
                 z=self.neutral_position['z'],
-                wait=True
+                wait=False  # NON-BLOCKING: Don't wait for completion
             )
 
             if success:
-                self.logger.info("Arm moved to neutral position.")
+                self.logger.info("🔄 NEUTRAL POSITION: Non-blocking move initiated to calibrated neutral position.")
                 self.arm_status_changed.emit("move_success")
+
+                # Use QTimer to check completion asynchronously
+                self._start_neutral_position_monitoring()
             else:
-                self.logger.error("Failed to move arm to neutral position.")
+                self.logger.error("❌ NEUTRAL POSITION FAILED: Failed to initiate move to neutral position.")
                 self.arm_status_changed.emit("move_failed")
+                self.neutral_position_reached.emit(False)
 
             return success
 
         except Exception as e:
-            self.logger.error("Error moving to neutral position: {e}")
+            self.logger.error("❌ NEUTRAL POSITION ERROR: Error moving to neutral position: %s", e)
             self.arm_status_changed.emit("move_failed")
+            self.neutral_position_reached.emit(False)
             return False
+
+    def _start_neutral_position_monitoring(self):
+        """Start monitoring arm position to detect when neutral position is reached (NON-BLOCKING)."""
+        self.logger.info("🔄 MONITORING: Starting neutral position monitoring")
+
+        # Initialize monitoring variables
+        self._neutral_monitoring_attempts = 0
+        self._max_monitoring_attempts = 20  # 10 seconds at 500ms intervals
+
+        # Start monitoring timer
+        self._neutral_monitoring_timer = QTimer()
+        self._neutral_monitoring_timer.timeout.connect(self._check_neutral_position_reached)
+        self._neutral_monitoring_timer.start(500)  # Check every 500ms
+
+    def _check_neutral_position_reached(self):
+        """Check if arm has reached neutral position (called by QTimer)."""
+        self._neutral_monitoring_attempts += 1
+
+        try:
+            # Get current arm position
+            if self.arm_thread and self.arm_thread.connected:
+                current_pos = self.arm_thread.get_position(cached=False)
+                if current_pos:
+                    current_x, current_y, current_z = current_pos
+                    target_x = self.neutral_position['x']
+                    target_y = self.neutral_position['y']
+                    target_z = self.neutral_position['z']
+
+                    # Check if position is close enough to neutral (tolerance: 2mm)
+                    tolerance = 2.0
+                    distance = ((current_x - target_x)**2 + (current_y - target_y)**2 + (current_z - target_z)**2)**0.5
+
+                    if distance <= tolerance:
+                        # Neutral position reached!
+                        self.logger.info("✅ NEUTRAL POSITION REACHED: Distance=%.1fmm (tolerance=%.1fmm)", distance, tolerance)
+                        self._stop_neutral_monitoring()
+                        self.neutral_position_reached.emit(True)
+                        return
+                    else:
+                        self.logger.debug("🔄 MONITORING: Distance to neutral=%.1fmm (attempt %d/%d)",
+                                        distance, self._neutral_monitoring_attempts, self._max_monitoring_attempts)
+                else:
+                    self.logger.debug("🔄 MONITORING: Could not get arm position (attempt %d/%d)",
+                                    self._neutral_monitoring_attempts, self._max_monitoring_attempts)
+            else:
+                self.logger.warning("🔄 MONITORING: Arm not connected (attempt %d/%d)",
+                                  self._neutral_monitoring_attempts, self._max_monitoring_attempts)
+
+        except Exception as e:
+            self.logger.error("🔄 MONITORING ERROR: %s (attempt %d/%d)", e,
+                            self._neutral_monitoring_attempts, self._max_monitoring_attempts)
+
+        # Check timeout
+        if self._neutral_monitoring_attempts >= self._max_monitoring_attempts:
+            self.logger.warning("⏰ MONITORING TIMEOUT: Neutral position not reached within timeout")
+            self._stop_neutral_monitoring()
+            self.neutral_position_reached.emit(False)
+
+    def _stop_neutral_monitoring(self):
+        """Stop neutral position monitoring."""
+        if hasattr(self, '_neutral_monitoring_timer') and self._neutral_monitoring_timer:
+            self._neutral_monitoring_timer.stop()
+            self._neutral_monitoring_timer = None
+            self.logger.debug("🔄 MONITORING: Stopped neutral position monitoring")
 
     def draw_ai_symbol(self, row, col, symbol_to_draw):
         """Draw AI symbol at specified position using consolidated arm control."""
@@ -211,50 +336,70 @@ class ArmMovementController(QObject):
             "Drawing {symbol_to_draw} at coordinates ({target_x:.1f}, {target_y:.1f})")
 
         try:
-            # Use low-level arm controller
-            # for direct drawing (consolidated approach)
-            if self.arm_controller and self.arm_controller.connected:
-                if symbol_to_draw == game_logic.PLAYER_O:
-                    success = self.arm_controller.draw_o(
-                        center_x=target_x,
-                        center_y=target_y,
-                        radius=self.symbol_size / 2,
-                        speed=DRAWING_SPEED
-                    )
-                elif symbol_to_draw == game_logic.PLAYER_X:
-                    success = self.arm_controller.draw_x(
-                        center_x=target_x,
-                        center_y=target_y,
-                        size=self.symbol_size,
-                        speed=DRAWING_SPEED
-                    )
-                else:
-                    raise ValueError(f"Unknown symbol: {symbol_to_draw}")
-            else:
-                # Fallback to thread-based approach
-                success = self._unified_arm_command(
-                    'draw_o' if symbol_to_draw == game_logic.PLAYER_O else 'draw_x',
-                    x=target_x,
-                    y=target_y,
-                    radius=self.symbol_size / 2 if symbol_to_draw == game_logic.PLAYER_O else None,
-                    size=self.symbol_size if symbol_to_draw == game_logic.PLAYER_X else None,
-                    speed=DRAWING_SPEED
-                )
+            # REQUIREMENT: Use NON-BLOCKING operations to maintain GUI responsiveness
+            # Use thread-based approach for non-blocking execution
+            success = self._unified_arm_command(
+                'draw_o' if symbol_to_draw == game_logic.PLAYER_O else 'draw_x',
+                x=target_x,
+                y=target_y,
+                radius=self.symbol_size / 2 if symbol_to_draw == game_logic.PLAYER_O else None,
+                size=self.symbol_size if symbol_to_draw == game_logic.PLAYER_X else None,
+                speed=DRAWING_SPEED,
+                wait=False  # NON-BLOCKING: Don't wait for completion
+            )
 
             if success:
                 self.logger.info(
                     "Successfully drew {symbol_to_draw} at ({row},{col})")
+
+                # REQUIREMENT: Return to neutral position after every move
+                self.logger.info("🔄 TURN SEQUENCE: Drawing complete, returning to neutral position")
+
+                # Store drawing success for later emission after neutral position reached
+                self._pending_turn_completion = True
+                self._pending_turn_success = True
+
+                # Connect to neutral position signal for this turn
+                self.neutral_position_reached.connect(self._handle_neutral_position_after_drawing)
+
+                # Return to neutral position (will emit arm_turn_completed when reached)
+                QTimer.singleShot(500, self.move_to_neutral_position)
+
+                # Emit legacy signal for backward compatibility
                 self.arm_move_completed.emit(True)
                 return True
             else:
                 self.logger.error("Failed to draw {symbol_to_draw}")
                 self.arm_move_completed.emit(False)
+                self.arm_turn_completed.emit(False)
                 return False
 
         except Exception as e:
             self.logger.error("Error drawing symbol: %s", e)
             self.arm_move_completed.emit(False)
+            self.arm_turn_completed.emit(False)
             return False
+
+    def _handle_neutral_position_after_drawing(self, success):
+        """Handle neutral position reached after drawing - emit turn completion signal."""
+        # Disconnect the signal to avoid multiple connections
+        try:
+            self.neutral_position_reached.disconnect(self._handle_neutral_position_after_drawing)
+        except TypeError:
+            # Signal was not connected, ignore
+            pass
+
+        if self._pending_turn_completion:
+            if success and self._pending_turn_success:
+                self.logger.info("🎯 TURN COMPLETED: Arm returned to neutral, turn is complete")
+                self.arm_turn_completed.emit(True)
+            else:
+                self.logger.error("❌ TURN FAILED: Failed to return to neutral position")
+                self.arm_turn_completed.emit(False)
+
+            # Reset pending flags
+            self._pending_turn_completion = False
+            self._pending_turn_success = False
 
     def draw_winning_line(self):
         """Draw winning line through winning symbols."""
@@ -279,34 +424,117 @@ class ArmMovementController(QObject):
             "Drawing winning line from ({start_x:.1f}, {start_y:.1f}) to ({end_x:.1f}, {end_y:.1f})")
 
         try:
-            # Movement sequence
-            # 1. Move above start position at safe_z
-            if not self._unified_arm_command('go_to_position', x=start_x, y=start_y, z=self.safe_z, speed=MAX_SPEED, wait=True):
-                raise RuntimeError("Failed to move arm to start position")
+            # REQUIREMENT: Use NON-BLOCKING operations to maintain GUI responsiveness
+            # Start winning line drawing sequence (non-blocking)
+            self.logger.info("🔄 WINNING LINE: Starting non-blocking drawing sequence")
 
-            # 2. Lower to drawing position
-            if not self._unified_arm_command('go_to_position', x=start_x, y=start_y, z=self.draw_z, speed=DRAWING_SPEED, wait=True):
-                raise RuntimeError("Failed to lower arm to drawing position")
+            # Store winning line success for later emission after neutral position reached
+            self._pending_turn_completion = True
+            self._pending_turn_success = True
 
-            # 3. Draw line to end position
-            if not self._unified_arm_command('go_to_position', x=end_x, y=end_y, z=self.draw_z, speed=DRAWING_SPEED, wait=True):
-                raise RuntimeError("Failed to draw winning line")
+            # Connect to neutral position signal for this winning line
+            self.neutral_position_reached.connect(self._handle_neutral_position_after_drawing)
 
-            # 4. Lift to safe position
-            if not self._unified_arm_command('go_to_position', x=end_x, y=end_y, z=self.safe_z, speed=MAX_SPEED, wait=True):
-                raise RuntimeError("Failed to lift arm after drawing")
-
-            self.logger.info("Winning line successfully drawn.")
-            self.arm_status_changed.emit("Winning line drawn!")
-
-            # Move to neutral after a delay
-            QTimer.singleShot(1000, self.move_to_neutral_position)
+            # Start the winning line drawing sequence asynchronously
+            self._start_winning_line_sequence(start_x, start_y, end_x, end_y)
 
             return True
 
         except Exception as e:
             self.logger.error("Error drawing winning line: %s", e)
             raise
+
+    def _start_winning_line_sequence(self, start_x, start_y, end_x, end_y):
+        """Start winning line drawing sequence asynchronously (NON-BLOCKING)."""
+        self.logger.info("🔄 WINNING LINE SEQUENCE: Starting asynchronous drawing")
+
+        # Initialize sequence variables
+        self._winning_line_step = 0
+        self._winning_line_coords = (start_x, start_y, end_x, end_y)
+
+        # Start sequence timer
+        self._winning_line_timer = QTimer()
+        self._winning_line_timer.timeout.connect(self._execute_winning_line_step)
+        self._winning_line_timer.start(100)  # Execute steps every 100ms
+
+    def _execute_winning_line_step(self):
+        """Execute next step in winning line sequence (called by QTimer)."""
+        try:
+            start_x, start_y, end_x, end_y = self._winning_line_coords
+
+            if self._winning_line_step == 0:
+                # Step 1: Move above start position at safe_z
+                self.logger.info("🔄 WINNING LINE STEP 1: Moving to start position")
+                success = self._unified_arm_command('go_to_position',
+                                                  x=start_x, y=start_y, z=self.safe_z,
+                                                  speed=MAX_SPEED, wait=False)
+                if success:
+                    self._winning_line_step = 1
+                    # Continue to next step after delay
+                    self._winning_line_timer.start(1000)  # Wait 1 second
+                else:
+                    self._stop_winning_line_sequence(False, "Failed to move to start position")
+
+            elif self._winning_line_step == 1:
+                # Step 2: Lower to drawing position
+                self.logger.info("🔄 WINNING LINE STEP 2: Lowering to drawing position")
+                success = self._unified_arm_command('go_to_position',
+                                                  x=start_x, y=start_y, z=self.draw_z,
+                                                  speed=DRAWING_SPEED, wait=False)
+                if success:
+                    self._winning_line_step = 2
+                    self._winning_line_timer.start(1500)  # Wait 1.5 seconds
+                else:
+                    self._stop_winning_line_sequence(False, "Failed to lower to drawing position")
+
+            elif self._winning_line_step == 2:
+                # Step 3: Draw line to end position
+                self.logger.info("🔄 WINNING LINE STEP 3: Drawing line to end position")
+                success = self._unified_arm_command('go_to_position',
+                                                  x=end_x, y=end_y, z=self.draw_z,
+                                                  speed=DRAWING_SPEED, wait=False)
+                if success:
+                    self._winning_line_step = 3
+                    self._winning_line_timer.start(2000)  # Wait 2 seconds for drawing
+                else:
+                    self._stop_winning_line_sequence(False, "Failed to draw winning line")
+
+            elif self._winning_line_step == 3:
+                # Step 4: Lift to safe position
+                self.logger.info("🔄 WINNING LINE STEP 4: Lifting to safe position")
+                success = self._unified_arm_command('go_to_position',
+                                                  x=end_x, y=end_y, z=self.safe_z,
+                                                  speed=MAX_SPEED, wait=False)
+                if success:
+                    self._winning_line_step = 4
+                    self._winning_line_timer.start(1000)  # Wait 1 second
+                else:
+                    self._stop_winning_line_sequence(False, "Failed to lift arm after drawing")
+
+            elif self._winning_line_step == 4:
+                # Step 5: Complete sequence and return to neutral
+                self.logger.info("✅ WINNING LINE COMPLETE: Moving to neutral position")
+                self._stop_winning_line_sequence(True, "Winning line successfully drawn")
+
+                # Move to neutral after a delay
+                QTimer.singleShot(1000, self.move_to_neutral_position)
+
+        except Exception as e:
+            self.logger.error("🔄 WINNING LINE ERROR: %s", e)
+            self._stop_winning_line_sequence(False, f"Error in winning line sequence: {e}")
+
+    def _stop_winning_line_sequence(self, success, message):
+        """Stop winning line sequence."""
+        if hasattr(self, '_winning_line_timer') and self._winning_line_timer:
+            self._winning_line_timer.stop()
+            self._winning_line_timer = None
+
+        if success:
+            self.logger.info("✅ WINNING LINE SUCCESS: %s", message)
+            self.arm_status_changed.emit("Winning line drawn!")
+        else:
+            self.logger.error("❌ WINNING LINE FAILED: %s", message)
+            self.arm_status_changed.emit("Winning line failed!")
 
     def _unified_arm_command(self, command, *args, **kwargs):
         """Unified arm command interface."""
@@ -320,30 +548,34 @@ class ArmMovementController(QObject):
                     center_x=kwargs.get('x'),
                     center_y=kwargs.get('y'),
                     radius=kwargs.get('radius'),
-                    speed=kwargs.get('speed', DRAWING_SPEED)
+                    speed=kwargs.get('speed', DRAWING_SPEED),
+                    wait=kwargs.get('wait', False)  # NON-BLOCKING by default
                 )
             elif command == 'draw_x':
                 success = self.arm_thread.draw_x(
                     center_x=kwargs.get('x'),
                     center_y=kwargs.get('y'),
                     size=kwargs.get('size'),
-                    speed=kwargs.get('speed', DRAWING_SPEED)
+                    speed=kwargs.get('speed', DRAWING_SPEED),
+                    wait=kwargs.get('wait', False)  # NON-BLOCKING by default
                 )
             elif command == 'go_to_position':
+                # REQUIREMENT: Default to NON-BLOCKING operations for GUI responsiveness
                 success = self.arm_thread.go_to_position(
                     x=kwargs.get('x'),
                     y=kwargs.get('y'),
                     z=kwargs.get('z'),
                     speed=kwargs.get('speed', MAX_SPEED),
-                    wait=kwargs.get('wait', True)
+                    wait=kwargs.get('wait', False)  # NON-BLOCKING by default
                 )
             elif command == 'park':
+                # REQUIREMENT: Default to NON-BLOCKING operations for GUI responsiveness
                 success = self.arm_thread.go_to_position(
                     x=kwargs.get('x', self.neutral_position['x']),
                     y=kwargs.get('y', self.neutral_position['y']),
                     z=kwargs.get('z', self.neutral_position['z']),
                     speed=MAX_SPEED // 2,
-                    wait=kwargs.get('wait', True)
+                    wait=kwargs.get('wait', False)  # NON-BLOCKING by default
                 )
             else:
                 raise ValueError(f"Unknown arm command: {command}")

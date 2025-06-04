@@ -94,9 +94,8 @@ class TicTacToeApp(QMainWindow):
         except Exception as e:
             self.logger.error("Error setting icon: %s", e)
 
-        # Show fullscreen if not in test mode
-        if 'pytest' not in sys.modules:
-            self.showFullScreen()
+        # Don't show window here - let main_pyqt.py handle it
+        # This allows proper monitor selection
 
     def init_ui(self):
         """Initialize the user interface."""
@@ -327,6 +326,11 @@ class TicTacToeApp(QMainWindow):
 
         # Connect arm controller to game controller
         self.game_controller.set_arm_controller(self.arm_controller)
+
+        # Connect arm turn completion signal to game controller
+        self.arm_controller.arm_turn_completed.connect(
+            self.game_controller.handle_arm_turn_completed
+        )
 
         # Connect game ended signal to statistics
         self.game_controller.game_ended.connect(

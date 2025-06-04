@@ -343,16 +343,9 @@ class ArmController:
                 speed=travel_speed)  # Faster lift
             return False
 
-        # Return to neutral position after drawing (from calibration)
-        neutral_pos = {"x": 95.96, "y": -89.94, "z": 12.0}
-        if not self.go_to_position(
-                x=neutral_pos["x"],
-                y=neutral_pos["y"],
-                z=neutral_pos["z"],
-                speed=travel_speed,
-                wait=True):
-            self.logger.warning(
-                "Failed to return to neutral position after drawing X.")
+        # REMOVED: Hardcoded neutral position return
+        # Neutral position return is now handled by ArmMovementController
+        # after drawing operations complete
 
         self.logger.info(
             "Finished drawing X and returned to neutral position.")
@@ -427,16 +420,9 @@ class ArmController:
                 wait=True):
             self.logger.warning("Failed lifting arm after drawing O.")
 
-        # Return to neutral position after drawing (from calibration)
-        neutral_pos = {"x": 95.96, "y": -89.94, "z": 12.0}
-        if not self.go_to_position(
-                x=neutral_pos["x"],
-                y=neutral_pos["y"],
-                z=neutral_pos["z"],
-                speed=travel_speed,
-                wait=True):
-            self.logger.warning(
-                "Failed to return to neutral position after drawing O.")
+        # REMOVED: Hardcoded neutral position return
+        # Neutral position return is now handled by ArmMovementController
+        # after drawing operations complete
 
         self.logger.info(
             "Finished drawing O and returned to neutral position.")

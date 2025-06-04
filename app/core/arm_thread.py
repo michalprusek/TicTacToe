@@ -107,7 +107,7 @@ class ArmThread(threading.Thread):
     # pylint: disable=too-many-arguments
     def draw_x(self, center_x: float, center_y: float, size: float,
                *, speed: Optional[int] = None,
-               timeout: Optional[float] = None) -> bool:
+               timeout: Optional[float] = None, wait: bool = True) -> bool:
         """Draw an X symbol.
 
         Args:
@@ -116,6 +116,7 @@ class ArmThread(threading.Thread):
             size: Size of the X
             speed: Drawing speed
             timeout: Timeout in seconds
+            wait: Whether to wait for completion (blocking)
 
         Returns:
             Whether the command was successful
@@ -131,12 +132,18 @@ class ArmThread(threading.Thread):
             'speed': speed
         })
         self.command_queue.put(command)
+
+        # For non-blocking mode, return True immediately
+        if not wait:
+            self.logger.info("Non-blocking draw_x command queued")
+            return True
+
         return command.wait_for_completion(timeout)
 
     # pylint: disable=too-many-arguments
     def draw_o(self, center_x: float, center_y: float, radius: float,
                *, speed: Optional[int] = None, segments: int = 16,
-               timeout: Optional[float] = None) -> bool:
+               timeout: Optional[float] = None, wait: bool = True) -> bool:
         """Draw an O symbol.
 
         Args:
@@ -146,6 +153,7 @@ class ArmThread(threading.Thread):
             speed: Drawing speed
             segments: Number of segments for the circle
             timeout: Timeout in seconds
+            wait: Whether to wait for completion (blocking)
 
         Returns:
             Whether the command was successful
@@ -162,6 +170,12 @@ class ArmThread(threading.Thread):
             'segments': segments
         })
         self.command_queue.put(command)
+
+        # For non-blocking mode, return True immediately
+        if not wait:
+            self.logger.info("Non-blocking draw_o command queued")
+            return True
+
         return command.wait_for_completion(timeout)
 
     # pylint: disable=too-many-arguments
