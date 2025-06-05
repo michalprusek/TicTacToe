@@ -77,6 +77,9 @@ class GameState:
         # Current frame for processing
         self._frame: Optional[np.ndarray] = None
 
+        # Symbol confidence threshold for filtering
+        self.symbol_confidence_threshold: float = 0.90
+
     def reset_game(self):
         """Resets game state, keeping grid points if valid."""
         self.logger.info("Resetting game state")
@@ -359,9 +362,9 @@ class GameState:
             self, detected_symbols: List[Dict]
     ) -> List[Dict]:
         """Filter symbols based on confidence threshold."""
-        # Use dynamic threshold if available, otherwise default to 0.85
+        # Use dynamic threshold if available, otherwise default to 0.90
         min_confidence_threshold = getattr(
-            self, 'symbol_confidence_threshold', 0.85
+            self, 'symbol_confidence_threshold', 0.90
         )
         filtered_symbols = []
 
@@ -464,6 +467,126 @@ class GameState:
             symbol_center_uv, final_row, final_col, nx, ny
         )
         return None
+
+    def _synchronize_board_with_detections(
+            self,
+            detected_symbols: List[Dict],
+            class_id_to_player: Dict[int, str]
+    ) -> List[Tuple[int, int]]:
+        """
+        Synchronize board state with current YOLO detections.
+
+        This method ensures that the board state only contains symbols that are
+        currently detected by YOLO with sufficient confidence. It rebuilds the
+        board state from scratch based on current detections, preventing
+        phantom symbols from persisting in the GUI.
+
+        Args:
+            detected_symbols: List of symbols detected by YOLO in current frame
+            class_id_to_player: Mapping from class ID to player symbol
+
+        Returns:
+            List of (row, col) tuples representing cells that changed
+        """
+        # Store old board state for comparison
+        old_board_state = [row[:] for row in self._board_state]
+
+        if not detected_symbols:
+            # No symbols detected - clear the board completely
+            self.logger.info("🧹 No symbols detected - clearing board state")
+            self._board_state = [[EMPTY for _ in range(3)] for _ in range(3)]
+            return self._get_changed_cells(old_board_state, self._board_state)
+
+        # Convert symbols to expected format and filter by confidence
+        converted_symbols = self._convert_symbols_to_expected_format(
+            detected_symbols, class_id_to_player
+        )
+        filtered_symbols = self._filter_high_confidence_symbols(converted_symbols)
+
+        if not filtered_symbols:
+            # No high-confidence symbols - clear the board
+            self.logger.info("🧹 No high-confidence symbols - clearing board state")
+            self._board_state = [[EMPTY for _ in range(3)] for _ in range(3)]
+            return self._get_changed_cells(old_board_state, self._board_state)
+
+        # Rebuild board state from current detections only
+        self.logger.info("🔄 Rebuilding board state from %d current detections",
+                        len(filtered_symbols))
+
+        # Clear board first
+        new_board_state = [[EMPTY for _ in range(3)] for _ in range(3)]
+
+        # Map each detected symbol to board position
+        for symbol_info in filtered_symbols:
+            symbol_center_uv = symbol_info.get('center_uv')
+            player = symbol_info.get('player')
+            confidence = symbol_info.get('confidence', 0.0)
+
+            if symbol_center_uv is None or player is None:
+                continue
+
+            # Find closest cell center
+            min_distance = float('inf')
+            closest_cell = None
+
+            for i, cell_center in enumerate(self._cell_centers_uv_transformed):
+                distance = np.linalg.norm(
+                    np.array(symbol_center_uv) - np.array(cell_center)
+                )
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_cell = i
+
+            if closest_cell is not None:
+                row, col = closest_cell // 3, closest_cell % 3
+                # Only place symbol if cell is empty in new board
+                if new_board_state[row][col] == EMPTY:
+                    new_board_state[row][col] = player
+                    self.logger.info(
+                        "🎯 Placed %s at (%d,%d) from detection (conf: %.3f)",
+                        player, row, col, confidence
+                    )
+                else:
+                    self.logger.warning(
+                        "⚠️ Cell (%d,%d) already occupied in new board state",
+                        row, col
+                    )
+
+        # Update board state
+        self._board_state = new_board_state
+
+        # Log final board state
+        board_str = str([row[:] for row in self._board_state])
+        self.logger.info("🎮 Synchronized board state: %s", board_str)
+
+        # Return changed cells
+        return self._get_changed_cells(old_board_state, self._board_state)
+
+    def _get_changed_cells(
+            self,
+            old_board: List[List[str]],
+            new_board: List[List[str]]
+    ) -> List[Tuple[int, int]]:
+        """
+        Compare two board states and return list of changed cells.
+
+        Args:
+            old_board: Previous board state
+            new_board: Current board state
+
+        Returns:
+            List of (row, col) tuples representing cells that changed
+        """
+        changed_cells = []
+        for row in range(3):
+            for col in range(3):
+                if old_board[row][col] != new_board[row][col]:
+                    changed_cells.append((row, col))
+                    self.logger.debug(
+                        "Cell (%d,%d) changed: '%s' → '%s'",
+                        row, col, old_board[row][col], new_board[row][col]
+                    )
+        return changed_cells
 
     def _update_board_with_symbols_robust(
             self,
@@ -719,20 +842,21 @@ class GameState:
                     (timestamp - self._last_move_timestamp) >=
                     self._move_cooldown_seconds):
 
-                # Try robust homography-based mapping first
-                changed_cells = self._update_board_with_symbols_robust(
-                    detected_symbols,
-                    self._grid_points,
-                    class_id_to_player
+                # CRITICAL FIX: Synchronize board state with current detections
+                # This ensures GUI only shows symbols that are actually detected by YOLO
+                changed_cells = self._synchronize_board_with_detections(
+                    detected_symbols, class_id_to_player
                 )
 
-                # Only use fallback if robust method is not available
-                # (no grid points). Don't use fallback when robust method
-                # works but finds occupied cells
-                if not changed_cells:
+                # Log synchronization results
+                if changed_cells:
+                    self.logger.info(
+                        "Board synchronized with %d cell changes: %s",
+                        len(changed_cells), changed_cells
+                    )
+                else:
                     self.logger.debug(
-                        "Robust mapping completed - no new symbols placed "
-                        "(cells may be occupied)"
+                        "Board synchronization completed - no changes detected"
                     )
 
                 if changed_cells:  # If a move was made

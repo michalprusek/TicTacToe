@@ -28,7 +28,7 @@ class SymbolDetector:
         self.logger = logger or logging.getLogger(__name__)
 
         # Symbol detection parameters
-        self.bbox_conf_threshold = getattr(config, 'bbox_conf_threshold', 0.5)
+        self.bbox_conf_threshold = getattr(config, 'bbox_conf_threshold', 0.9)
 
         # Class ID to label mapping
         # CRITICAL FIX: YOLO model has inverted labels -

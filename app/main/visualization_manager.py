@@ -185,7 +185,7 @@ class VisualizationManager:
                         label = "X" if class_id == 0 else "O"  # class_id 0 = X, class_id 1 = O
 
                         # Filter by confidence threshold
-                        if conf >= getattr(self.config, 'bbox_conf_threshold', 0.5):
+                        if conf >= getattr(self.config, 'bbox_conf_threshold', 0.9):
                             drawing_utils.draw_symbol_box(
                                 result_frame, box, conf, class_id, label
                             )

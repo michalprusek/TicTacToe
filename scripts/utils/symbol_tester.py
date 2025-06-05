@@ -25,7 +25,7 @@ CALIBRATION_FILE = "hand_eye_calibration.json"  # Soubor s kalibrací
 CAM_INDEX = 0  # Index kamery
 WINDOW_NAME = "Symbol Test"
 # Prahové hodnoty pro detekci mřížky
-POSE_CONF_THRESHOLD = 0.5
+POSE_CONF_THRESHOLD = 0.8
 KEYPOINT_VISIBLE_THRESHOLD = 0.5
 MIN_POINTS_FOR_RANSAC = 6  # Minimum bodů pro RANSAC korekci mřížky
 GRID_POINTS_COUNT = 16  # Očekávaný počet bodů mřížky

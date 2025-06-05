@@ -23,8 +23,8 @@ class TestDetectorConstants:
         assert 0.0 <= POSE_CONF_THRESHOLD <= 1.0
         assert 0.0 <= KEYPOINT_VISIBLE_THRESHOLD <= 1.0
         
-        assert BBOX_CONF_THRESHOLD == 0.45
-        assert POSE_CONF_THRESHOLD == 0.45
+        assert BBOX_CONF_THRESHOLD == 0.90
+        assert POSE_CONF_THRESHOLD == 0.80
         assert KEYPOINT_VISIBLE_THRESHOLD == 0.3
     
     def test_homography_parameters(self):

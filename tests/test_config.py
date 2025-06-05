@@ -21,13 +21,13 @@ class TestGameDetectorConfig:
         assert config.disable_autofocus is True
         assert config.detect_model_path == "weights/best_detection.pt"
         assert config.pose_model_path == "weights/best_pose.pt"
-        assert config.bbox_conf_threshold == 0.75
-        assert config.pose_conf_threshold == 0.75
+        assert config.bbox_conf_threshold == 0.90
+        assert config.pose_conf_threshold == 0.80
         assert config.keypoint_visible_threshold == 0.3
         assert config.min_points_for_homography == 4
         assert config.ransac_reproj_threshold == 10.0
         assert config.grid_points_count == 16
-        assert config.target_fps == 2.0
+        assert config.target_fps == 30.0
         assert config.device is None
         assert config.show_game_state_on_frame is True
     

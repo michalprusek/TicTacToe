@@ -70,7 +70,7 @@ class DetectionThread(threading.Thread):
         # Nastavení zobrazení
         self.show_detections = True  # Zobrazovat detekce symbolů
         self.show_grid = True  # Zobrazovat mřížku hrací plochy
-        self.confidence_threshold = 0.45  # Výchozí práh jistoty pro detekce
+        self.confidence_threshold = 0.8  # Výchozí práh jistoty pro detekce
 
         # Initialize detector
         self.detector = None

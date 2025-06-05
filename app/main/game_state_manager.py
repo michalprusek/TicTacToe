@@ -31,6 +31,10 @@ class GameStateManager:
         # Initialize game state
         self.game_state = GameState()
 
+        # Set symbol confidence threshold from config
+        if config and hasattr(config, 'bbox_conf_threshold'):
+            self.game_state.symbol_confidence_threshold = config.bbox_conf_threshold
+
         # Class ID to player mapping
         self.class_id_to_player = getattr(config, 'class_id_to_player', {0: 1, 1: 2})  # X=1, O=2
 

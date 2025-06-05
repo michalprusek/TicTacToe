@@ -21,8 +21,8 @@ class TestDetectorConstants:
     
     def test_confidence_thresholds(self):
         """Test confidence threshold constants."""
-        assert BBOX_CONF_THRESHOLD == 0.45
-        assert POSE_CONF_THRESHOLD == 0.45
+        assert BBOX_CONF_THRESHOLD == 0.90
+        assert POSE_CONF_THRESHOLD == 0.80
         assert KEYPOINT_VISIBLE_THRESHOLD == 0.3
         
         # Should be valid probabilities

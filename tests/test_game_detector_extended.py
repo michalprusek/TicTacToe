@@ -33,9 +33,9 @@ class TestGameDetectorConstants:
 
     def test_confidence_thresholds_reasonable(self):
         """Test confidence thresholds are in reasonable range."""
-        # Typical confidence thresholds should be between 0.3 and 0.8
-        assert 0.2 <= BBOX_CONF_THRESHOLD <= 0.8
-        assert 0.2 <= POSE_CONF_THRESHOLD <= 0.8
+        # High confidence thresholds for precise detection
+        assert 0.8 <= BBOX_CONF_THRESHOLD <= 1.0
+        assert 0.8 <= POSE_CONF_THRESHOLD <= 1.0
 
     def test_detector_constants_import(self):
         """Test that all required constants can be imported."""

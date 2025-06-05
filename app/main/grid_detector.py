@@ -35,7 +35,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
         self.logger = logger or logging.getLogger(__name__)
 
         # Grid detection parameters
-        self.pose_conf_threshold = getattr(config, 'pose_conf_threshold', 0.5)
+        self.pose_conf_threshold = getattr(config, 'pose_conf_threshold', 0.8)
         self.grid_detection_retries = 0
         self.last_valid_grid_time = None
         self.max_grid_detection_retries = getattr(config, 'max_grid_detection_retries', 3)
