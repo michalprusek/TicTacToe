@@ -592,88 +592,22 @@ class ArmMovementController(QObject):
             raise
 
     def _get_cell_coordinates_from_yolo(self, row, col):
-        """Get cell coordinates from YOLO detection with robust error handling and retry logic."""
+        """Get cell coordinates from YOLO detection with improved interpolation."""
         self.logger.info(
             "🔍 COORDINATE TRANSFORMATION DEBUG for cell (%d,%d):", row, col)
 
-        # Validate input parameters
-        if not (0 <= row <= 2 and 0 <= col <= 2):
-            raise ValueError(f"Invalid cell coordinates: row={row}, col={col}. Must be 0-2.")
+        # Get current detection state
+        if hasattr(self.main_window, 'camera_controller'):
+            camera_controller = self.main_window.camera_controller
+            _, game_state_obj = camera_controller._get_detection_data()
 
-        # Get current detection state with retry logic
-        max_retries = 5
-        retry_delay = 0.1  # 100ms between retries
+            if not game_state_obj:
+                raise RuntimeError(f"Cannot get detection state for cell ({row},{col})")
 
-        for attempt in range(max_retries):
-            try:
-                if not hasattr(self.main_window, 'camera_controller'):
-                    raise RuntimeError("Camera controller not available")
-
-                camera_controller = self.main_window.camera_controller
-                _, game_state_obj = camera_controller._get_detection_data()
-
-                if not game_state_obj:
-                    self.logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries}: No game state object available for cell ({row},{col})")
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(retry_delay)
-                        continue
-                    raise RuntimeError(f"Cannot get detection state for cell ({row},{col}) after {max_retries} attempts")
-
-                # Check if grid is valid
-                if not game_state_obj.is_physical_grid_valid():
-                    self.logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries}: Physical grid not valid for cell ({row},{col})")
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(retry_delay)
-                        continue
-                    raise RuntimeError(f"Physical grid not valid for cell ({row},{col}) after {max_retries} attempts")
-
-                # Get UV coordinates of cell center
-                uv_center = game_state_obj.get_cell_center_uv(row, col)
-                if uv_center is None:
-                    self.logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries}: Cannot get UV center for cell ({row},{col})")
-
-                    # Log detailed debug information
-                    self._log_grid_debug_info(game_state_obj, row, col, attempt + 1)
-
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(retry_delay)
-                        continue
-                    raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection after {max_retries} attempts")
-
-                # Success - break out of retry loop
-                self.logger.info(f"✅ Successfully obtained UV center for cell ({row},{col}) on attempt {attempt + 1}")
-                break
-
-            except (AttributeError, TypeError) as e:
-                self.logger.warning(
-                    f"Attempt {attempt + 1}/{max_retries}: Attribute/Type error for cell ({row},{col}): {e}")
-                if attempt < max_retries - 1:
-                    import time
-                    time.sleep(retry_delay)
-                    continue
-                raise RuntimeError(f"Failed to get coordinates for cell ({row},{col}) due to: {e}")
-
-        # Validate UV center coordinates
-        if not isinstance(uv_center, (list, tuple, type(None))) and not hasattr(uv_center, '__len__'):
-            raise RuntimeError(f"Invalid UV center format for cell ({row},{col}): {type(uv_center)}")
-
-        if len(uv_center) != 2:
-            raise RuntimeError(f"Invalid UV center dimensions for cell ({row},{col}): {len(uv_center)} (expected 2)")
-
-        # Check for reasonable coordinate values
-        if not (0 <= uv_center[0] <= 2000 and 0 <= uv_center[1] <= 2000):
-            self.logger.warning(
-                f"UV coordinates seem unreasonable for cell ({row},{col}): ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
-
-        self.logger.info(f"  📍 Step 1 - Grid position: ({row},{col})")
-        self.logger.info(
-            f"  📍 Step 2 - UV center from camera: ({uv_center[0]:.1f}, {uv_center[1]:.1f})")
+            # Get UV coordinates of cell center
+            uv_center = game_state_obj.get_cell_center_uv(row, col)
+            if uv_center is None:
+                raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection")
 
             self.logger.info("  📍 Step 1 - Grid position: ({row},{col})")
             self.logger.info(
