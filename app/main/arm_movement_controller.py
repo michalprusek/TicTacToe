@@ -413,12 +413,25 @@ class ArmMovementController(QObject):
         if len(winning_line) != 3:
             raise RuntimeError("Invalid winning line data")
 
-        # Get start and end coordinates
+        # Get start and end coordinates with error handling
         start_row, start_col = winning_line[0]
         end_row, end_col = winning_line[2]
 
-        start_x, start_y = self._get_cell_coordinates_from_yolo(start_row, start_col)
-        end_x, end_y = self._get_cell_coordinates_from_yolo(end_row, end_col)
+        try:
+            start_x, start_y = self._get_cell_coordinates_from_yolo(start_row, start_col)
+        except RuntimeError as e:
+            self.logger.error(f"Cannot get start coordinates for winning line: {e}")
+            # Return to neutral and abort
+            self.move_to_neutral_position()
+            raise RuntimeError(f"Cannot draw winning line: failed to get start coordinates: {e}")
+
+        try:
+            end_x, end_y = self._get_cell_coordinates_from_yolo(end_row, end_col)
+        except RuntimeError as e:
+            self.logger.error(f"Cannot get end coordinates for winning line: {e}")
+            # Return to neutral and abort
+            self.move_to_neutral_position()
+            raise RuntimeError(f"Cannot draw winning line: failed to get end coordinates: {e}")
 
         self.logger.info(
             "Drawing winning line from ({start_x:.1f}, {start_y:.1f}) to ({end_x:.1f}, {end_y:.1f})")
@@ -604,10 +617,27 @@ class ArmMovementController(QObject):
             if not game_state_obj:
                 raise RuntimeError(f"Cannot get detection state for cell ({row},{col})")
 
-            # Get UV coordinates of cell center
+            # Get UV coordinates of cell center with retry mechanism
             uv_center = game_state_obj.get_cell_center_uv(row, col)
             if uv_center is None:
-                raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) from current detection")
+                self.logger.warning(f"Cannot get UV center for cell ({row},{col}) from current detection - trying fallback")
+                # Try to wait for grid detection
+                import time
+                for attempt in range(5):  # Try 5 times with 200ms delay
+                    time.sleep(0.2)
+                    uv_center = game_state_obj.get_cell_center_uv(row, col)
+                    if uv_center is not None:
+                        self.logger.info(f"Successfully got UV center after {attempt+1} attempts")
+                        break
+
+                if uv_center is None:
+                    self.logger.error(f"Cannot get UV center for cell ({row},{col}) - grid not detected after retries")
+                    # Return to neutral position and raise error
+                    try:
+                        self.move_to_neutral_position()
+                    except Exception as e:
+                        self.logger.error(f"Failed to return to neutral position: {e}")
+                    raise RuntimeError(f"Cannot get UV center for cell ({row},{col}) - grid not detected after retries")
 
             self.logger.info("  📍 Step 1 - Grid position: ({row},{col})")
             self.logger.info(

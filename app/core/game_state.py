@@ -83,6 +83,10 @@ class GameState:
 
         # Symbol caching system for handling occlusion
         self.symbol_cache = SymbolCache(self.logger)
+        
+        # Flag to ignore symbols after grid reset
+        self._frames_since_reset = 0
+        self._ignore_symbols_frames = 5  # Ignore symbols for 5 frames after reset
 
     def reset_game(self):
         """Resets game state, keeping grid points if valid."""
@@ -101,6 +105,9 @@ class GameState:
 
         # Clear symbol cache on game reset
         self.symbol_cache.clear_cache()
+        
+        # Reset frame counter to ignore symbols after reset
+        self._frames_since_reset = 0
 
     @property
     def board(self) -> List[List[str]]:
@@ -856,6 +863,9 @@ class GameState:
         self._detection_results = detected_symbols  # Store raw detections
         # Reset changed cells for this update cycle
         self._changed_cells_this_turn = []
+        
+        # Increment frame counter
+        self._frames_since_reset += 1
 
         # Check for complete grid detection first
         if (ordered_kpts_uv is None or
@@ -925,8 +935,14 @@ class GameState:
         # Update board with symbols using robust homography if available
         if (self._cell_centers_uv_transformed is not None and
                 len(self._cell_centers_uv_transformed) == 9):
+            # Ignore symbols for a few frames after reset to avoid false detections
+            if self._frames_since_reset <= self._ignore_symbols_frames:
+                self.logger.debug(
+                    "Ignoring symbols - frame %d/%d after reset",
+                    self._frames_since_reset, self._ignore_symbols_frames
+                )
             # Check for cooldown before allowing a move
-            if (self._last_move_timestamp is None or
+            elif (self._last_move_timestamp is None or
                     (timestamp - self._last_move_timestamp) >=
                     self._move_cooldown_seconds):
 

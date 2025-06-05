@@ -6,8 +6,8 @@ from app.core.game_state import GRID_POINTS_COUNT
 
 # --- Detection Thresholds --- #
 BBOX_CONF_THRESHOLD = 0.90  # High threshold for precise detection
-POSE_CONF_THRESHOLD = 0.75  # Grid detection threshold
-KEYPOINT_VISIBLE_THRESHOLD = 0.3  # Lower threshold to detect more keypoints
+POSE_CONF_THRESHOLD = 0.6  # Lowered grid detection threshold
+KEYPOINT_VISIBLE_THRESHOLD = 0.5  # Lowered for better grid point detection
 
 # --- Homography and RANSAC --- #
 MIN_POINTS_FOR_HOMOGRAPHY = 4  # Reduced from 6 to be more robust
@@ -18,7 +18,7 @@ GRID_DIST_STD_DEV_THRESHOLD = 300.0  # Increased from 100.0 to be more tolerant
 GRID_ANGLE_TOLERANCE_DEG = 30.0  # Increased from 20.0 to be more tolerant
 
 # --- Grid Detection Retry --- #
-MAX_GRID_DETECTION_RETRIES = 3  # Number of retries for grid detection
+MAX_GRID_DETECTION_RETRIES = 10  # Increased retries for more stable grid tracking
 
 # --- Default Model Paths --- #
 DEFAULT_DETECT_MODEL_PATH = "weights/best_detection.pt"

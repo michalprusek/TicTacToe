@@ -24,7 +24,7 @@ class GameDetectorConfig:  # pylint: disable=too-many-instance-attributes
 
     # Detection thresholds
     bbox_conf_threshold: float = 0.90
-    pose_conf_threshold: float = 0.75
+    pose_conf_threshold: float = 0.4  # Lowered for better grid detection
     keypoint_visible_threshold: float = 0.3
 
     # Grid detection parameters
