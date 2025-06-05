@@ -78,6 +78,9 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             difficulty, difficulty / 10.0
         )
 
+        # Cache status tracking
+        self.last_cache_status = False  # Track if we're using cached data
+
         # Arm controller reference (set by main window)
         self.arm_controller = None
 
@@ -397,8 +400,13 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         self.arm_move_in_progress = True
         self.last_arm_move_time = time.time()
 
-        # Get move from strategy
-        move = self.strategy_selector.get_move(current_board_for_strategy, symbol_to_play)
+        # Get move from strategy using cached board state for occlusion handling
+        if hasattr(self.main_window, 'game_state_manager') and self.main_window.game_state_manager:
+            ai_board = self.main_window.game_state_manager.game_state.get_board_for_ai()
+            move = self.strategy_selector.get_move(ai_board, symbol_to_play)
+            self.logger.info("🤖 AI using cached board state for decision making")
+        else:
+            move = self.strategy_selector.get_move(current_board_for_strategy, symbol_to_play)
         if not move:
             self.logger.error("Strategy did not return a valid move.")
             self.arm_move_in_progress = False
@@ -467,6 +475,9 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
 
         # Check for game end
         self._check_game_end()
+
+        # Check cache status and update GUI feedback
+        self._check_cache_status()
 
     def _check_game_end(
             self):  # pylint: disable=too-many-branches,too-many-statements
@@ -600,8 +611,13 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
             self.logger.warning("No valid moves available for AI")
             return
 
-        # Select move
-        if hasattr(self.main_window, 'board_widget'):
+        # Select move using cached board state for occlusion handling
+        if (hasattr(self.main_window, 'game_state_manager') and
+                self.main_window.game_state_manager):
+            ai_board = self.main_window.game_state_manager.game_state.get_board_for_ai()
+            move = self.strategy_selector.get_move(ai_board, self.ai_player)
+            self.logger.info("🤖 AI using cached board state for simple move")
+        elif hasattr(self.main_window, 'board_widget'):
             move = self.strategy_selector.get_move(
                 self.main_window.board_widget.board, self.ai_player)
         else:
@@ -640,7 +656,13 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
         if not valid_moves:
             return False
 
-        if hasattr(self.main_window, 'board_widget'):
+        # Use cached board state for AI decision making
+        if (hasattr(self.main_window, 'game_state_manager') and
+                self.main_window.game_state_manager):
+            ai_board = self.main_window.game_state_manager.game_state.get_board_for_ai()
+            move = self.strategy_selector.get_move(ai_board, symbol_to_play)
+            self.logger.info("🤖 AI using cached board for timeout move")
+        elif hasattr(self.main_window, 'board_widget'):
             move = self.strategy_selector.get_move(
                 self.main_window.board_widget.board, symbol_to_play)
         else:
@@ -701,3 +723,27 @@ class GameController(QObject):  # pylint: disable=too-many-instance-attributes
                 self.robot_status_displayed = False
                 # NOTE: Don't emit "your_turn" here - wait for arm_turn_completed signal
                 self.logger.info("🔄 DETECTION TIMEOUT: Waiting for arm to complete turn sequence")
+
+    def _check_cache_status(self):
+        """Check symbol cache status and emit appropriate GUI feedback."""
+        try:
+            if (hasattr(self.main_window, 'game_state_manager') and
+                    self.main_window.game_state_manager and
+                    hasattr(self.main_window.game_state_manager.game_state, 'symbol_cache')):
+
+                cache = self.main_window.game_state_manager.game_state.symbol_cache
+                current_cache_status = cache.using_cached_data
+
+                # Only emit signal if status changed
+                if current_cache_status != self.last_cache_status:
+                    if current_cache_status:
+                        self.status_changed.emit("cached_symbols", True)
+                        self.logger.info("🔄 GUI: Switched to cached symbol display")
+                    else:
+                        self.status_changed.emit("live_detection", True)
+                        self.logger.info("📹 GUI: Switched to live detection display")
+
+                    self.last_cache_status = current_cache_status
+
+        except Exception as e:
+            self.logger.debug("Error checking cache status: %s", e)

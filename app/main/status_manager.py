@@ -51,7 +51,9 @@ LANG_CS = {
     "arm_connected": "✅ RUKA PŘIPOJENA", "arm_disconnected": "❌ RUKA ODPOJENA",
     "arm_connection_notification": "Robotická ruka není připojena. "
     "Hra bude v režimu pouze s kamerou.",
-    "arm_disconnection_title": "⚠️ RUKA ODPOJENA"
+    "arm_disconnection_title": "⚠️ RUKA ODPOJENA",
+    "cached_symbols": "🔄 POUŽÍVÁM CACHE SYMBOLŮ",
+    "live_detection": "📹 ŽIVÁ DETEKCE"
 }
 
 LANG_EN = {
@@ -76,7 +78,9 @@ LANG_EN = {
     "arm_connected": "✅ ARM CONNECTED", "arm_disconnected": "❌ ARM DISCONNECTED",
     "arm_connection_notification": "Robotic arm is not connected. "
     "Game will run in camera-only mode.",
-    "arm_disconnection_title": "⚠️ ARM DISCONNECTED"
+    "arm_disconnection_title": "⚠️ ARM DISCONNECTED",
+    "cached_symbols": "🔄 USING CACHED SYMBOLS",
+    "live_detection": "📹 LIVE DETECTION"
 }
 
 
@@ -194,6 +198,10 @@ class StatusManager(QObject):
             elif message_key_or_text == "grid_visible":
                 self.set_status_style_safe("success", self._get_status_style("success"))
                 QTimer.singleShot(2000, self.reset_status_panel_style)
+            elif message_key_or_text == "cached_symbols":
+                self.set_status_style_safe("warning", self._get_status_style("warning"))
+            elif message_key_or_text == "live_detection":
+                self.set_status_style_safe("success", self._get_status_style("success"))
 
             self.main_status_message.setText(status_text_to_show)
 

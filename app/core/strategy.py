@@ -64,7 +64,10 @@ class MinimaxStrategy(Strategy):  # pylint: disable=too-few-public-methods
             game_state.board_to_string()
         )
 
-        board = game_state.board
+        # Use cached board state for AI decisions to handle occlusion
+        board = (game_state.get_board_for_ai()
+                if hasattr(game_state, 'get_board_for_ai')
+                else game_state.board)
         # Check if game is finished
         winner = (game_state.check_winner()
                   if hasattr(game_state, 'check_winner') else None)

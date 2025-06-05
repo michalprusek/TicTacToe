@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from .grid_utils import robust_sort_grid_points
+from .symbol_cache import SymbolCache
 
 # Constants for game state
 EMPTY = ' '
@@ -80,6 +81,9 @@ class GameState:
         # Symbol confidence threshold for filtering
         self.symbol_confidence_threshold: float = 0.90
 
+        # Symbol caching system for handling occlusion
+        self.symbol_cache = SymbolCache(self.logger)
+
     def reset_game(self):
         """Resets game state, keeping grid points if valid."""
         self.logger.info("Resetting game state")
@@ -95,9 +99,36 @@ class GameState:
         self.winner = None
         self.winning_line_indices = None
 
+        # Clear symbol cache on game reset
+        self.symbol_cache.clear_cache()
+
     @property
     def board(self) -> List[List[str]]:
         """Get the current board state as a 2D list."""
+        return [row[:] for row in self._board_state]
+
+    def get_board_for_ai(self) -> List[List[str]]:
+        """
+        Get board state optimized for AI decision making.
+
+        This method returns the cached board state which includes symbols
+        that may be temporarily occluded but are still part of the game state.
+        This ensures AI makes decisions based on complete information.
+
+        Returns:
+            Board state with cached symbol information
+        """
+        # If we have cached symbols, use them for AI decisions
+        if (hasattr(self.symbol_cache, 'cached_symbols') and
+                self.symbol_cache.cached_symbols):
+            cached_board = self.symbol_cache._build_board_from_cache()
+            self.logger.debug(
+                "🤖 AI using cached board state with %d symbols",
+                len(self.symbol_cache.cached_symbols)
+            )
+            return cached_board
+
+        # Otherwise use current board state
         return [row[:] for row in self._board_state]
 
     @property
@@ -562,6 +593,63 @@ class GameState:
         # Return changed cells
         return self._get_changed_cells(old_board_state, self._board_state)
 
+    def _synchronize_board_with_cache(
+            self,
+            detected_symbols: List[Dict],
+            class_id_to_player: Dict[int, str],
+            timestamp: float
+    ) -> List[Tuple[int, int]]:
+        """
+        Synchronize board state using intelligent symbol caching.
+
+        This method uses the symbol cache to maintain symbol memory even when
+        they become temporarily occluded by the player's hand, ensuring
+        consistent AI decision-making based on complete board state.
+
+        Args:
+            detected_symbols: List of symbols detected by YOLO in current frame
+            class_id_to_player: Mapping from class ID to player symbol
+            timestamp: Current timestamp
+
+        Returns:
+            List of (row, col) tuples representing cells that changed
+        """
+        # Store old board state for comparison
+        old_board_state = [row[:] for row in self._board_state]
+
+        # Use symbol cache to get board state with occlusion handling
+        if self._cell_centers_uv_transformed is not None:
+            cached_board, using_cached_data = self.symbol_cache.update_cache(
+                detected_symbols,
+                self._cell_centers_uv_transformed,
+                timestamp,
+                class_id_to_player
+            )
+
+            # Update board state from cache
+            self._board_state = cached_board
+
+            # Log cache usage for debugging
+            if using_cached_data:
+                cache_status = self.symbol_cache.get_cache_status()
+                self.logger.info(
+                    "🔄 Using cached symbol data: %d cached symbols at %s",
+                    cache_status['cached_count'],
+                    cache_status['cached_positions']
+                )
+            else:
+                self.logger.debug("🎯 Using live detection data only")
+        else:
+            # Fallback to old synchronization if no cell centers available
+            self.logger.warning(
+                "No cell centers available, falling back to basic synchronization")
+            return self._synchronize_board_with_detections(
+                detected_symbols, class_id_to_player
+            )
+
+        # Return changed cells
+        return self._get_changed_cells(old_board_state, self._board_state)
+
     def _get_changed_cells(
             self,
             old_board: List[List[str]],
@@ -842,10 +930,10 @@ class GameState:
                     (timestamp - self._last_move_timestamp) >=
                     self._move_cooldown_seconds):
 
-                # CRITICAL FIX: Synchronize board state with current detections
-                # This ensures GUI only shows symbols that are actually detected by YOLO
-                changed_cells = self._synchronize_board_with_detections(
-                    detected_symbols, class_id_to_player
+                # CRITICAL FIX: Use symbol cache for intelligent symbol persistence
+                # This handles occlusion and maintains symbol memory during hand movements
+                changed_cells = self._synchronize_board_with_cache(
+                    detected_symbols, class_id_to_player, timestamp
                 )
 
                 # Log synchronization results
