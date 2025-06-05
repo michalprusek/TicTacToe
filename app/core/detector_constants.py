@@ -6,7 +6,7 @@ from app.core.game_state import GRID_POINTS_COUNT
 
 # --- Detection Thresholds --- #
 BBOX_CONF_THRESHOLD = 0.90  # High threshold for precise detection
-POSE_CONF_THRESHOLD = 0.80  # Grid detection threshold
+POSE_CONF_THRESHOLD = 0.45  # Grid detection threshold
 KEYPOINT_VISIBLE_THRESHOLD = 0.3  # Lower threshold to detect more keypoints
 
 # --- Homography and RANSAC --- #

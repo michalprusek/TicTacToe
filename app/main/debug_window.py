@@ -102,12 +102,12 @@ class DebugWindow(QMainWindow):
         self.conf_slider = QSlider(Qt.Horizontal)
         self.conf_slider.setMinimum(10)
         self.conf_slider.setMaximum(95)
-        self.conf_slider.setValue(80)  # Default 0.80
+        self.conf_slider.setValue(45)  # Default 0.65
         self.conf_slider.setTickPosition(QSlider.TicksBelow)
         self.conf_slider.setTickInterval(10)
         self.conf_slider.setEnabled(True)  # Now adjustable
         grid_conf_layout.addWidget(self.conf_slider)
-        self.conf_value_label = QLabel("0.80")
+        self.conf_value_label = QLabel("0.45")
         grid_conf_layout.addWidget(self.conf_value_label)
         detection_layout.addLayout(grid_conf_layout)
 
