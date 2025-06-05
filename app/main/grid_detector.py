@@ -4,8 +4,9 @@ Grid detector module for the TicTacToe application.
 """
 # pylint: disable=no-member,broad-exception-caught
 import logging
-from typing import Optional
+from typing import Optional, Deque
 from typing import Tuple
+from collections import deque
 
 import cv2  # pylint: disable=import-error
 import numpy as np
@@ -17,6 +18,12 @@ from app.core.detector_constants import RANSAC_REPROJ_THRESHOLD
 
 # Number of grid points (4x4 grid has 16 intersection points)
 GRID_POINTS_COUNT = 16
+
+# Temporal cache constants
+CACHE_SIZE = 10  # Store last 75 frames for averaging
+MAX_MISSING_FRAMES = 10  # Max consecutive frames a point can be missing before fallback to interpolation
+CACHE_INVALIDATION_THRESHOLD = 50.0  # Pixel distance threshold for cache invalidation
+MIN_CACHE_SIZE_FOR_AVERAGING = 5  # Minimum cache entries needed for reliable averaging
 
 
 class GridDetector:  # pylint: disable=too-many-instance-attributes
@@ -40,6 +47,14 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
         self.last_valid_grid_time = None
         self.max_grid_detection_retries = getattr(config, 'max_grid_detection_retries', 3)
         self.grid_lost_threshold_seconds = getattr(config, 'grid_lost_threshold_seconds', 2.0)
+
+        # Temporal cache system for grid point stability
+        self.grid_point_cache = [deque(maxlen=CACHE_SIZE) for _ in range(GRID_POINTS_COUNT)]
+        self.missing_frame_count = np.zeros(GRID_POINTS_COUNT, dtype=int)
+        self.last_detected_points_mask = np.zeros(GRID_POINTS_COUNT, dtype=bool)
+        self.last_cached_points_mask = np.zeros(GRID_POINTS_COUNT, dtype=bool)
+        self.last_interpolated_points_mask = np.zeros(GRID_POINTS_COUNT, dtype=bool)
+        self.cache_initialized = False
 
     def detect_grid(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Detects the Tic Tac Toe grid in the frame.
@@ -98,6 +113,166 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
 
         return frame, keypoints
 
+    def _update_temporal_cache(self, grid_points: np.ndarray) -> np.ndarray:
+        """Update temporal cache with current grid points and return stabilized points.
+
+        Args:
+            grid_points: Array of shape (16, 2) containing current grid points
+
+        Returns:
+            Stabilized grid points using cache, detected points, and interpolation
+        """
+        # Initialize result array
+        stabilized_points = np.zeros_like(grid_points)
+
+        # Reset status masks
+        self.last_detected_points_mask.fill(False)
+        self.last_cached_points_mask.fill(False)
+        self.last_interpolated_points_mask.fill(False)
+
+        # Check for cache invalidation (significant grid movement)
+        if self.cache_initialized and self._should_invalidate_cache(grid_points):
+            self._invalidate_cache()
+            self.logger.debug("Cache invalidated due to significant grid movement")
+
+        for i in range(GRID_POINTS_COUNT):
+            current_point = grid_points[i]
+
+            # Check if current point is detected (non-zero)
+            if np.sum(np.abs(current_point)) > 0:
+                # Point is detected - add to cache and use it
+                self.grid_point_cache[i].append(current_point.copy())
+                self.missing_frame_count[i] = 0
+                stabilized_points[i] = current_point
+                self.last_detected_points_mask[i] = True
+
+            else:
+                # Point is missing - try cache first, then interpolation
+                self.missing_frame_count[i] += 1
+
+                if (len(self.grid_point_cache[i]) >= MIN_CACHE_SIZE_FOR_AVERAGING and
+                    self.missing_frame_count[i] <= MAX_MISSING_FRAMES):
+                    # Use cached average
+                    cached_point = self._get_cached_average(i)
+                    stabilized_points[i] = cached_point
+                    self.last_cached_points_mask[i] = True
+                    self.logger.debug(f"Using cached point for position {i}")
+
+                else:
+                    # Cache not available or point missing too long - mark for interpolation
+                    stabilized_points[i] = np.zeros(2)
+                    self.last_interpolated_points_mask[i] = True
+
+        # Mark cache as initialized
+        if not self.cache_initialized:
+            self.cache_initialized = True
+            self.logger.debug("Temporal cache initialized")
+
+        return stabilized_points
+
+    def _should_invalidate_cache(self, current_grid: np.ndarray) -> bool:
+        """Check if cache should be invalidated due to significant grid movement."""
+        if not self.cache_initialized:
+            return False
+
+        # Get average positions from cache for comparison
+        detected_points = []
+        cached_averages = []
+
+        for i in range(GRID_POINTS_COUNT):
+            current_point = current_grid[i]
+            if (np.sum(np.abs(current_point)) > 0 and
+                len(self.grid_point_cache[i]) >= MIN_CACHE_SIZE_FOR_AVERAGING):
+                detected_points.append(current_point)
+                cached_averages.append(self._get_cached_average(i))
+
+        if len(detected_points) < 4:  # Need at least 4 points for comparison
+            return False
+
+        # Calculate average distance between detected and cached points
+        detected_points = np.array(detected_points)
+        cached_averages = np.array(cached_averages)
+        distances = np.linalg.norm(detected_points - cached_averages, axis=1)
+        avg_distance = np.mean(distances)
+
+        return avg_distance > CACHE_INVALIDATION_THRESHOLD
+
+    def _invalidate_cache(self):
+        """Clear the temporal cache."""
+        for i in range(GRID_POINTS_COUNT):
+            self.grid_point_cache[i].clear()
+        self.missing_frame_count.fill(0)
+        self.cache_initialized = False
+
+    def _get_cached_average(self, point_index: int) -> np.ndarray:
+        """Get the averaged position for a grid point from cache."""
+        if len(self.grid_point_cache[point_index]) == 0:
+            return np.zeros(2)
+
+        # Convert deque to numpy array and compute average
+        cached_points = np.array(list(self.grid_point_cache[point_index]))
+        return np.mean(cached_points, axis=0)
+
+    def _apply_final_interpolation(self, grid_points: np.ndarray) -> np.ndarray:
+        """Apply final interpolation to any remaining missing points after cache processing.
+
+        Args:
+            grid_points: Array of shape (16, 2) containing grid points with some potentially missing
+
+        Returns:
+            Complete grid with all missing points interpolated
+        """
+        # Create a copy to avoid modifying the original
+        final_grid = grid_points.copy()
+
+        # Find missing points (marked for interpolation)
+        missing_indices = []
+        for i in range(GRID_POINTS_COUNT):
+            if self.last_interpolated_points_mask[i] or np.sum(np.abs(final_grid[i])) == 0:
+                missing_indices.append(i)
+
+        if not missing_indices:
+            return final_grid  # No missing points
+
+        # Create point map from available points for interpolation
+        point_map = {}
+        for i in range(GRID_POINTS_COUNT):
+            if i not in missing_indices:
+                row, col = i // 4, i % 4
+                point_map[(col, row)] = final_grid[i]
+
+        # Interpolate missing points
+        for i in missing_indices:
+            row, col = i // 4, i % 4
+            interpolated = self._interpolate_point(row, col, point_map)
+            if interpolated is not None:
+                final_grid[i] = interpolated
+                # Update the point map for subsequent interpolations
+                point_map[(col, row)] = interpolated
+                self.logger.debug(f"Final interpolation for grid position ({row},{col})")
+            else:
+                # Last resort: use simple grid-based interpolation
+                final_grid[i] = self._simple_grid_interpolation(row, col, final_grid)
+                self.logger.debug(f"Simple grid interpolation for position ({row},{col})")
+
+        return final_grid
+
+    def _simple_grid_interpolation(self, row: int, col: int, grid: np.ndarray) -> np.ndarray:
+        """Simple grid-based interpolation as last resort."""
+        # Find bounding box of non-zero points
+        non_zero_points = grid[np.sum(np.abs(grid), axis=1) > 0]
+        if len(non_zero_points) == 0:
+            return np.array([100.0, 100.0])  # Default fallback
+
+        min_x, min_y = np.min(non_zero_points, axis=0)
+        max_x, max_y = np.max(non_zero_points, axis=0)
+
+        # Interpolate based on grid position
+        x = min_x + (max_x - min_x) * col / 3.0
+        y = min_y + (max_y - min_y) * row / 3.0
+
+        return np.array([x, y])
+
     def sort_grid_points(
             self, keypoints: np.ndarray) -> np.ndarray:  # pylint: disable=too-many-locals
         """Sorts the grid points into a consistent order and interpolates missing points.
@@ -106,7 +281,7 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
             keypoints: Array of shape (16, 2) containing the grid points
 
         Returns:
-            Sorted array of shape (16, 2) with interpolated missing points
+            Sorted array of shape (16, 2) with stabilized points using cache and interpolation
         """
         # Filter out points with zero coordinates (not detected)
         valid_points = keypoints[np.sum(np.abs(keypoints), axis=1) > 0]
@@ -117,19 +292,29 @@ class GridDetector:  # pylint: disable=too-many-instance-attributes
             return keypoints
 
         self.logger.debug(
-            "Sorting %s grid points into 4x4 layout with interpolation", 
+            "Sorting %s grid points into 4x4 layout with temporal cache and interpolation",
             len(valid_points))
 
         # Try to use robust sorting first
         try:
             sorted_points = self._robust_sort_and_interpolate(valid_points)
             if sorted_points is not None:
-                return sorted_points
+                # Apply temporal cache stabilization
+                stabilized_points = self._update_temporal_cache(sorted_points)
+
+                # Apply final interpolation for any remaining missing points
+                final_points = self._apply_final_interpolation(stabilized_points)
+                return final_points
         except Exception as e:
             self.logger.debug("Robust sorting failed: %s, using fallback", e)
 
         # Fallback to basic sorting
-        return self._basic_sort_grid_points(valid_points, keypoints)
+        basic_sorted = self._basic_sort_grid_points(valid_points, keypoints)
+
+        # Apply temporal cache even to basic sorted points
+        stabilized_points = self._update_temporal_cache(basic_sorted)
+        final_points = self._apply_final_interpolation(stabilized_points)
+        return final_points
 
     def _robust_sort_and_interpolate(self, valid_points: np.ndarray) -> Optional[np.ndarray]:
         """Robustly sort and interpolate grid points using geometric analysis."""

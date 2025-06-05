@@ -38,6 +38,23 @@ class VisualizationManager:
         # Debug window settings
         self.debug_window_scale_factor = getattr(config, 'debug_window_scale_factor', 0.5)
 
+        # Cache status masks for visualization
+        self._last_detected_mask = None
+        self._last_cached_mask = None
+        self._last_interpolated_mask = None
+
+    def update_cache_status(self, detected_mask, cached_mask, interpolated_mask):
+        """Update cache status masks for visualization.
+
+        Args:
+            detected_mask: Boolean array indicating detected points
+            cached_mask: Boolean array indicating cached points
+            interpolated_mask: Boolean array indicating interpolated points
+        """
+        self._last_detected_mask = detected_mask
+        self._last_cached_mask = cached_mask
+        self._last_interpolated_mask = interpolated_mask
+
     def draw_detection_results(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
         self,
         frame: np.ndarray,
@@ -84,25 +101,43 @@ class VisualizationManager:
             except Exception as e:
                 self.logger.debug("Error drawing FPS: %s", e)
 
-        # --- 2. Draw raw keypoints from pose model
+        # --- 2. Draw grid points with cache status visualization
         if self.show_grid and pose_kpts_uv is not None:
             try:
-                # Filter out points with zero coordinates
-                valid_kpts = pose_kpts_uv[np.sum(np.abs(pose_kpts_uv), axis=1) > 0]
                 frame_h, frame_w = result_frame.shape[:2]
 
-                # Draw each keypoint
-                for i, (x, y) in enumerate(valid_kpts):
+                # Get cache status from grid detector if available
+                detected_mask = getattr(self, '_last_detected_mask', None)
+                cached_mask = getattr(self, '_last_cached_mask', None)
+                interpolated_mask = getattr(self, '_last_interpolated_mask', None)
+
+                # Draw each grid point with appropriate color
+                for i in range(len(pose_kpts_uv)):
+                    x, y = pose_kpts_uv[i]
+
+                    # Skip zero coordinates
+                    if np.sum(np.abs([x, y])) == 0:
+                        continue
+
                     # Validate coordinates
                     x_int = int(np.clip(x, 0, frame_w - 1))
                     y_int = int(np.clip(y, 0, frame_h - 1))
 
                     if 0 <= x_int < frame_w and 0 <= y_int < frame_h:
+                        # Determine color based on cache status
+                        color = DEBUG_UV_KPT_COLOR  # Default yellow
+                        if detected_mask is not None and i < len(detected_mask) and detected_mask[i]:
+                            color = (0, 255, 0)  # Green for detected
+                        elif cached_mask is not None and i < len(cached_mask) and cached_mask[i]:
+                            color = (255, 0, 0)  # Blue for cached
+                        elif interpolated_mask is not None and i < len(interpolated_mask) and interpolated_mask[i]:
+                            color = (255, 0, 255)  # Magenta for interpolated
+
                         cv2.circle(
                             result_frame,
                             (x_int, y_int),
                             5,
-                            DEBUG_UV_KPT_COLOR,
+                            color,
                             -1
                         )
 
@@ -116,7 +151,7 @@ class VisualizationManager:
                                 (text_x, text_y),
                                 cv2.FONT_HERSHEY_SIMPLEX,
                                 0.5,
-                                DEBUG_UV_KPT_COLOR,
+                                color,
                                 1
                             )
             except Exception as e:
@@ -267,6 +302,22 @@ class VisualizationManager:
                     f"Grid Points: {grid_points_count}/16",
                     f"Cells: {cell_polygons_count}/9"
                 ])
+
+                # Add cache status information
+                if (self._last_detected_mask is not None or
+                    self._last_cached_mask is not None or
+                    self._last_interpolated_mask is not None):
+
+                    detected_count = np.sum(self._last_detected_mask) if self._last_detected_mask is not None else 0
+                    cached_count = np.sum(self._last_cached_mask) if self._last_cached_mask is not None else 0
+                    interpolated_count = np.sum(self._last_interpolated_mask) if self._last_interpolated_mask is not None else 0
+
+                    texts_to_draw.extend([
+                        f"Grid Cache Status:",
+                        f"  Detected: {detected_count} (Green)",
+                        f"  Cached: {cached_count} (Blue)",
+                        f"  Interpolated: {interpolated_count} (Magenta)"
+                    ])
 
             # Position for the text (top-left corner)
             text_x = 10

@@ -186,7 +186,16 @@ class GameDetector:  # pylint: disable=too-many-instance-attributes
             self.logger.info("Processing FPS: %.2f", fps)
             self.last_log_time = current_time
 
-        # --- 6. Draw Detection Results --- #
+        # --- 6. Update visualization with cache status --- #
+        # Update cache status for grid point visualization
+        if hasattr(self.grid_detector, 'last_detected_points_mask'):
+            self.visualization_manager.update_cache_status(
+                self.grid_detector.last_detected_points_mask,
+                self.grid_detector.last_cached_points_mask,
+                self.grid_detector.last_interpolated_points_mask
+            )
+
+        # --- 7. Draw Detection Results --- #
         annotated_frame = self.visualization_manager.draw_detection_results(
             frame.copy(),
             fps,
